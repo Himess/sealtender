@@ -113,7 +113,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div aria-live="polite" aria-atomic="true" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="ACTIVE TENDERS"
           value={isLoading ? "..." : String(activeTenders)}

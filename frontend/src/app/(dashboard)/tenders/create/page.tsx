@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseAbi } from "viem";
@@ -16,6 +16,7 @@ import {
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { Toast } from "@/components/Toast";
 
 const factoryAbi = parseAbi(TenderFactoryABI);
 
@@ -25,6 +26,8 @@ export default function CreateTenderPage() {
   const [deadline, setDeadline] = useState("");
   const [maxBidders, setMaxBidders] = useState("5");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const dismissToast = useCallback(() => setToast(null), []);
 
   const {
     writeContract,
@@ -35,6 +38,19 @@ export default function CreateTenderPage() {
 
   const { isLoading: isConfirming, isSuccess } =
     useWaitForTransactionReceipt({ hash });
+
+  // Show toast on success or error
+  useEffect(() => {
+    if (isSuccess) {
+      setToast({ message: "Tender created successfully!", type: "success" });
+    }
+  }, [isSuccess]);
+
+  useEffect(() => {
+    if (writeError) {
+      setToast({ message: writeError.message.slice(0, 100), type: "error" });
+    }
+  }, [writeError]);
 
   function validate(): boolean {
     const errs: Record<string, string> = {};
@@ -287,6 +303,10 @@ export default function CreateTenderPage() {
           </div>
         </div>
       </div>
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={dismissToast} />
+      )}
     </div>
   );
 }

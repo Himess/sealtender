@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   useReadContracts,
   useWriteContract,
@@ -28,6 +28,7 @@ import {
   DisputeType,
   DisputeStatus,
 } from "@/lib/contracts";
+import { Toast } from "@/components/Toast";
 
 const disputeAbi = parseAbi(DisputeManagerABI);
 
@@ -50,6 +51,9 @@ export default function DisputesPage() {
   const [tenderId, setTenderId] = useState("");
   const [accused, setAccused] = useState("");
   const [reason, setReason] = useState("");
+
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const dismissToast = useCallback(() => setToast(null), []);
 
   const { data: disputeCount, isLoading: loadingCount } = useDisputeCount();
   const count = disputeCount ? Number(disputeCount) : 0;
@@ -112,6 +116,18 @@ export default function DisputesPage() {
     error: writeError,
   } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  useEffect(() => {
+    if (isSuccess) {
+      setToast({ message: "Complaint filed successfully!", type: "success" });
+    }
+  }, [isSuccess]);
+
+  useEffect(() => {
+    if (writeError) {
+      setToast({ message: writeError.message.slice(0, 100), type: "error" });
+    }
+  }, [writeError]);
 
   function handleFileComplaint() {
     if (!tenderId || !accused || !reason) return;
@@ -297,6 +313,10 @@ export default function DisputesPage() {
         )}
       </div>
 
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={dismissToast} />
+      )}
+
       {/* File Complaint Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
@@ -315,7 +335,7 @@ export default function DisputesPage() {
             </div>
 
             {isSuccess ? (
-              <div className="text-center space-y-3 py-4">
+              <div aria-live="polite" role="status" className="text-center space-y-3 py-4">
                 <CheckCircle size={32} className="text-[#00E87B] mx-auto" />
                 <p className="font-body text-[14px] text-[#F0F0F0]">Complaint filed successfully</p>
                 <button
@@ -410,9 +430,11 @@ export default function DisputesPage() {
                 </div>
 
                 {writeError && (
-                  <p className="text-xs text-[#FF4444]">
-                    {writeError.message.slice(0, 150)}
-                  </p>
+                  <div aria-live="assertive" role="alert">
+                    <p className="text-xs text-[#FF4444]">
+                      {writeError.message.slice(0, 150)}
+                    </p>
+                  </div>
                 )}
 
                 <button

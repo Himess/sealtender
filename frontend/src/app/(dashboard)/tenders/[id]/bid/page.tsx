@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseAbi, parseEther } from "viem";
@@ -22,6 +22,7 @@ import {
 } from "@/hooks/useContractData";
 import { EncryptedTenderABI, TenderState } from "@/lib/contracts";
 import { encryptBidData } from "@/lib/fhevm";
+import { Toast } from "@/components/Toast";
 
 const tenderAbi = parseAbi(EncryptedTenderABI);
 
@@ -48,6 +49,8 @@ export default function BidPage({
   const [bidStatus, setBidStatus] = useState<BidStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [encryptedPreview, setEncryptedPreview] = useState<string>("");
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const dismissToast = useCallback(() => setToast(null), []);
 
   const {
     writeContract,
@@ -56,6 +59,18 @@ export default function BidPage({
   } = useWriteContract();
 
   const { isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  useEffect(() => {
+    if (isSuccess) {
+      setToast({ message: "Bid submitted successfully!", type: "success" });
+    }
+  }, [isSuccess]);
+
+  useEffect(() => {
+    if (writeError) {
+      setToast({ message: writeError.message.slice(0, 100), type: "error" });
+    }
+  }, [writeError]);
 
   const config = configData
     ? {
@@ -225,35 +240,38 @@ export default function BidPage({
         </div>
       </div>
 
-      {/* State Check */}
-      {currentState !== undefined && currentState !== TenderState.BIDDING && (
-        <div className="bg-[#FFB800]/10 border border-[#FFB800]/20 rounded-lg p-4 flex items-start gap-3">
-          <AlertTriangle
-            size={18}
-            className="text-[#FFB800] mt-0.5 shrink-0"
-          />
-          <p className="font-body text-[14px] text-[#FFB800]">
-            This tender is currently in &quot;{stateLabel(currentState)}&quot; state.
-            Bidding may not be available.
-          </p>
-        </div>
-      )}
-
-      {/* Error */}
-      {(errorMsg || writeError) && (
-        <div className="bg-[#FF4444]/10 border border-[#FF4444]/20 rounded-lg p-4 flex items-start gap-3">
-          <AlertTriangle
-            size={18}
-            className="text-[#FF4444] mt-0.5 shrink-0"
-          />
-          <div>
-            <p className="font-body text-[14px] text-[#FF4444] font-medium">Error</p>
-            <p className="font-body text-[12px] text-[#888888] mt-1">
-              {errorMsg || writeError?.message?.slice(0, 200)}
+      {/* Status / Error Banner */}
+      <div aria-live="assertive" role="status">
+        {/* State Check */}
+        {currentState !== undefined && currentState !== TenderState.BIDDING && (
+          <div className="bg-[#FFB800]/10 border border-[#FFB800]/20 rounded-lg p-4 flex items-start gap-3">
+            <AlertTriangle
+              size={18}
+              className="text-[#FFB800] mt-0.5 shrink-0"
+            />
+            <p className="font-body text-[14px] text-[#FFB800]">
+              This tender is currently in &quot;{stateLabel(currentState)}&quot; state.
+              Bidding may not be available.
             </p>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Error */}
+        {(errorMsg || writeError) && (
+          <div className="bg-[#FF4444]/10 border border-[#FF4444]/20 rounded-lg p-4 flex items-start gap-3 mt-4">
+            <AlertTriangle
+              size={18}
+              className="text-[#FF4444] mt-0.5 shrink-0"
+            />
+            <div>
+              <p className="font-body text-[14px] text-[#FF4444] font-medium">Error</p>
+              <p className="font-body text-[12px] text-[#888888] mt-1">
+                {errorMsg || writeError?.message?.slice(0, 200)}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: Tender Info + Form */}
@@ -512,6 +530,10 @@ export default function BidPage({
           </div>
         </div>
       </div>
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={dismissToast} />
+      )}
     </div>
   );
 }

@@ -151,6 +151,88 @@ export class SealTenderClient {
     );
   }
 
+  // ─── Retry Logic ────────────────────────────────────────────────────────
+
+  /**
+   * Retry wrapper for critical operations. Applies exponential backoff.
+   *
+   * @param fn - Async function to retry
+   * @param retries - Number of retry attempts (default 3)
+   * @param delay - Base delay between retries in ms (default 1000)
+   * @returns Result of the function call
+   */
+  private async withRetry<T>(
+    fn: () => Promise<T>,
+    retries = 3,
+    delay = 1000
+  ): Promise<T> {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await fn();
+      } catch (err) {
+        if (i === retries - 1) throw err;
+        await new Promise((r) => setTimeout(r, delay * (i + 1)));
+      }
+    }
+    throw new Error("Unreachable");
+  }
+
+  // ─── Event Listeners ──────────────────────────────────────────────────
+
+  /**
+   * Map of contract name to contract instance for event listening.
+   */
+  private getContract(contractName: string): ethers.Contract {
+    const map: Record<string, ethers.Contract> = {
+      factory: this.factoryContract,
+      escrow: this.escrowContract,
+      registry: this.registryContract,
+      disputeManager: this.disputeManagerContract,
+      escalation: this.escalationContract,
+      collisionDetector: this.collisionDetectorContract,
+      cusdc: this.cusdcContract,
+    };
+
+    const contract = map[contractName];
+    if (!contract) {
+      throw new ValidationError(
+        `Unknown contract name: ${contractName}. Valid names: ${Object.keys(map).join(", ")}`,
+        "contractName"
+      );
+    }
+    return contract;
+  }
+
+  /**
+   * Listen to contract events. For tender-specific events, use getTenderContract() first.
+   *
+   * @param contractName - One of: factory, escrow, registry, disputeManager, escalation, collisionDetector, cusdc
+   * @param eventName - The event name to listen for
+   * @param callback - Callback invoked when the event fires
+   */
+  async listenToEvents(
+    contractName: string,
+    eventName: string,
+    callback: (...args: unknown[]) => void
+  ): Promise<void> {
+    const contract = this.getContract(contractName);
+    contract.on(eventName, callback);
+  }
+
+  /**
+   * Stop listening to a specific event on a contract.
+   *
+   * @param contractName - One of: factory, escrow, registry, disputeManager, escalation, collisionDetector, cusdc
+   * @param eventName - The event name to stop listening for
+   */
+  async stopListening(
+    contractName: string,
+    eventName: string
+  ): Promise<void> {
+    const contract = this.getContract(contractName);
+    contract.removeAllListeners(eventName);
+  }
+
   // ─── FHE Initialization ─────────────────────────────────────────────────
 
   /**
@@ -236,49 +318,51 @@ export class SealTenderClient {
    * @returns The tender ID and deployed contract address
    */
   async createTender(config: TenderConfig): Promise<CreateTenderResult> {
-    const configTuple = [
-      config.description,
-      config.deadline,
-      config.weightYears,
-      config.weightProjects,
-      config.weightBond,
-      config.minYears,
-      config.minProjects,
-      config.minBond,
-      config.escrowAmount,
-      config.maxBidders,
-      config.minReputation,
-    ];
+    return this.withRetry(async () => {
+      const configTuple = [
+        config.description,
+        config.deadline,
+        config.weightYears,
+        config.weightProjects,
+        config.weightBond,
+        config.minYears,
+        config.minProjects,
+        config.minBond,
+        config.escrowAmount,
+        config.maxBidders,
+        config.minReputation,
+      ];
 
-    const tx = await this.factoryContract.createTender(configTuple);
-    const receipt = await tx.wait();
+      const tx = await this.factoryContract.createTender(configTuple);
+      const receipt = await tx.wait();
 
-    // Parse TenderCreated event
-    const event = receipt.logs
-      .map((log: ethers.Log) => {
-        try {
-          return this.factoryContract.interface.parseLog({
-            topics: log.topics as string[],
-            data: log.data,
-          });
-        } catch {
-          return null;
-        }
-      })
-      .find((e: ethers.LogDescription | null) => e?.name === "TenderCreated");
+      // Parse TenderCreated event
+      const event = receipt.logs
+        .map((log: ethers.Log) => {
+          try {
+            return this.factoryContract.interface.parseLog({
+              topics: log.topics as string[],
+              data: log.data,
+            });
+          } catch {
+            return null;
+          }
+        })
+        .find((e: ethers.LogDescription | null) => e?.name === "TenderCreated");
 
-    if (!event) {
-      throw new ContractCallError(
-        "TenderCreated event not found in transaction receipt",
-        "TenderFactory",
-        "createTender"
-      );
-    }
+      if (!event) {
+        throw new ContractCallError(
+          "TenderCreated event not found in transaction receipt",
+          "TenderFactory",
+          "createTender"
+        );
+      }
 
-    return {
-      tenderId: event.args[0],
-      tenderAddress: event.args[1],
-    };
+      return {
+        tenderId: event.args[0],
+        tenderAddress: event.args[1],
+      };
+    });
   }
 
   /**
@@ -369,18 +453,20 @@ export class SealTenderClient {
    * @returns Transaction hash
    */
   async submitBid(tenderAddress: string, bid: BidInput): Promise<string> {
-    const { handles, inputProof } = await this.encryptBid(tenderAddress, bid);
+    return this.withRetry(async () => {
+      const { handles } = await this.encryptBid(tenderAddress, bid);
 
-    const tender = new ethers.Contract(tenderAddress, TENDER_ABI, this.signer);
-    const tx = await tender.submitBid(
-      handles[0],  // encPrice
-      handles[1],  // encYears
-      handles[2],  // encProjects
-      handles[3]   // encBond
-    );
+      const tender = new ethers.Contract(tenderAddress, TENDER_ABI, this.signer);
+      const tx = await tender.submitBid(
+        handles[0],  // encPrice
+        handles[1],  // encYears
+        handles[2],  // encProjects
+        handles[3]   // encBond
+      );
 
-    const receipt = await tx.wait();
-    return receipt.hash;
+      const receipt = await tx.wait();
+      return receipt.hash;
+    });
   }
 
   /**

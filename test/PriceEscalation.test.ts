@@ -2,12 +2,13 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
-import { PriceEscalation } from "../typechain-types";
+import { PriceEscalation, MockV3Aggregator } from "../typechain-types";
 
 describe("PriceEscalation", function () {
   let escalation: PriceEscalation;
   let owner: HardhatEthersSigner;
   let alice: HardhatEthersSigner;
+  let winner: HardhatEthersSigner;
   const TENDER_ID = 0;
   const MATERIAL_ID = ethers.id("STEEL");
   const BASELINE_PRICE = 1000n;
@@ -17,7 +18,7 @@ describe("PriceEscalation", function () {
   const PERIOD = 86400n; // 1 day
 
   beforeEach(async function () {
-    [owner, alice] = await ethers.getSigners();
+    [owner, alice, winner] = await ethers.getSigners();
     const Factory = await ethers.getContractFactory("PriceEscalation");
     escalation = await Factory.deploy();
     await escalation.waitForDeployment();
@@ -176,6 +177,92 @@ describe("PriceEscalation", function () {
 
     it("should return zero total escalation initially", async function () {
       expect(await escalation.getTotalEscalation(TENDER_ID)).to.equal(0);
+    });
+  });
+
+  describe("Chainlink Oracle Integration", function () {
+    let mockAggregator: MockV3Aggregator;
+
+    beforeEach(async function () {
+      const MockFactory = await ethers.getContractFactory("MockV3Aggregator");
+      mockAggregator = await MockFactory.deploy(8, 1500); // 8 decimals, initial price 1500
+      await mockAggregator.waitForDeployment();
+    });
+
+    it("should read price from Chainlink feed", async function () {
+      await escalation.setPriceFeed(MATERIAL_ID, await mockAggregator.getAddress());
+      const price = await escalation.getLatestPrice(MATERIAL_ID);
+      expect(price).to.equal(1500);
+    });
+
+    it("should fallback to manual price when no feed", async function () {
+      // No feed set — should return latestPrices value
+      await escalation.updateOraclePrice(MATERIAL_ID, 2000);
+      const price = await escalation.getLatestPrice(MATERIAL_ID);
+      expect(price).to.equal(2000);
+    });
+
+    it("should reject stale oracle data", async function () {
+      await escalation.setPriceFeed(MATERIAL_ID, await mockAggregator.getAddress());
+      // Set updatedAt to 2 days ago (stale)
+      const staleTimestamp = (await time.latest()) - 2 * 86400;
+      await mockAggregator.setUpdatedAt(staleTimestamp);
+      await expect(escalation.getLatestPrice(MATERIAL_ID))
+        .to.be.revertedWith("Stale oracle data");
+    });
+  });
+
+  describe("Escalation Budget", function () {
+    it("should deposit escalation budget", async function () {
+      const depositAmount = ethers.parseEther("5");
+      await expect(
+        escalation.depositEscalationBudget(TENDER_ID, { value: depositAmount })
+      ).to.emit(escalation, "EscalationBudgetDeposited")
+        .withArgs(TENDER_ID, depositAmount);
+      expect(await escalation.escalationBudget(TENDER_ID)).to.equal(depositAmount);
+    });
+  });
+
+  describe("Auto-pay Winner", function () {
+    let mockAggregator: MockV3Aggregator;
+
+    beforeEach(async function () {
+      const MockFactory = await ethers.getContractFactory("MockV3Aggregator");
+      mockAggregator = await MockFactory.deploy(8, BASELINE_PRICE);
+      await mockAggregator.waitForDeployment();
+
+      // Setup tender with Chainlink feed
+      await escalation.setTenderPrice(TENDER_ID, TENDER_PRICE);
+      await escalation.setEscalationRule(
+        TENDER_ID, MATERIAL_ID, BASELINE_PRICE, THRESHOLD_BPS, CAP_BPS, PERIOD
+      );
+      await escalation.setPriceFeed(MATERIAL_ID, await mockAggregator.getAddress());
+      await escalation.setTenderWinner(TENDER_ID, winner.address);
+    });
+
+    it("should auto-pay winner on escalation", async function () {
+      // Deposit budget
+      const budget = ethers.parseEther("50");
+      await escalation.depositEscalationBudget(TENDER_ID, { value: budget });
+
+      await time.increase(Number(PERIOD) + 1);
+
+      // Increase price by 10% AFTER time advance so updatedAt is fresh
+      const newPrice = BASELINE_PRICE + (BASELINE_PRICE * 1000n / 10000n); // 10%
+      await mockAggregator.updateAnswer(Number(newPrice));
+
+      const winnerBalBefore = await ethers.provider.getBalance(winner.address);
+      await escalation.evaluateEscalation(TENDER_ID, MATERIAL_ID);
+      const winnerBalAfter = await ethers.provider.getBalance(winner.address);
+
+      expect(winnerBalAfter).to.be.gt(winnerBalBefore);
+    });
+  });
+
+  describe("updateOraclePrice edge cases", function () {
+    it("should revert zero price in updateOraclePrice", async function () {
+      await expect(escalation.updateOraclePrice(MATERIAL_ID, 0))
+        .to.be.revertedWithCustomError(escalation, "PriceZero");
     });
   });
 });

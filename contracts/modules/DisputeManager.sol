@@ -21,9 +21,11 @@ contract DisputeManager is Ownable2Step, ReentrancyGuard {
 
     uint256 public disputeCount;
     uint256 public constant COMPLAINT_STAKE = 0.01 ether;
+    uint256 public constant DISPUTE_TIMEOUT = 30 days;
 
     mapping(uint256 => Dispute) public disputes;
     mapping(uint256 => uint256[]) public tenderDisputes;
+    mapping(uint256 => uint256) public disputeCreatedAt;
 
     // --- Events ---
     event DisputeFiled(
@@ -42,8 +44,8 @@ contract DisputeManager is Ownable2Step, ReentrancyGuard {
 
     // --- Errors ---
     error InsufficientStake();
-    error InvalidDisputeId();
-    error DisputeAlreadyResolved();
+    error InvalidDisputeId(uint256 disputeId);
+    error DisputeAlreadyResolved(uint256 disputeId);
     error NotCourtAuthority();
     error ZeroAddress();
     error StakeReturnFailed();
@@ -111,14 +113,14 @@ contract DisputeManager is Ownable2Step, ReentrancyGuard {
         uint256 disputeId,
         DisputeStatus resolution
     ) external onlyOwner nonReentrant {
-        if (disputeId >= disputeCount) revert InvalidDisputeId();
+        if (disputeId >= disputeCount) revert InvalidDisputeId(disputeId);
         Dispute storage d = disputes[disputeId];
         if (
             d.status != DisputeStatus.Open &&
             d.status != DisputeStatus.Investigating &&
             d.status != DisputeStatus.Frozen
         ) {
-            revert DisputeAlreadyResolved();
+            revert DisputeAlreadyResolved(disputeId);
         }
 
         d.status = resolution;
@@ -151,8 +153,24 @@ contract DisputeManager is Ownable2Step, ReentrancyGuard {
 
     // --- Views ---
 
+    function timeoutDispute(uint256 disputeId) external nonReentrant {
+        Dispute storage d = disputes[disputeId];
+        if (d.complainant == address(0)) revert InvalidDisputeId(disputeId);
+        if (d.status != DisputeStatus.Open && d.status != DisputeStatus.Investigating) {
+            revert DisputeAlreadyResolved(disputeId);
+        }
+        require(block.timestamp >= disputeCreatedAt[disputeId] + DISPUTE_TIMEOUT, "Not timed out yet");
+        d.status = DisputeStatus.Dismissed;
+        // Return stake to complainant on timeout (not burn — timeout is not their fault)
+        if (d.disputeType == DisputeType.Company && d.stake > 0) {
+            (bool ok,) = payable(d.complainant).call{value: d.stake}("");
+            if (!ok) revert StakeReturnFailed();
+        }
+        emit DisputeResolved(disputeId, d.status);
+    }
+
     function getDispute(uint256 disputeId) external view returns (Dispute memory) {
-        if (disputeId >= disputeCount) revert InvalidDisputeId();
+        if (disputeId >= disputeCount) revert InvalidDisputeId(disputeId);
         return disputes[disputeId];
     }
 
@@ -182,6 +200,7 @@ contract DisputeManager is Ownable2Step, ReentrancyGuard {
         });
 
         tenderDisputes[tenderId].push(disputeId);
+        disputeCreatedAt[disputeId] = block.timestamp;
 
         emit DisputeFiled(disputeId, tenderId, msg.sender, accused);
         return disputeId;

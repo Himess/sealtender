@@ -46,6 +46,7 @@ contract PriceEscalation is Ownable2Step {
     error InsufficientEscalationBudget(uint256 tenderId, uint256 required, uint256 available);
     error NoWinnerSet(uint256 tenderId);
     error PaymentFailed();
+    error PriceZero();
 
     constructor() Ownable(msg.sender) {}
 
@@ -87,6 +88,7 @@ contract PriceEscalation is Ownable2Step {
      * @notice Manual oracle price update (fallback for materials without Chainlink feeds).
      */
     function updateOraclePrice(bytes32 materialId, uint256 newPrice) external onlyOwner {
+        if (newPrice == 0) revert PriceZero();
         uint256 oldPrice = latestPrices[materialId];
         if (oldPrice > 0) {
             // Oracle sanity check: price change must not exceed 50%

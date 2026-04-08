@@ -135,4 +135,11 @@ describe("ABIs", () => {
   it("ESCROW_ABI includes deposit function", () => {
     expect(ESCROW_ABI.some((e) => e.includes("deposit"))).toBe(true);
   });
+
+  it("should have IAggregatorV3 in project", () => {
+    const fs = require("fs");
+    const path = require("path");
+    const interfacePath = path.resolve(__dirname, "../../contracts/interfaces/IAggregatorV3.sol");
+    expect(fs.existsSync(interfacePath)).toBe(true);
+  });
 });

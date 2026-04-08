@@ -351,6 +351,30 @@ describe("EncryptedTender", function () {
       await expect(tender.connect(alice).evaluateBatch(0, 1))
         .to.be.revertedWithCustomError(tender, "OwnableUnauthorizedAccount");
     });
+
+    it("should revert evaluateBatch with batch too large", async function () {
+      // Deploy tender with maxBidders=10 and register enough bidders
+      const signers = await ethers.getSigners();
+      for (let i = 4; i <= 9; i++) {
+        await registry.registerBidder(signers[i].address);
+      }
+      await deployTender({ maxBidders: 10 });
+
+      // Submit 6 bids (> MAX_BATCH_SIZE of 5)
+      await submitBidForSigner(alice, 50000n);
+      await submitBidForSigner(bob, 40000n);
+      await submitBidForSigner(charlie, 45000n);
+      await submitBidForSigner(signers[4], 35000n);
+      await submitBidForSigner(signers[5], 55000n);
+      await submitBidForSigner(signers[6], 42000n);
+
+      await time.increase(86401);
+
+      // Try to evaluate batch of 6 (exceeds MAX_BATCH_SIZE=5)
+      await expect(tender.evaluateBatch(0, 6))
+        .to.be.revertedWithCustomError(tender, "BatchTooLarge")
+        .withArgs(6, 5);
+    });
   });
 
   describe("requestReveal", function () {

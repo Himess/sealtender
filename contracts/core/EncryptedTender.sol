@@ -71,6 +71,9 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable {
     error InvalidRange();
     error EndExceedsBidders();
     error MustEvaluateInOrder();
+    error BatchTooLarge(uint256 size, uint256 max);
+
+    uint256 public constant MAX_BATCH_SIZE = 5;
 
     // --- Modifiers ---
     modifier onlyVerified() {
@@ -200,6 +203,7 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable {
         if (startIdx >= endIdx) revert InvalidRange();
         if (endIdx > bidders.length) revert EndExceedsBidders();
         if (startIdx != evaluatedCount) revert MustEvaluateInOrder();
+        if (endIdx - startIdx > MAX_BATCH_SIZE) revert BatchTooLarge(endIdx - startIdx, MAX_BATCH_SIZE);
 
         for (uint256 i = startIdx; i < endIdx; i++) {
             address bidder = bidders[i];

@@ -22,6 +22,9 @@ contract ConfidentialUSDC is ZamaEthereumConfig, ERC7984, Ownable2Step {
 
     // --- State ---
     IERC20 public underlyingUSDC;
+    address public pendingUnderlyingUSDC;
+    uint256 public underlyingChangeTime;
+    uint256 public constant UNDERLYING_CHANGE_DELAY = 2 days;
     mapping(address => uint256) public lastFaucetTime;
 
     // --- Events ---
@@ -31,6 +34,7 @@ contract ConfidentialUSDC is ZamaEthereumConfig, ERC7984, Ownable2Step {
     event Unwrapped(address indexed user, uint256 amount);
     event FaucetUsed(address indexed user, uint256 amount);
     event UnderlyingUSDCSet(address indexed token);
+    event UnderlyingUSDCChangeProposed(address indexed newToken, uint256 effectiveTime);
 
     // --- Errors ---
     error FaucetAmountExceedsMax();
@@ -59,8 +63,24 @@ contract ConfidentialUSDC is ZamaEthereumConfig, ERC7984, Ownable2Step {
     }
 
     function setUnderlyingUSDC(address _usdc) external onlyOwner {
+        require(address(underlyingUSDC) == address(0), "Use propose/execute to change");
         underlyingUSDC = IERC20(_usdc);
         emit UnderlyingUSDCSet(_usdc);
+    }
+
+    function proposeUnderlyingUSDC(address _usdc) external onlyOwner {
+        pendingUnderlyingUSDC = _usdc;
+        underlyingChangeTime = block.timestamp + UNDERLYING_CHANGE_DELAY;
+        emit UnderlyingUSDCChangeProposed(_usdc, underlyingChangeTime);
+    }
+
+    function executeUnderlyingUSDCChange() external onlyOwner {
+        require(pendingUnderlyingUSDC != address(0), "No pending change");
+        require(block.timestamp >= underlyingChangeTime, "Timelock not expired");
+        underlyingUSDC = IERC20(pendingUnderlyingUSDC);
+        emit UnderlyingUSDCSet(pendingUnderlyingUSDC);
+        pendingUnderlyingUSDC = address(0);
+        underlyingChangeTime = 0;
     }
 
     // --- Wrap/Unwrap ---

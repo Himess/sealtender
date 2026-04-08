@@ -47,14 +47,20 @@ describe("ConfidentialUSDC", function () {
   });
 
   describe("setUnderlyingUSDC", function () {
-    it("should set underlying USDC", async function () {
-      await expect(cusdc.setUnderlyingUSDC(await mockUsdc.getAddress()))
-        .to.emit(cusdc, "UnderlyingUSDCSet");
+    it("should set underlying USDC on fresh deploy", async function () {
+      const CUSDCFactory = await ethers.getContractFactory("ConfidentialUSDC");
+      const freshCusdc = await CUSDCFactory.deploy(owner.address);
+      await freshCusdc.waitForDeployment();
+      await expect(freshCusdc.setUnderlyingUSDC(await mockUsdc.getAddress()))
+        .to.emit(freshCusdc, "UnderlyingUSDCSet");
     });
 
     it("should only allow owner", async function () {
-      await expect(cusdc.connect(alice).setUnderlyingUSDC(await mockUsdc.getAddress()))
-        .to.be.revertedWithCustomError(cusdc, "OwnableUnauthorizedAccount");
+      const CUSDCFactory = await ethers.getContractFactory("ConfidentialUSDC");
+      const freshCusdc = await CUSDCFactory.deploy(owner.address);
+      await freshCusdc.waitForDeployment();
+      await expect(freshCusdc.connect(alice).setUnderlyingUSDC(await mockUsdc.getAddress()))
+        .to.be.revertedWithCustomError(freshCusdc, "OwnableUnauthorizedAccount");
     });
   });
 
@@ -153,6 +159,42 @@ describe("ConfidentialUSDC", function () {
       await expect(cusdc.burn(alice.address, 500))
         .to.emit(cusdc, "Burned")
         .withArgs(alice.address, 500);
+    });
+  });
+
+  describe("Underlying USDC Timelock", function () {
+    it("should only allow initial setUnderlyingUSDC when address is zero", async function () {
+      // underlyingUSDC is already set in beforeEach, so setting again should revert
+      const MockFactory = await ethers.getContractFactory("MockUSDC");
+      const mockUsdc2 = await MockFactory.deploy();
+      await mockUsdc2.waitForDeployment();
+      await expect(cusdc.setUnderlyingUSDC(await mockUsdc2.getAddress()))
+        .to.be.revertedWith("Use propose/execute to change");
+    });
+
+    it("should propose and execute underlying change with delay", async function () {
+      const MockFactory = await ethers.getContractFactory("MockUSDC");
+      const mockUsdc2 = await MockFactory.deploy();
+      await mockUsdc2.waitForDeployment();
+
+      await cusdc.proposeUnderlyingUSDC(await mockUsdc2.getAddress());
+      // Wait 2 days
+      await time.increase(2 * 24 * 60 * 60);
+      await expect(cusdc.executeUnderlyingUSDCChange())
+        .to.emit(cusdc, "UnderlyingUSDCSet")
+        .withArgs(await mockUsdc2.getAddress());
+      expect(await cusdc.underlyingUSDC()).to.equal(await mockUsdc2.getAddress());
+    });
+
+    it("should revert execute before timelock expires", async function () {
+      const MockFactory = await ethers.getContractFactory("MockUSDC");
+      const mockUsdc2 = await MockFactory.deploy();
+      await mockUsdc2.waitForDeployment();
+
+      await cusdc.proposeUnderlyingUSDC(await mockUsdc2.getAddress());
+      // Try to execute immediately
+      await expect(cusdc.executeUnderlyingUSDCChange())
+        .to.be.revertedWith("Timelock not expired");
     });
   });
 });

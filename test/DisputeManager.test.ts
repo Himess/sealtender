@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { DisputeManager, BidEscrow, BidderRegistry } from "../typechain-types";
 
@@ -230,6 +231,42 @@ describe("DisputeManager", function () {
       );
       const disputes = await disputeManager.getDisputesByTender(TENDER_ID);
       expect(disputes.length).to.equal(2);
+    });
+  });
+
+  describe("timeoutDispute", function () {
+    it("should timeout dispute after 30 days", async function () {
+      await disputeManager.connect(complainant).fileCompanyComplaint(
+        TENDER_ID, accused.address, "Fraud", { value: STAKE }
+      );
+      // Advance time by 30 days
+      await time.increase(30 * 24 * 60 * 60);
+      await disputeManager.timeoutDispute(0);
+      const dispute = await disputeManager.getDispute(0);
+      expect(dispute.status).to.equal(4); // Dismissed
+    });
+
+    it("should revert timeout before deadline", async function () {
+      await disputeManager.connect(complainant).fileCompanyComplaint(
+        TENDER_ID, accused.address, "Fraud", { value: STAKE }
+      );
+      // Try timeout immediately (before 30 days)
+      await expect(disputeManager.timeoutDispute(0))
+        .to.be.revertedWith("Not timed out yet");
+    });
+
+    it("should return stake to complainant on timeout", async function () {
+      await disputeManager.connect(complainant).fileCompanyComplaint(
+        TENDER_ID, accused.address, "Fraud", { value: STAKE }
+      );
+      await time.increase(30 * 24 * 60 * 60);
+
+      const balBefore = await ethers.provider.getBalance(complainant.address);
+      await disputeManager.connect(owner).timeoutDispute(0);
+      const balAfter = await ethers.provider.getBalance(complainant.address);
+
+      // Complainant should get their stake back (called by owner, so complainant pays no gas)
+      expect(balAfter - balBefore).to.equal(STAKE);
     });
   });
 });

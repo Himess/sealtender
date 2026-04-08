@@ -235,7 +235,7 @@ export function useAllTendersData(addresses: readonly `0x${string}`[] | undefine
       }
 
       if (bidderResult?.status === "success") {
-        tender.bidderCount = stateResult.result as bigint;
+        tender.bidderCount = bidderResult.result as bigint;
       }
 
       if (winnerResult?.status === "success") {

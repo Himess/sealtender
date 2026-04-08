@@ -15,4 +15,7 @@ interface IBidderRegistry {
     function recordSlash(address bidder) external;
     function recordCompletion(address bidder) external;
     function addAuthorizedCaller(address caller) external;
+    function removeAuthorizedCaller(address caller) external;
+    function registerBidder(address bidder) external;
+    function removeBidder(address bidder) external;
 }

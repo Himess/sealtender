@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAccount } from "wagmi";
@@ -12,6 +13,8 @@ import {
   Settings,
   ShieldCheck,
   User,
+  Menu,
+  X,
 } from "lucide-react";
 import { truncateAddr } from "@/hooks/useContractData";
 
@@ -26,20 +29,31 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const { address, isConnected } = useAccount();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  return (
-    <aside className="fixed top-0 left-0 w-[260px] h-screen bg-[#0D0F14] flex flex-col z-50 py-8 px-6 justify-between">
+  const sidebarContent = (
+    <>
       {/* Top Section */}
       <div className="flex flex-col gap-8">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-[4px] bg-[#00E87B] flex items-center justify-center">
-            <ShieldCheck size={20} className="text-[#08090E]" />
-          </div>
-          <span className="font-heading text-[20px] font-bold text-[#F0F0F0]">
-            SealTender
-          </span>
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3" onClick={() => setMobileOpen(false)}>
+            <div className="w-9 h-9 rounded-[4px] bg-[#00E87B] flex items-center justify-center">
+              <ShieldCheck size={20} className="text-[#08090E]" />
+            </div>
+            <span className="font-heading text-[20px] font-bold text-[#F0F0F0]">
+              SealTender
+            </span>
+          </Link>
+          {/* Close button for mobile */}
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="md:hidden text-[#666666] hover:text-[#F0F0F0] transition-colors"
+            aria-label="Close sidebar"
+          >
+            <X size={20} />
+          </button>
+        </div>
 
         {/* Navigation */}
         <nav className="flex flex-col gap-1">
@@ -57,6 +71,7 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
+                onClick={() => setMobileOpen(false)}
                 className={`flex items-center gap-[10px] w-full py-[10px] px-3 transition-all ${
                   isActive
                     ? "bg-[#151820] rounded-[6px]"
@@ -88,6 +103,7 @@ export function Sidebar() {
         <Link
           href="/settings"
           aria-current={pathname === "/settings" ? "page" : undefined}
+          onClick={() => setMobileOpen(false)}
           className={`flex items-center gap-[10px] py-2 transition-all ${
             pathname === "/settings"
               ? "text-[#F0F0F0]"
@@ -118,6 +134,42 @@ export function Sidebar() {
           </div>
         </div>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile hamburger button */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="fixed top-4 left-4 z-50 md:hidden w-10 h-10 rounded-lg bg-[#0D0F14] border border-[#1E2230] flex items-center justify-center text-[#888888] hover:text-[#F0F0F0] hover:border-[#00E87B]/30 transition-colors"
+        aria-label="Open sidebar"
+      >
+        <Menu size={20} />
+      </button>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-40 md:hidden"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Desktop sidebar - always visible on md+ */}
+      <aside className="hidden md:flex fixed top-0 left-0 w-[260px] h-screen bg-[#0D0F14] flex-col z-50 py-8 px-6 justify-between">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile sidebar - shown on toggle */}
+      <aside
+        className={`fixed top-0 left-0 w-[260px] h-screen bg-[#0D0F14] flex flex-col z-50 py-8 px-6 justify-between md:hidden transition-transform duration-300 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {sidebarContent}
+      </aside>
+    </>
   );
 }
