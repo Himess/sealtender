@@ -41,27 +41,26 @@ contract TenderFactory is Ownable2Step {
 
     // --- Create ---
 
-    function createTender(TenderConfig calldata _config) external onlyOwner returns (address) {
+    function createTender(TenderConfig calldata _config) external onlyOwner returns (uint256 tenderId, address tenderAddress) {
         require(_config.deadline > block.timestamp, "Deadline must be future");
         require(_config.maxBidders > 0, "Must allow at least 1 bidder");
 
-        uint256 id = tenderCount++;
-        EncryptedTender tender = new EncryptedTender(id, _config, registry, escrow);
-        address tenderAddress = address(tender);
+        tenderId = tenderCount++;
+        EncryptedTender tender = new EncryptedTender(tenderId, _config, registry, escrow);
+        tenderAddress = address(tender);
 
-        tenders[id] = tenderAddress;
-        tenderConfigs[id] = _config;
+        tenders[tenderId] = tenderAddress;
+        tenderConfigs[tenderId] = _config;
 
         // Set required deposit in escrow
         if (_config.escrowAmount > 0) {
-            BidEscrow(escrow).setRequiredDeposit(id, _config.escrowAmount);
+            BidEscrow(escrow).setRequiredDeposit(tenderId, _config.escrowAmount);
         }
 
         // Auto-authorize the tender contract in registry
         BidderRegistry(registry).addAuthorizedCaller(tenderAddress);
 
-        emit TenderCreated(id, tenderAddress, _config.description);
-        return tenderAddress;
+        emit TenderCreated(tenderId, tenderAddress, _config.description);
     }
 
     // --- Config ---

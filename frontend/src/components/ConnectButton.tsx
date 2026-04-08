@@ -33,7 +33,7 @@ export function ConnectButton() {
                 return (
                   <button
                     onClick={openConnectModal}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-[#00E87B] text-[#08090E] rounded-lg font-semibold text-sm hover:bg-[#00E87B]/90 transition-colors"
+                    className="flex items-center gap-2 px-5 py-[10px] bg-[#00E87B] text-[#08090E] rounded-[6px] font-semibold text-sm hover:bg-[#00E87B]/90 transition-colors"
                   >
                     <Shield size={16} />
                     Connect Wallet
@@ -45,7 +45,7 @@ export function ConnectButton() {
                 return (
                   <button
                     onClick={openChainModal}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-[#FF4444] text-white rounded-lg font-semibold text-sm hover:bg-[#FF4444]/90 transition-colors"
+                    className="flex items-center gap-2 px-5 py-[10px] bg-[#FF4444] text-white rounded-[6px] font-semibold text-sm hover:bg-[#FF4444]/90 transition-colors"
                   >
                     Wrong Network
                   </button>
@@ -56,14 +56,14 @@ export function ConnectButton() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={openChainModal}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-[#0F1117] border border-[#1A1D27] rounded-lg text-xs text-[#A0A8B8] hover:border-[#00E87B]/30 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-[#0D0F14] border border-[#1E2230] rounded-[6px] text-xs text-[#888888] hover:border-[#00E87B]/30 transition-colors"
                   >
                     <div className="w-2 h-2 rounded-full bg-[#00E87B]" />
                     {chain.name}
                   </button>
                   <button
                     onClick={openAccountModal}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-[#0F1117] border border-[#1A1D27] rounded-lg text-sm text-[#F0F2F5] hover:border-[#00E87B]/30 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-[#0D0F14] border border-[#1E2230] rounded-[6px] font-body text-[14px] text-[#F0F0F0] hover:border-[#00E87B]/30 transition-colors"
                   >
                     {account.displayName}
                   </button>

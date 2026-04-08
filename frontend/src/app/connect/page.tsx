@@ -21,14 +21,14 @@ export default function ConnectPage() {
       <div className="max-w-md w-full space-y-8">
         {/* Logo */}
         <div className="text-center space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-[#00E87B]/10 border border-[#00E87B]/20 flex items-center justify-center mx-auto animate-pulse-glow">
+          <div className="w-16 h-16 rounded-lg bg-[#00E87B]/10 border border-[#00E87B]/20 flex items-center justify-center mx-auto animate-pulse-glow">
             <Lock size={28} className="text-[#00E87B]" />
           </div>
           <div>
-            <h1 className="text-3xl font-heading font-bold text-[#F0F2F5]">
+            <h1 className="font-heading text-[28px] font-bold text-[#F0F0F0]">
               SealTender
             </h1>
-            <p className="text-sm text-[#A0A8B8] mt-1">
+            <p className="font-body text-[14px] text-[#888888] mt-1">
               FHE-Encrypted Procurement Protocol
             </p>
           </div>
@@ -55,31 +55,31 @@ export default function ConnectPage() {
           ].map((feature) => (
             <div
               key={feature.title}
-              className="flex items-start gap-3 p-3 rounded-lg bg-[#0F1117] border border-[#1A1D27]"
+              className="flex items-start gap-3 p-3 rounded-lg bg-[#0D0F14] border border-[#1E2230]"
             >
               <feature.icon
                 size={18}
                 className="text-[#00E87B] mt-0.5 shrink-0"
               />
               <div>
-                <p className="text-sm font-medium text-[#F0F2F5]">
+                <p className="font-body text-[14px] font-medium text-[#F0F0F0]">
                   {feature.title}
                 </p>
-                <p className="text-xs text-[#6B7280]">{feature.desc}</p>
+                <p className="font-body text-[12px] text-[#666666]">{feature.desc}</p>
               </div>
             </div>
           ))}
         </div>
 
         {/* Connect */}
-        <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-6 text-center space-y-4">
-          <p className="text-sm text-[#A0A8B8]">
+        <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6 text-center space-y-4">
+          <p className="font-body text-[14px] text-[#888888]">
             Connect your wallet to access the procurement dashboard
           </p>
           <div className="flex justify-center">
             <ConnectButton />
           </div>
-          <p className="text-xs text-[#6B7280]">
+          <p className="font-body text-[12px] text-[#666666]">
             Sepolia Testnet &middot; Zama fhEVM
           </p>
         </div>

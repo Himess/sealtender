@@ -40,7 +40,7 @@ function statusBadge(status: number) {
     case DisputeStatus.REJECTED:
       return { label: "Rejected", icon: XCircle, color: "text-[#FF4444] bg-[#FF4444]/10 border-[#FF4444]/20" };
     default:
-      return { label: "Unknown", icon: Clock, color: "text-[#6B7280] bg-[#6B7280]/10 border-[#6B7280]/20" };
+      return { label: "Unknown", icon: Clock, color: "text-[#666666] bg-[#666666]/10 border-[#666666]/20" };
   }
 }
 
@@ -137,20 +137,20 @@ export default function DisputesPage() {
   const isLoading = loadingCount || loadingDisputes;
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-heading font-bold text-[#F0F2F5]">
+          <h1 className="font-heading text-[28px] font-bold text-[#F0F0F0]">
             Disputes
           </h1>
-          <p className="text-sm text-[#6B7280] mt-1">
+          <p className="font-body text-[14px] text-[#666666] mt-1">
             Procurement complaints and resolution tracking
           </p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#FF4444] text-white rounded-lg font-semibold text-sm hover:bg-[#FF4444]/90 transition-colors"
+          className="flex items-center gap-2 px-5 py-[10px] bg-[#FF4444] text-white rounded-[6px] font-semibold text-sm hover:bg-[#FF4444]/90 transition-colors"
         >
           <Plus size={16} />
           File Complaint
@@ -159,42 +159,42 @@ export default function DisputesPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5">
-          <span className="text-xs text-[#6B7280]">Total Disputes</span>
+        <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6">
+          <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Total Disputes</span>
           {isLoading ? (
-            <div className="h-7 w-8 bg-[#1A1D27] rounded animate-pulse mt-2" />
+            <div className="h-10 w-8 bg-[#1E2230] rounded animate-pulse mt-3" />
           ) : (
-            <p className="text-2xl font-heading font-bold text-[#F0F2F5] mt-1">
+            <p className="font-heading text-[36px] font-bold text-[#F0F0F0] mt-3">
               {count}
             </p>
           )}
         </div>
-        <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5">
-          <span className="text-xs text-[#FFB800]">Pending</span>
+        <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6">
+          <span className="font-heading text-[11px] font-semibold text-[#FFB800] tracking-[1px] uppercase">Pending</span>
           {isLoading ? (
-            <div className="h-7 w-8 bg-[#1A1D27] rounded animate-pulse mt-2" />
+            <div className="h-10 w-8 bg-[#1E2230] rounded animate-pulse mt-3" />
           ) : (
-            <p className="text-2xl font-heading font-bold text-[#FFB800] mt-1">
+            <p className="font-heading text-[36px] font-bold text-[#FFB800] mt-3">
               {pending}
             </p>
           )}
         </div>
-        <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5">
-          <span className="text-xs text-[#00E87B]">Resolved</span>
+        <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6">
+          <span className="font-heading text-[11px] font-semibold text-[#00E87B] tracking-[1px] uppercase">Resolved</span>
           {isLoading ? (
-            <div className="h-7 w-8 bg-[#1A1D27] rounded animate-pulse mt-2" />
+            <div className="h-10 w-8 bg-[#1E2230] rounded animate-pulse mt-3" />
           ) : (
-            <p className="text-2xl font-heading font-bold text-[#00E87B] mt-1">
+            <p className="font-heading text-[36px] font-bold text-[#00E87B] mt-3">
               {resolved}
             </p>
           )}
         </div>
-        <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5">
-          <span className="text-xs text-[#FF4444]">Rejected</span>
+        <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6">
+          <span className="font-heading text-[11px] font-semibold text-[#FF4444] tracking-[1px] uppercase">Rejected</span>
           {isLoading ? (
-            <div className="h-7 w-8 bg-[#1A1D27] rounded animate-pulse mt-2" />
+            <div className="h-10 w-8 bg-[#1E2230] rounded animate-pulse mt-3" />
           ) : (
-            <p className="text-2xl font-heading font-bold text-[#FF4444] mt-1">
+            <p className="font-heading text-[36px] font-bold text-[#FF4444] mt-3">
               {rejected}
             </p>
           )}
@@ -202,9 +202,9 @@ export default function DisputesPage() {
       </div>
 
       {/* Disputes Table */}
-      <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl overflow-hidden">
-        <div className="p-5 border-b border-[#1A1D27]">
-          <h2 className="text-base font-heading font-semibold text-[#F0F2F5]">
+      <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg overflow-hidden">
+        <div className="px-5 py-[14px] border-b border-[#1E2230]">
+          <h2 className="font-heading text-[20px] font-bold text-[#F0F0F0]">
             All Disputes
           </h2>
         </div>
@@ -213,32 +213,32 @@ export default function DisputesPage() {
           <div className="p-5 space-y-3">
             {[...Array(3)].map((_, i) => (
               <div key={i} className="flex gap-4 items-center">
-                <div className="h-4 w-8 bg-[#1A1D27] rounded animate-pulse" />
-                <div className="h-4 flex-1 bg-[#1A1D27] rounded animate-pulse" />
-                <div className="h-5 w-16 bg-[#1A1D27] rounded-full animate-pulse" />
+                <div className="h-4 w-8 bg-[#1E2230] rounded animate-pulse" />
+                <div className="h-4 flex-1 bg-[#1E2230] rounded animate-pulse" />
+                <div className="h-5 w-16 bg-[#1E2230] rounded-full animate-pulse" />
               </div>
             ))}
           </div>
         ) : disputes.length === 0 ? (
           <div className="p-12 text-center">
-            <AlertTriangle size={32} className="text-[#3A3F4B] mx-auto mb-3" />
-            <p className="text-sm text-[#6B7280]">No disputes filed yet</p>
+            <AlertTriangle size={32} className="text-[#555555] mx-auto mb-3" />
+            <p className="font-body text-[14px] text-[#666666]">No disputes filed yet</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-xs text-[#6B7280] uppercase tracking-wider">
-                  <th className="text-left px-5 py-3 font-medium">ID</th>
-                  <th className="text-left px-5 py-3 font-medium">Type</th>
-                  <th className="text-left px-5 py-3 font-medium">Tender</th>
-                  <th className="text-left px-5 py-3 font-medium">
+                <tr className="border-b border-[#1E2230]">
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">ID</th>
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Type</th>
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Tender</th>
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
                     Complainant
                   </th>
-                  <th className="text-left px-5 py-3 font-medium">Accused</th>
-                  <th className="text-left px-5 py-3 font-medium">Reason</th>
-                  <th className="text-left px-5 py-3 font-medium">Filed</th>
-                  <th className="text-left px-5 py-3 font-medium">Status</th>
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Accused</th>
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Reason</th>
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Filed</th>
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -248,13 +248,13 @@ export default function DisputesPage() {
                   return (
                     <tr
                       key={d.id}
-                      className="border-t border-[#1A1D27] hover:bg-[#151820] transition-colors"
+                      className="border-b border-[#1E2230] hover:bg-[#151820] transition-colors"
                     >
-                      <td className="px-5 py-3.5 text-sm text-[#A0A8B8] font-mono">
+                      <td className="px-5 py-[14px] font-body text-[14px] text-[#888888] font-mono">
                         #{d.id}
                       </td>
-                      <td className="px-5 py-3.5">
-                        <span className="flex items-center gap-1 text-xs text-[#A0A8B8]">
+                      <td className="px-5 py-[14px]">
+                        <span className="flex items-center gap-1 text-xs text-[#888888]">
                           {d.disputeType === DisputeType.COMPANY ? (
                             <Building2 size={12} />
                           ) : (
@@ -265,22 +265,22 @@ export default function DisputesPage() {
                             : "Citizen"}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 text-sm text-[#A0A8B8] font-mono">
+                      <td className="px-5 py-[14px] font-body text-[14px] text-[#888888] font-mono">
                         #{String(d.tenderId)}
                       </td>
-                      <td className="px-5 py-3.5 text-xs text-[#A0A8B8] font-mono">
+                      <td className="px-5 py-[14px] font-body text-[12px] text-[#888888] font-mono">
                         {truncateAddr(d.complainant)}
                       </td>
-                      <td className="px-5 py-3.5 text-xs text-[#A0A8B8] font-mono">
+                      <td className="px-5 py-[14px] font-body text-[12px] text-[#888888] font-mono">
                         {truncateAddr(d.accused)}
                       </td>
-                      <td className="px-5 py-3.5 text-xs text-[#A0A8B8] max-w-[200px] truncate">
+                      <td className="px-5 py-[14px] font-body text-[12px] text-[#888888] max-w-[200px] truncate">
                         {d.reason}
                       </td>
-                      <td className="px-5 py-3.5 text-xs text-[#6B7280]">
+                      <td className="px-5 py-[14px] font-body text-[12px] text-[#666666]">
                         {new Date(Number(d.filedAt) * 1000).toLocaleDateString()}
                       </td>
-                      <td className="px-5 py-3.5">
+                      <td className="px-5 py-[14px]">
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${badge.color}`}
                         >
@@ -300,14 +300,14 @@ export default function DisputesPage() {
       {/* File Complaint Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl w-full max-w-md p-6 space-y-5">
+          <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg w-full max-w-md p-6 space-y-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-heading font-semibold text-[#F0F2F5]">
+              <h3 className="font-heading text-[20px] font-bold text-[#F0F0F0]">
                 File Complaint
               </h3>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-[#6B7280] hover:text-[#F0F2F5] transition-colors"
+                className="text-[#666666] hover:text-[#F0F0F0] transition-colors"
               >
                 <X size={18} />
               </button>
@@ -316,7 +316,7 @@ export default function DisputesPage() {
             {isSuccess ? (
               <div className="text-center space-y-3 py-4">
                 <CheckCircle size={32} className="text-[#00E87B] mx-auto" />
-                <p className="text-sm text-[#F0F2F5]">Complaint filed successfully</p>
+                <p className="font-body text-[14px] text-[#F0F0F0]">Complaint filed successfully</p>
                 <button
                   onClick={() => {
                     setShowModal(false);
@@ -324,7 +324,7 @@ export default function DisputesPage() {
                     setAccused("");
                     setReason("");
                   }}
-                  className="text-sm text-[#00E87B]"
+                  className="font-body text-[14px] text-[#00E87B]"
                 >
                   Close
                 </button>
@@ -333,16 +333,16 @@ export default function DisputesPage() {
               <>
                 {/* Type */}
                 <div>
-                  <label className="block text-xs text-[#6B7280] mb-1.5 uppercase tracking-wider">
+                  <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                     Complaint Type
                   </label>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setComplaintType("citizen")}
-                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-[6px] text-xs font-medium border transition-colors ${
                         complaintType === "citizen"
                           ? "bg-[#00E87B]/10 text-[#00E87B] border-[#00E87B]/20"
-                          : "bg-[#0C0D14] text-[#A0A8B8] border-[#1A1D27]"
+                          : "bg-[#0C0D14] text-[#888888] border-[#1E2230]"
                       }`}
                     >
                       <User size={14} />
@@ -350,10 +350,10 @@ export default function DisputesPage() {
                     </button>
                     <button
                       onClick={() => setComplaintType("company")}
-                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-[6px] text-xs font-medium border transition-colors ${
                         complaintType === "company"
                           ? "bg-[#4A9FFF]/10 text-[#4A9FFF] border-[#4A9FFF]/20"
-                          : "bg-[#0C0D14] text-[#A0A8B8] border-[#1A1D27]"
+                          : "bg-[#0C0D14] text-[#888888] border-[#1E2230]"
                       }`}
                     >
                       <Building2 size={14} />
@@ -364,7 +364,7 @@ export default function DisputesPage() {
 
                 {/* Tender ID */}
                 <div>
-                  <label className="block text-xs text-[#6B7280] mb-1.5 uppercase tracking-wider">
+                  <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                     Tender ID
                   </label>
                   <input
@@ -373,13 +373,13 @@ export default function DisputesPage() {
                     value={tenderId}
                     onChange={(e) => setTenderId(e.target.value)}
                     placeholder="e.g. 0"
-                    className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1A1D27] rounded-lg text-sm text-[#F0F2F5] placeholder-[#3A3F4B] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
+                    className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
                   />
                 </div>
 
                 {/* Accused */}
                 <div>
-                  <label className="block text-xs text-[#6B7280] mb-1.5 uppercase tracking-wider">
+                  <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                     Accused Address
                   </label>
                   <input
@@ -387,13 +387,13 @@ export default function DisputesPage() {
                     value={accused}
                     onChange={(e) => setAccused(e.target.value)}
                     placeholder="0x..."
-                    className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1A1D27] rounded-lg text-sm text-[#F0F2F5] placeholder-[#3A3F4B] focus:outline-none focus:border-[#00E87B]/30 transition-colors font-mono"
+                    className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors font-mono"
                   />
                 </div>
 
                 {/* Reason */}
                 <div>
-                  <label className="block text-xs text-[#6B7280] mb-1.5 uppercase tracking-wider">
+                  <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                     Reason
                   </label>
                   <textarea
@@ -401,7 +401,7 @@ export default function DisputesPage() {
                     onChange={(e) => setReason(e.target.value)}
                     placeholder="Describe the complaint..."
                     rows={3}
-                    className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1A1D27] rounded-lg text-sm text-[#F0F2F5] placeholder-[#3A3F4B] focus:outline-none focus:border-[#00E87B]/30 transition-colors resize-none"
+                    className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors resize-none"
                   />
                 </div>
 
@@ -414,7 +414,7 @@ export default function DisputesPage() {
                 <button
                   onClick={handleFileComplaint}
                   disabled={isWriting || isConfirming || !tenderId || !accused || !reason}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#FF4444] text-white rounded-lg font-semibold text-sm hover:bg-[#FF4444]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#FF4444] text-white rounded-[6px] font-semibold text-sm hover:bg-[#FF4444]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isWriting || isConfirming ? (
                     <>

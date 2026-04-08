@@ -136,67 +136,75 @@ export default function ReputationPage() {
     bidders.length > 0 ? Number(bidders[0]?.score || 0) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-heading font-bold text-[#F0F2F5]">
+        <h1 className="font-heading text-[28px] font-bold text-[#F0F0F0]">
           Reputation Board
         </h1>
-        <p className="text-sm text-[#6B7280] mt-1">
+        <p className="font-body text-[14px] text-[#666666] mt-1">
           Bidder reputation scores and rankings
         </p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5">
-          <div className="flex items-center gap-2 text-xs text-[#6B7280] mb-2">
-            <Users size={14} />
-            Registered Bidders
+        <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Users size={14} className="text-[#666666]" />
+            <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
+              Registered Bidders
+            </span>
           </div>
           {isLoading ? (
-            <div className="h-7 w-8 bg-[#1A1D27] rounded animate-pulse" />
+            <div className="h-10 w-8 bg-[#1E2230] rounded animate-pulse" />
           ) : (
-            <p className="text-2xl font-heading font-bold text-[#F0F2F5]">
+            <p className="font-heading text-[36px] font-bold text-[#F0F0F0]">
               {count}
             </p>
           )}
         </div>
-        <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5">
-          <div className="flex items-center gap-2 text-xs text-[#6B7280] mb-2">
-            <Star size={14} />
-            Active Bidders
+        <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Star size={14} className="text-[#666666]" />
+            <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
+              Active Bidders
+            </span>
           </div>
           {isLoading ? (
-            <div className="h-7 w-8 bg-[#1A1D27] rounded animate-pulse" />
+            <div className="h-10 w-8 bg-[#1E2230] rounded animate-pulse" />
           ) : (
-            <p className="text-2xl font-heading font-bold text-[#00E87B]">
+            <p className="font-heading text-[36px] font-bold text-[#00E87B]">
               {activeBidders}
             </p>
           )}
         </div>
-        <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5">
-          <div className="flex items-center gap-2 text-xs text-[#6B7280] mb-2">
-            <TrendingUp size={14} />
-            Average Score
+        <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp size={14} className="text-[#666666]" />
+            <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
+              Average Score
+            </span>
           </div>
           {isLoading ? (
-            <div className="h-7 w-12 bg-[#1A1D27] rounded animate-pulse" />
+            <div className="h-10 w-12 bg-[#1E2230] rounded animate-pulse" />
           ) : (
-            <p className={`text-2xl font-heading font-bold ${scoreColor(avgScore)}`}>
+            <p className={`font-heading text-[36px] font-bold ${scoreColor(avgScore)}`}>
               {avgScore}
             </p>
           )}
         </div>
-        <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5">
-          <div className="flex items-center gap-2 text-xs text-[#6B7280] mb-2">
-            <Award size={14} />
-            Top Score
+        <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Award size={14} className="text-[#666666]" />
+            <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
+              Top Score
+            </span>
           </div>
           {isLoading ? (
-            <div className="h-7 w-12 bg-[#1A1D27] rounded animate-pulse" />
+            <div className="h-10 w-12 bg-[#1E2230] rounded animate-pulse" />
           ) : (
-            <p className="text-2xl font-heading font-bold text-[#A855F7]">
+            <p className="font-heading text-[36px] font-bold text-[#A855F7]">
               {topScore}
             </p>
           )}
@@ -204,9 +212,9 @@ export default function ReputationPage() {
       </div>
 
       {/* Ranking Table */}
-      <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl overflow-hidden">
-        <div className="p-5 border-b border-[#1A1D27]">
-          <h2 className="text-base font-heading font-semibold text-[#F0F2F5]">
+      <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg overflow-hidden">
+        <div className="px-5 py-[14px] border-b border-[#1E2230]">
+          <h2 className="font-heading text-[20px] font-bold text-[#F0F0F0]">
             Bidder Rankings
           </h2>
         </div>
@@ -215,17 +223,17 @@ export default function ReputationPage() {
           <div className="p-5 space-y-3">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="flex gap-4 items-center">
-                <div className="h-4 w-6 bg-[#1A1D27] rounded animate-pulse" />
-                <div className="h-4 w-24 bg-[#1A1D27] rounded animate-pulse" />
-                <div className="h-4 flex-1 bg-[#1A1D27] rounded animate-pulse" />
-                <div className="h-4 w-16 bg-[#1A1D27] rounded animate-pulse" />
+                <div className="h-4 w-6 bg-[#1E2230] rounded animate-pulse" />
+                <div className="h-4 w-24 bg-[#1E2230] rounded animate-pulse" />
+                <div className="h-4 flex-1 bg-[#1E2230] rounded animate-pulse" />
+                <div className="h-4 w-16 bg-[#1E2230] rounded animate-pulse" />
               </div>
             ))}
           </div>
         ) : bidders.length === 0 ? (
           <div className="p-12 text-center">
-            <Star size={32} className="text-[#3A3F4B] mx-auto mb-3" />
-            <p className="text-sm text-[#6B7280]">
+            <Star size={32} className="text-[#555555] mx-auto mb-3" />
+            <p className="font-body text-[14px] text-[#666666]">
               No registered bidders yet
             </p>
           </div>
@@ -233,15 +241,15 @@ export default function ReputationPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-xs text-[#6B7280] uppercase tracking-wider">
-                  <th className="text-left px-5 py-3 font-medium w-12">
+                <tr className="border-b border-[#1E2230]">
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase w-12">
                     Rank
                   </th>
-                  <th className="text-left px-5 py-3 font-medium">Name</th>
-                  <th className="text-left px-5 py-3 font-medium">Address</th>
-                  <th className="text-left px-5 py-3 font-medium">Reg. ID</th>
-                  <th className="text-left px-5 py-3 font-medium">Status</th>
-                  <th className="text-left px-5 py-3 font-medium w-48">
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Name</th>
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Address</th>
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Reg. ID</th>
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Status</th>
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase w-48">
                     Score
                   </th>
                 </tr>
@@ -252,33 +260,33 @@ export default function ReputationPage() {
                   return (
                     <tr
                       key={bidder.address}
-                      className="border-t border-[#1A1D27] hover:bg-[#151820] transition-colors"
+                      className="border-b border-[#1E2230] hover:bg-[#151820] transition-colors"
                     >
-                      <td className="px-5 py-3.5">
+                      <td className="px-5 py-[14px]">
                         <span
-                          className={`text-sm font-bold ${
+                          className={`font-body text-[14px] font-bold ${
                             idx === 0
                               ? "text-[#FFB800]"
                               : idx === 1
-                              ? "text-[#A0A8B8]"
+                              ? "text-[#888888]"
                               : idx === 2
                               ? "text-[#CD7F32]"
-                              : "text-[#6B7280]"
+                              : "text-[#666666]"
                           }`}
                         >
                           #{idx + 1}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 text-sm text-[#F0F2F5] font-medium">
+                      <td className="px-5 py-[14px] font-body text-[14px] text-[#F0F0F0] font-medium">
                         {bidder.name || "Anonymous"}
                       </td>
-                      <td className="px-5 py-3.5 text-xs text-[#A0A8B8] font-mono">
+                      <td className="px-5 py-[14px] font-body text-[12px] text-[#888888] font-mono">
                         {truncateAddr(bidder.address)}
                       </td>
-                      <td className="px-5 py-3.5 text-xs text-[#A0A8B8]">
+                      <td className="px-5 py-[14px] font-body text-[12px] text-[#888888]">
                         {bidder.registrationId || "--"}
                       </td>
-                      <td className="px-5 py-3.5">
+                      <td className="px-5 py-[14px]">
                         <span
                           className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium border ${
                             bidder.active
@@ -289,9 +297,9 @@ export default function ReputationPage() {
                           {bidder.active ? "Active" : "Inactive"}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5">
+                      <td className="px-5 py-[14px]">
                         <div className="flex items-center gap-3">
-                          <div className="flex-1 h-2 bg-[#1A1D27] rounded-full overflow-hidden">
+                          <div className="flex-1 h-2 bg-[#1E2230] rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all ${scoreBarColor(
                                 score
@@ -300,7 +308,7 @@ export default function ReputationPage() {
                             />
                           </div>
                           <span
-                            className={`text-sm font-bold min-w-[2rem] text-right ${scoreColor(
+                            className={`font-body text-[14px] font-bold min-w-[2rem] text-right ${scoreColor(
                               score
                             )}`}
                           >

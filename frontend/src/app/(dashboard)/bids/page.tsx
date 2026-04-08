@@ -114,75 +114,83 @@ export default function BidsPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-3">
-          <Wallet size={40} className="text-[#3A3F4B] mx-auto" />
-          <p className="text-[#6B7280]">Connect your wallet to view your bids</p>
+          <Wallet size={40} className="text-[#555555] mx-auto" />
+          <p className="font-body text-[14px] text-[#666666]">Connect your wallet to view your bids</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-heading font-bold text-[#F0F2F5]">
+        <h1 className="font-heading text-[28px] font-bold text-[#F0F0F0]">
           My Bids
         </h1>
-        <p className="text-sm text-[#6B7280] mt-1">
+        <p className="font-body text-[14px] text-[#666666] mt-1">
           Your encrypted bid submissions across all tenders
         </p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5">
-          <div className="flex items-center gap-2 text-xs text-[#6B7280] mb-2">
-            <Send size={14} />
-            Active Bids
+        <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Send size={14} className="text-[#666666]" />
+            <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
+              Active Bids
+            </span>
           </div>
           {isLoading ? (
-            <div className="h-7 w-10 bg-[#1A1D27] rounded animate-pulse" />
+            <div className="h-10 w-10 bg-[#1E2230] rounded animate-pulse" />
           ) : (
-            <p className="text-2xl font-heading font-bold text-[#F0F2F5]">
+            <p className="font-heading text-[36px] font-bold text-[#F0F0F0]">
               {activeBids}
             </p>
           )}
         </div>
-        <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5">
-          <div className="flex items-center gap-2 text-xs text-[#6B7280] mb-2">
-            <Wallet size={14} />
-            Total Deposited
+        <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Wallet size={14} className="text-[#666666]" />
+            <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
+              Total Deposited
+            </span>
           </div>
           {isLoading ? (
-            <div className="h-7 w-20 bg-[#1A1D27] rounded animate-pulse" />
+            <div className="h-10 w-20 bg-[#1E2230] rounded animate-pulse" />
           ) : (
-            <p className="text-2xl font-heading font-bold text-[#F0F2F5] font-mono">
+            <p className="font-heading text-[36px] font-bold text-[#F0F0F0] font-mono">
               {formatUsd(totalDeposited)}
             </p>
           )}
         </div>
-        <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5">
-          <div className="flex items-center gap-2 text-xs text-[#6B7280] mb-2">
-            <Trophy size={14} />
-            Wins
+        <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Trophy size={14} className="text-[#666666]" />
+            <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
+              Wins
+            </span>
           </div>
           {isLoading ? (
-            <div className="h-7 w-6 bg-[#1A1D27] rounded animate-pulse" />
+            <div className="h-10 w-6 bg-[#1E2230] rounded animate-pulse" />
           ) : (
-            <p className="text-2xl font-heading font-bold text-[#00E87B]">
+            <p className="font-heading text-[36px] font-bold text-[#00E87B]">
               {wins}
             </p>
           )}
         </div>
-        <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5">
-          <div className="flex items-center gap-2 text-xs text-[#6B7280] mb-2">
-            <Star size={14} />
-            Total Bids
+        <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Star size={14} className="text-[#666666]" />
+            <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
+              Total Bids
+            </span>
           </div>
           {isLoading ? (
-            <div className="h-7 w-6 bg-[#1A1D27] rounded animate-pulse" />
+            <div className="h-10 w-6 bg-[#1E2230] rounded animate-pulse" />
           ) : (
-            <p className="text-2xl font-heading font-bold text-[#F0F2F5]">
+            <p className="font-heading text-[36px] font-bold text-[#F0F0F0]">
               {myBids.length}
             </p>
           )}
@@ -190,9 +198,9 @@ export default function BidsPage() {
       </div>
 
       {/* Bids Table */}
-      <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl overflow-hidden">
-        <div className="p-5 border-b border-[#1A1D27]">
-          <h2 className="text-base font-heading font-semibold text-[#F0F2F5]">
+      <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg overflow-hidden">
+        <div className="px-5 py-[14px] border-b border-[#1E2230]">
+          <h2 className="font-heading text-[20px] font-bold text-[#F0F0F0]">
             Bid History
           </h2>
         </div>
@@ -201,22 +209,22 @@ export default function BidsPage() {
           <div className="p-5 space-y-3">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="flex gap-4 items-center">
-                <div className="h-4 w-8 bg-[#1A1D27] rounded animate-pulse" />
-                <div className="h-4 flex-1 bg-[#1A1D27] rounded animate-pulse" />
-                <div className="h-4 w-20 bg-[#1A1D27] rounded animate-pulse" />
-                <div className="h-5 w-16 bg-[#1A1D27] rounded-full animate-pulse" />
+                <div className="h-4 w-8 bg-[#1E2230] rounded animate-pulse" />
+                <div className="h-4 flex-1 bg-[#1E2230] rounded animate-pulse" />
+                <div className="h-4 w-20 bg-[#1E2230] rounded animate-pulse" />
+                <div className="h-5 w-16 bg-[#1E2230] rounded-full animate-pulse" />
               </div>
             ))}
           </div>
         ) : myBids.length === 0 ? (
           <div className="p-12 text-center">
-            <FileText size={32} className="text-[#3A3F4B] mx-auto mb-3" />
-            <p className="text-sm text-[#6B7280]">
+            <FileText size={32} className="text-[#555555] mx-auto mb-3" />
+            <p className="font-body text-[14px] text-[#666666]">
               You have not submitted any bids yet
             </p>
             <Link
               href="/tenders"
-              className="inline-flex items-center gap-2 mt-3 text-sm text-[#00E87B] hover:text-[#00E87B]/80"
+              className="inline-flex items-center gap-2 mt-3 font-body text-[14px] text-[#00E87B] hover:text-[#00E87B]/80"
             >
               Browse Tenders &rarr;
             </Link>
@@ -225,18 +233,18 @@ export default function BidsPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-xs text-[#6B7280] uppercase tracking-wider">
-                  <th className="text-left px-5 py-3 font-medium">Tender</th>
-                  <th className="text-left px-5 py-3 font-medium">
+                <tr className="border-b border-[#1E2230]">
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Tender</th>
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
                     Description
                   </th>
-                  <th className="text-left px-5 py-3 font-medium">Deposit</th>
-                  <th className="text-left px-5 py-3 font-medium">
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Deposit</th>
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
                     Deadline
                   </th>
-                  <th className="text-left px-5 py-3 font-medium">Status</th>
-                  <th className="text-left px-5 py-3 font-medium">Result</th>
-                  <th className="text-right px-5 py-3 font-medium"></th>
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Status</th>
+                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Result</th>
+                  <th className="text-right px-5 py-[14px]"></th>
                 </tr>
               </thead>
               <tbody>
@@ -248,21 +256,21 @@ export default function BidsPage() {
                   return (
                     <tr
                       key={tender.address}
-                      className="border-t border-[#1A1D27] hover:bg-[#151820] transition-colors"
+                      className="border-b border-[#1E2230] hover:bg-[#151820] transition-colors"
                     >
-                      <td className="px-5 py-3.5 text-sm text-[#A0A8B8] font-mono">
+                      <td className="px-5 py-[14px] font-body text-[14px] text-[#888888] font-mono">
                         #{tender.index}
                       </td>
-                      <td className="px-5 py-3.5 text-sm text-[#F0F2F5] max-w-[200px] truncate">
+                      <td className="px-5 py-[14px] font-body text-[14px] text-[#F0F0F0] max-w-[200px] truncate">
                         {tender.config?.description || "Unnamed"}
                       </td>
-                      <td className="px-5 py-3.5 text-sm text-[#A0A8B8] font-mono">
+                      <td className="px-5 py-[14px] font-body text-[14px] text-[#888888] font-mono">
                         {formatUsd(deposit)}
                       </td>
-                      <td className="px-5 py-3.5 text-sm text-[#A0A8B8]">
+                      <td className="px-5 py-[14px] font-body text-[14px] text-[#888888]">
                         {formatDeadline(tender.config?.deadline)}
                       </td>
-                      <td className="px-5 py-3.5">
+                      <td className="px-5 py-[14px]">
                         <span
                           className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${stateColor(
                             tender.state
@@ -271,7 +279,7 @@ export default function BidsPage() {
                           {stateLabel(tender.state)}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5">
+                      <td className="px-5 py-[14px]">
                         {tender.state === TenderState.REVEALED ? (
                           isWinner ? (
                             <span className="flex items-center gap-1 text-xs text-[#00E87B]">
@@ -284,16 +292,16 @@ export default function BidsPage() {
                             </span>
                           )
                         ) : (
-                          <span className="flex items-center gap-1 text-xs text-[#6B7280]">
+                          <span className="flex items-center gap-1 text-xs text-[#666666]">
                             <Lock size={12} />
                             Encrypted
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 text-right">
+                      <td className="px-5 py-[14px] text-right">
                         <Link
                           href={`/tenders/${tender.index}`}
-                          className="text-xs text-[#00E87B] hover:text-[#00E87B]/80 transition-colors"
+                          className="font-body text-[12px] text-[#00E87B] hover:text-[#00E87B]/80 transition-colors"
                         >
                           View &rarr;
                         </Link>

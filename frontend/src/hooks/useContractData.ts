@@ -286,7 +286,7 @@ export function stateLabel(state: number | undefined): string {
 export function stateColor(state: number | undefined): string {
   switch (state) {
     case TenderState.CREATED:
-      return "text-[#A0A8B8] bg-[#A0A8B8]/10 border-[#A0A8B8]/20";
+      return "text-[#888888] bg-[#888888]/10 border-[#888888]/20";
     case TenderState.BIDDING:
       return "text-[#00E87B] bg-[#00E87B]/10 border-[#00E87B]/20";
     case TenderState.CLOSED:
@@ -298,7 +298,7 @@ export function stateColor(state: number | undefined): string {
     case TenderState.CANCELLED:
       return "text-[#FF4444] bg-[#FF4444]/10 border-[#FF4444]/20";
     default:
-      return "text-[#6B7280] bg-[#6B7280]/10 border-[#6B7280]/20";
+      return "text-[#666666] bg-[#666666]/10 border-[#666666]/20";
   }
 }
 

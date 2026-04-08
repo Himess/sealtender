@@ -59,6 +59,20 @@ SealTender uses Fully Homomorphic Encryption (FHE) via [Zama's fhEVM](https://do
 | SDK | TypeScript + ethers v6 + fhevmjs |
 | Chain | Ethereum Sepolia (testnet) |
 
+## Deployed Contracts (Sepolia)
+
+| Contract | Address | Verified |
+|----------|---------|----------|
+| BidderRegistry | `0x38122E455f967B5EE8FDF0bCA3EB4A7d9AD51711` | Yes |
+| BidEscrow | `0x616f81F048192790f423Ba9357D0645E37EdE57b` | Yes |
+| ConfidentialUSDC | `0xf80777AB1F957c191dA452043214cB379B46acB5` | Yes |
+| TenderFactory | `0x6f18ea47A650C4326Dc948d9A4200C6813C5dF94` | Yes |
+| DisputeManager | `0x988eA196701550C38AD0667403B2be79a4078E68` | Yes |
+| PriceEscalation | `0x3a306d63100E0e5b428404eDf00295b004eaF949` | Yes |
+| CollisionDetector | `0xDF90Bb1930f06410a64502959a00971fB84F4CB4` | Yes |
+
+> **Note:** These addresses are from the previous Sepolia deployment. After contract changes (P0/P1/P2 fixes + wrap/unwrap), a fresh deployment is required.
+
 ## Project Structure
 
 ```
@@ -77,7 +91,9 @@ SealTender/
 │   │   ├── DisputeManager.sol
 │   │   ├── PriceEscalation.sol
 │   │   └── CollisionDetector.sol
-│   └── token/
+│   ├── token/
+│   │   └── ConfidentialUSDC.sol
+│   └── test/
 │       └── MockUSDC.sol
 ├── sdk/
 │   ├── src/

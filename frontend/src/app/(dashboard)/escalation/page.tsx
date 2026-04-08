@@ -113,20 +113,20 @@ export default function EscalationPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-heading font-bold text-[#F0F2F5]">
+          <h1 className="font-heading text-[28px] font-bold text-[#F0F0F0]">
             Price Escalation
           </h1>
-          <p className="text-sm text-[#6B7280] mt-1">
+          <p className="font-body text-[14px] text-[#666666] mt-1">
             Track material price changes and evaluate escalation claims
           </p>
         </div>
         <button
           onClick={() => setShowTrackModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#FFB800] text-[#08090E] rounded-lg font-semibold text-sm hover:bg-[#FFB800]/90 transition-colors"
+          className="flex items-center gap-2 px-5 py-[10px] bg-[#FFB800] text-[#08090E] rounded-[6px] font-semibold text-sm hover:bg-[#FFB800]/90 transition-colors"
         >
           <Plus size={16} />
           Track Material
@@ -134,14 +134,14 @@ export default function EscalationPage() {
       </div>
 
       {/* Tender Selector */}
-      <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5">
-        <label className="block text-xs text-[#6B7280] mb-2 uppercase tracking-wider">
+      <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6">
+        <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-2">
           Select Tender
         </label>
         <select
           value={selectedTender}
           onChange={(e) => setSelectedTender(e.target.value)}
-          className="w-full md:w-64 px-3 py-2.5 bg-[#0C0D14] border border-[#1A1D27] rounded-lg text-sm text-[#F0F2F5] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
+          className="w-full md:w-64 px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
         >
           {Array.from({ length: count }, (_, i) => (
             <option key={i} value={String(i)}>
@@ -154,51 +154,57 @@ export default function EscalationPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5">
-          <div className="flex items-center gap-2 text-xs text-[#6B7280] mb-2">
-            <DollarSign size={14} />
-            Total Escalation Paid
+        <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <DollarSign size={14} className="text-[#666666]" />
+            <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
+              Total Escalation Paid
+            </span>
           </div>
           {loadingPaid ? (
-            <div className="h-7 w-24 bg-[#1A1D27] rounded animate-pulse" />
+            <div className="h-10 w-24 bg-[#1E2230] rounded animate-pulse" />
           ) : (
-            <p className="text-2xl font-heading font-bold text-[#FFB800] font-mono">
+            <p className="font-heading text-[36px] font-bold text-[#FFB800] font-mono">
               {formatUsd(totalPaid as bigint | undefined)}
             </p>
           )}
         </div>
-        <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5">
-          <div className="flex items-center gap-2 text-xs text-[#6B7280] mb-2">
-            <BarChart3 size={14} />
-            Tender Price
+        <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <BarChart3 size={14} className="text-[#666666]" />
+            <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
+              Tender Price
+            </span>
           </div>
           {loadingPrice ? (
-            <div className="h-7 w-24 bg-[#1A1D27] rounded animate-pulse" />
+            <div className="h-10 w-24 bg-[#1E2230] rounded animate-pulse" />
           ) : (
-            <p className="text-2xl font-heading font-bold text-[#F0F2F5] font-mono">
+            <p className="font-heading text-[36px] font-bold text-[#F0F0F0] font-mono">
               {formatUsd(tenderPrice as bigint | undefined)}
             </p>
           )}
         </div>
-        <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5">
-          <div className="flex items-center gap-2 text-xs text-[#6B7280] mb-2">
-            <TrendingUp size={14} />
-            Threshold
+        <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp size={14} className="text-[#666666]" />
+            <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
+              Threshold
+            </span>
           </div>
-          <p className="text-2xl font-heading font-bold text-[#A0A8B8]">
+          <p className="font-heading text-[36px] font-bold text-[#888888]">
             {threshold !== undefined ? `${String(threshold)}%` : "--"}
           </p>
         </div>
       </div>
 
       {/* Material Check */}
-      <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5 space-y-4">
-        <h2 className="text-base font-heading font-semibold text-[#F0F2F5]">
+      <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6 space-y-4">
+        <h2 className="font-heading text-[20px] font-bold text-[#F0F0F0]">
           Check Material Price
         </h2>
         <div className="flex gap-3 items-end">
           <div className="flex-1">
-            <label className="block text-xs text-[#6B7280] mb-1.5">
+            <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
               Material Name
             </label>
             <input
@@ -206,7 +212,7 @@ export default function EscalationPage() {
               value={checkMaterial}
               onChange={(e) => setCheckMaterial(e.target.value)}
               placeholder="e.g. Steel, Cement, Lumber"
-              className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1A1D27] rounded-lg text-sm text-[#F0F2F5] placeholder-[#3A3F4B] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
+              className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
             />
           </div>
         </div>
@@ -214,19 +220,19 @@ export default function EscalationPage() {
         {checkMaterial && (
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-[#0C0D14] rounded-lg p-4">
-              <span className="text-xs text-[#6B7280]">Baseline Price</span>
-              <p className="text-lg font-heading font-bold text-[#F0F2F5] font-mono mt-1">
+              <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Baseline Price</span>
+              <p className="font-heading text-[20px] font-bold text-[#F0F0F0] font-mono mt-1">
                 {basePrice !== undefined ? String(basePrice) : "0"}
               </p>
             </div>
             <div className="bg-[#0C0D14] rounded-lg p-4">
-              <span className="text-xs text-[#6B7280]">Latest Price</span>
-              <p className="text-lg font-heading font-bold text-[#F0F2F5] font-mono mt-1">
+              <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Latest Price</span>
+              <p className="font-heading text-[20px] font-bold text-[#F0F0F0] font-mono mt-1">
                 {latestPrice !== undefined ? String(latestPrice) : "0"}
               </p>
               {basePrice && latestPrice && Number(basePrice) > 0 && (
                 <p
-                  className={`text-xs mt-1 ${
+                  className={`font-body text-[12px] mt-1 ${
                     Number(latestPrice) > Number(basePrice)
                       ? "text-[#FF4444]"
                       : "text-[#00E87B]"
@@ -246,11 +252,11 @@ export default function EscalationPage() {
       </div>
 
       {/* Evaluate Button */}
-      <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5 space-y-4">
-        <h2 className="text-base font-heading font-semibold text-[#F0F2F5]">
+      <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6 space-y-4">
+        <h2 className="font-heading text-[20px] font-bold text-[#F0F0F0]">
           Evaluate Escalation
         </h2>
-        <p className="text-xs text-[#6B7280]">
+        <p className="font-body text-[12px] text-[#666666]">
           Trigger escalation evaluation for Tender #{selectedTender}. This will check all
           tracked materials against the threshold and process payments if applicable.
         </p>
@@ -258,7 +264,7 @@ export default function EscalationPage() {
         {evalSuccess && (
           <div className="bg-[#00E87B]/10 border border-[#00E87B]/20 rounded-lg p-3 flex items-center gap-2">
             <CheckCircle size={14} className="text-[#00E87B]" />
-            <span className="text-xs text-[#00E87B]">
+            <span className="font-body text-[12px] text-[#00E87B]">
               Escalation evaluated successfully
             </span>
           </div>
@@ -267,7 +273,7 @@ export default function EscalationPage() {
         <button
           onClick={handleEvaluate}
           disabled={isEvaluating || evalConfirming}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#4A9FFF] text-white rounded-lg font-semibold text-sm hover:bg-[#4A9FFF]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-5 py-[10px] bg-[#4A9FFF] text-white rounded-[6px] font-semibold text-sm hover:bg-[#4A9FFF]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isEvaluating || evalConfirming ? (
             <>
@@ -286,14 +292,14 @@ export default function EscalationPage() {
       {/* Track Material Modal */}
       {showTrackModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl w-full max-w-md p-6 space-y-5">
+          <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg w-full max-w-md p-6 space-y-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-heading font-semibold text-[#F0F2F5]">
+              <h3 className="font-heading text-[20px] font-bold text-[#F0F0F0]">
                 Track Material
               </h3>
               <button
                 onClick={() => setShowTrackModal(false)}
-                className="text-[#6B7280] hover:text-[#F0F2F5] transition-colors"
+                className="text-[#666666] hover:text-[#F0F0F0] transition-colors"
               >
                 <X size={18} />
               </button>
@@ -302,7 +308,7 @@ export default function EscalationPage() {
             {trackSuccess ? (
               <div className="text-center space-y-3 py-4">
                 <CheckCircle size={32} className="text-[#00E87B] mx-auto" />
-                <p className="text-sm text-[#F0F2F5]">
+                <p className="font-body text-[14px] text-[#F0F0F0]">
                   Material tracked successfully
                 </p>
                 <button
@@ -311,7 +317,7 @@ export default function EscalationPage() {
                     setMaterialName("");
                     setBaselinePrice("");
                   }}
-                  className="text-sm text-[#00E87B]"
+                  className="font-body text-[14px] text-[#00E87B]"
                 >
                   Close
                 </button>
@@ -319,7 +325,7 @@ export default function EscalationPage() {
             ) : (
               <>
                 <div>
-                  <label className="block text-xs text-[#6B7280] mb-1.5 uppercase tracking-wider">
+                  <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                     Material Name
                   </label>
                   <input
@@ -327,11 +333,11 @@ export default function EscalationPage() {
                     value={materialName}
                     onChange={(e) => setMaterialName(e.target.value)}
                     placeholder="e.g. Steel Rebar"
-                    className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1A1D27] rounded-lg text-sm text-[#F0F2F5] placeholder-[#3A3F4B] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
+                    className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-[#6B7280] mb-1.5 uppercase tracking-wider">
+                  <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                     Baseline Price (wei)
                   </label>
                   <input
@@ -339,11 +345,11 @@ export default function EscalationPage() {
                     value={baselinePrice}
                     onChange={(e) => setBaselinePrice(e.target.value)}
                     placeholder="e.g. 1000000000000000000"
-                    className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1A1D27] rounded-lg text-sm text-[#F0F2F5] placeholder-[#3A3F4B] focus:outline-none focus:border-[#00E87B]/30 transition-colors font-mono"
+                    className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors font-mono"
                   />
                 </div>
 
-                <p className="text-xs text-[#6B7280]">
+                <p className="font-body text-[12px] text-[#666666]">
                   Tender #{selectedTender} will be tracked
                 </p>
 
@@ -356,7 +362,7 @@ export default function EscalationPage() {
                 <button
                   onClick={handleTrackMaterial}
                   disabled={isTracking || trackConfirming || !materialName || !baselinePrice}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#FFB800] text-[#08090E] rounded-lg font-semibold text-sm hover:bg-[#FFB800]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#FFB800] text-[#08090E] rounded-[6px] font-semibold text-sm hover:bg-[#FFB800]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isTracking || trackConfirming ? (
                     <>

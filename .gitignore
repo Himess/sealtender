@@ -1,1 +1,8 @@
-node_modules/\nartifacts/\ncache/\ntypechain-types/\n.env\nfrontend/node_modules/\nfrontend/.next/
+node_modules/
+artifacts/
+cache/
+typechain-types/
+.env
+frontend/node_modules/
+frontend/.next/
+*.pack

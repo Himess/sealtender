@@ -173,28 +173,28 @@ export default function BidPage({
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4 max-w-md">
-          <div className="w-14 h-14 rounded-2xl bg-[#00E87B]/10 border border-[#00E87B]/20 flex items-center justify-center mx-auto">
+          <div className="w-14 h-14 rounded-lg bg-[#00E87B]/10 border border-[#00E87B]/20 flex items-center justify-center mx-auto">
             <CheckCircle size={28} className="text-[#00E87B]" />
           </div>
-          <h2 className="text-xl font-heading font-semibold text-[#F0F2F5]">
+          <h2 className="font-heading text-[20px] font-bold text-[#F0F0F0]">
             Bid Submitted
           </h2>
-          <p className="text-sm text-[#A0A8B8]">
+          <p className="font-body text-[14px] text-[#888888]">
             Your encrypted bid has been submitted to Tender #{id}.
           </p>
-          <p className="text-xs text-[#6B7280] font-mono break-all">
+          <p className="font-body text-[12px] text-[#666666] font-mono break-all">
             Tx: {hash}
           </p>
           <div className="flex gap-3 justify-center pt-2">
             <Link
               href={`/tenders/${id}`}
-              className="px-4 py-2.5 bg-[#00E87B] text-[#08090E] rounded-lg font-semibold text-sm hover:bg-[#00E87B]/90 transition-colors"
+              className="px-5 py-[10px] bg-[#00E87B] text-[#08090E] rounded-[6px] font-semibold text-sm hover:bg-[#00E87B]/90 transition-colors"
             >
               View Tender
             </Link>
             <Link
               href="/bids"
-              className="px-4 py-2.5 bg-[#0F1117] border border-[#1A1D27] text-[#A0A8B8] rounded-lg text-sm hover:border-[#00E87B]/30 transition-colors"
+              className="px-4 py-[10px] bg-[#0D0F14] border border-[#1E2230] text-[#888888] rounded-[6px] text-sm hover:border-[#00E87B]/30 transition-colors"
             >
               My Bids
             </Link>
@@ -205,20 +205,20 @@ export default function BidPage({
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="flex flex-col gap-8 max-w-4xl">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link
           href={`/tenders/${id}`}
-          className="w-8 h-8 rounded-lg bg-[#0F1117] border border-[#1A1D27] flex items-center justify-center text-[#A0A8B8] hover:text-[#F0F2F5] hover:border-[#00E87B]/30 transition-colors"
+          className="w-8 h-8 rounded-lg bg-[#0D0F14] border border-[#1E2230] flex items-center justify-center text-[#888888] hover:text-[#F0F0F0] hover:border-[#00E87B]/30 transition-colors"
         >
           <ArrowLeft size={16} />
         </Link>
         <div>
-          <h1 className="text-2xl font-heading font-bold text-[#F0F2F5]">
+          <h1 className="font-heading text-[28px] font-bold text-[#F0F0F0]">
             Submit Bid — Tender #{id}
           </h1>
-          <p className="text-sm text-[#6B7280] mt-0.5">
+          <p className="font-body text-[14px] text-[#666666] mt-0.5">
             Your bid data will be FHE-encrypted before submission
           </p>
         </div>
@@ -226,12 +226,12 @@ export default function BidPage({
 
       {/* State Check */}
       {currentState !== undefined && currentState !== TenderState.BIDDING && (
-        <div className="bg-[#FFB800]/10 border border-[#FFB800]/20 rounded-xl p-4 flex items-start gap-3">
+        <div className="bg-[#FFB800]/10 border border-[#FFB800]/20 rounded-lg p-4 flex items-start gap-3">
           <AlertTriangle
             size={18}
             className="text-[#FFB800] mt-0.5 shrink-0"
           />
-          <p className="text-sm text-[#FFB800]">
+          <p className="font-body text-[14px] text-[#FFB800]">
             This tender is currently in &quot;{stateLabel(currentState)}&quot; state.
             Bidding may not be available.
           </p>
@@ -240,14 +240,14 @@ export default function BidPage({
 
       {/* Error */}
       {(errorMsg || writeError) && (
-        <div className="bg-[#FF4444]/10 border border-[#FF4444]/20 rounded-xl p-4 flex items-start gap-3">
+        <div className="bg-[#FF4444]/10 border border-[#FF4444]/20 rounded-lg p-4 flex items-start gap-3">
           <AlertTriangle
             size={18}
             className="text-[#FF4444] mt-0.5 shrink-0"
           />
           <div>
-            <p className="text-sm text-[#FF4444] font-medium">Error</p>
-            <p className="text-xs text-[#A0A8B8] mt-1">
+            <p className="font-body text-[14px] text-[#FF4444] font-medium">Error</p>
+            <p className="font-body text-[12px] text-[#888888] mt-1">
               {errorMsg || writeError?.message?.slice(0, 200)}
             </p>
           </div>
@@ -256,38 +256,38 @@ export default function BidPage({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: Tender Info + Form */}
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6">
           {/* Tender Info */}
           {config && (
-            <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-5 space-y-3">
-              <h3 className="text-sm font-medium text-[#F0F2F5]">
+            <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6 space-y-3">
+              <h3 className="font-body text-[14px] font-medium text-[#F0F0F0]">
                 {config.description}
               </h3>
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <span className="text-[#6B7280]">Deadline</span>
-                  <p className="text-[#A0A8B8] mt-0.5">
+                  <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Deadline</span>
+                  <p className="font-body text-[12px] text-[#888888] mt-0.5">
                     {formatDeadlineFull(config.deadline)}
                   </p>
                 </div>
                 <div>
-                  <span className="text-[#6B7280]">Max Bidders</span>
-                  <p className="text-[#A0A8B8] mt-0.5">{config.maxBidders}</p>
+                  <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Max Bidders</span>
+                  <p className="font-body text-[12px] text-[#888888] mt-0.5">{config.maxBidders}</p>
                 </div>
               </div>
             </div>
           )}
 
           {/* Bid Form */}
-          <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-6 space-y-5">
-            <div className="flex items-center gap-2 text-sm text-[#F0F2F5] font-medium">
+          <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6 space-y-5">
+            <div className="flex items-center gap-2 font-body text-[14px] text-[#F0F0F0] font-medium">
               <Lock size={16} className="text-[#00E87B]" />
               Encrypted Bid Data
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs text-[#6B7280] mb-1.5 uppercase tracking-wider">
+                <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                   Bid Price (USDC)
                 </label>
                 <input
@@ -296,12 +296,12 @@ export default function BidPage({
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   placeholder="e.g. 50000"
-                  className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1A1D27] rounded-lg text-sm text-[#F0F2F5] placeholder-[#3A3F4B] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
+                  className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-[#6B7280] mb-1.5 uppercase tracking-wider">
+                <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                   Delivery Timeline (Years)
                 </label>
                 <input
@@ -310,12 +310,12 @@ export default function BidPage({
                   value={deliveryYears}
                   onChange={(e) => setDeliveryYears(e.target.value)}
                   placeholder="e.g. 2"
-                  className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1A1D27] rounded-lg text-sm text-[#F0F2F5] placeholder-[#3A3F4B] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
+                  className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-[#6B7280] mb-1.5 uppercase tracking-wider">
+                <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                   Past Projects
                 </label>
                 <input
@@ -324,12 +324,12 @@ export default function BidPage({
                   value={pastProjects}
                   onChange={(e) => setPastProjects(e.target.value)}
                   placeholder="e.g. 12"
-                  className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1A1D27] rounded-lg text-sm text-[#F0F2F5] placeholder-[#3A3F4B] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
+                  className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-[#6B7280] mb-1.5 uppercase tracking-wider">
+                <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                   Bond Amount (ETH)
                 </label>
                 <input
@@ -338,7 +338,7 @@ export default function BidPage({
                   value={bondAmount}
                   onChange={(e) => setBondAmount(e.target.value)}
                   placeholder="e.g. 0.1"
-                  className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1A1D27] rounded-lg text-sm text-[#F0F2F5] placeholder-[#3A3F4B] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
+                  className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
                 />
               </div>
             </div>
@@ -346,7 +346,7 @@ export default function BidPage({
             <button
               onClick={handleSubmit}
               disabled={bidStatus !== "idle" && bidStatus !== "error"}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#00E87B] text-[#08090E] rounded-lg font-semibold text-sm hover:bg-[#00E87B]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#00E87B] text-[#08090E] rounded-[6px] font-semibold text-sm hover:bg-[#00E87B]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {bidStatus === "encrypting" ? (
                 <>
@@ -374,31 +374,31 @@ export default function BidPage({
         </div>
 
         {/* Right: Encryption Preview */}
-        <div className="space-y-6">
-          <div className="bg-[#0F1117] border border-[#00E87B]/10 rounded-xl p-6 space-y-4">
-            <div className="flex items-center gap-2 text-sm text-[#F0F2F5] font-medium">
+        <div className="flex flex-col gap-6">
+          <div className="bg-[#0D0F14] border border-[#00E87B]/10 rounded-lg p-6 space-y-4">
+            <div className="flex items-center gap-2 font-body text-[14px] text-[#F0F0F0] font-medium">
               <Eye size={16} className="text-[#00E87B]" />
               Encryption Preview
             </div>
 
             <div className="bg-[#0C0D14] rounded-lg p-4 space-y-3 text-xs">
               <div>
-                <span className="text-[#6B7280]">Protocol</span>
+                <span className="text-[#666666]">Protocol</span>
                 <p className="text-[#00E87B] mt-0.5">Zama fhEVM (TFHE)</p>
               </div>
               <div>
-                <span className="text-[#6B7280]">Encrypted Fields</span>
+                <span className="text-[#666666]">Encrypted Fields</span>
                 <div className="mt-1 space-y-1">
-                  <p className="text-[#A0A8B8]">
+                  <p className="text-[#888888]">
                     euint64 &middot; Price
                   </p>
-                  <p className="text-[#A0A8B8]">
+                  <p className="text-[#888888]">
                     euint32 &middot; Delivery Years
                   </p>
-                  <p className="text-[#A0A8B8]">
+                  <p className="text-[#888888]">
                     euint32 &middot; Past Projects
                   </p>
-                  <p className="text-[#A0A8B8]">
+                  <p className="text-[#888888]">
                     euint64 &middot; Bond Amount
                   </p>
                 </div>
@@ -406,7 +406,7 @@ export default function BidPage({
 
               {encryptedPreview && (
                 <div>
-                  <span className="text-[#6B7280]">Ciphertext</span>
+                  <span className="text-[#666666]">Ciphertext</span>
                   <pre className="mt-1 text-[#00E87B]/70 whitespace-pre-wrap break-all font-mono text-[10px]">
                     {encryptedPreview}
                   </pre>
@@ -414,7 +414,7 @@ export default function BidPage({
               )}
             </div>
 
-            <div className="text-xs text-[#6B7280] space-y-1">
+            <div className="font-body text-[12px] text-[#666666] space-y-1">
               <p>
                 Your bid data is encrypted client-side before being sent to the
                 smart contract.
@@ -427,8 +427,8 @@ export default function BidPage({
           </div>
 
           {/* Status Steps */}
-          <div className="bg-[#0F1117] border border-[#1A1D27] rounded-xl p-6 space-y-3">
-            <p className="text-sm text-[#F0F2F5] font-medium">
+          <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6 space-y-3">
+            <p className="font-body text-[14px] text-[#F0F0F0] font-medium">
               Submission Steps
             </p>
             {[
@@ -464,7 +464,7 @@ export default function BidPage({
                         ? "bg-[#00E87B]/10 border border-[#00E87B]/20"
                         : isActive
                         ? "bg-[#FFB800]/10 border border-[#FFB800]/20"
-                        : "bg-[#1A1D27] border border-[#1A1D27]"
+                        : "bg-[#1E2230] border border-[#1E2230]"
                     }`}
                   >
                     {isDone ? (
@@ -475,22 +475,22 @@ export default function BidPage({
                         className="text-[#FFB800] animate-spin"
                       />
                     ) : (
-                      <div className="w-2 h-2 rounded-full bg-[#3A3F4B]" />
+                      <div className="w-2 h-2 rounded-full bg-[#555555]" />
                     )}
                   </div>
                   <div>
                     <p
-                      className={`text-xs font-medium ${
+                      className={`font-body text-[12px] font-medium ${
                         isDone
                           ? "text-[#00E87B]"
                           : isActive
                           ? "text-[#FFB800]"
-                          : "text-[#6B7280]"
+                          : "text-[#666666]"
                       }`}
                     >
                       {s.label}
                     </p>
-                    <p className="text-[10px] text-[#3A3F4B]">{s.desc}</p>
+                    <p className="font-body text-[10px] text-[#555555]">{s.desc}</p>
                   </div>
                 </div>
               );
