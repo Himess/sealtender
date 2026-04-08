@@ -192,11 +192,14 @@ export default function TendersPage() {
           />
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
-          <Filter size={14} className="text-[#666666] shrink-0" />
+        <div role="tablist" aria-label="Filter tenders by status" className="flex items-center gap-2 overflow-x-auto pb-1">
+          <Filter size={14} className="text-[#666666] shrink-0" aria-hidden="true" />
           {filterTabs.map((tab) => (
             <button
               key={tab.key}
+              role="tab"
+              aria-selected={activeFilter === tab.key}
+              aria-label={`Filter by ${tab.label}`}
               onClick={() => setActiveFilter(tab.key)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-xs font-medium transition-colors whitespace-nowrap ${
                 activeFilter === tab.key

@@ -351,6 +351,15 @@ export default function BidPage({
             <button
               onClick={handleSubmit}
               disabled={bidStatus !== "idle" && bidStatus !== "error"}
+              aria-label={
+                bidStatus === "encrypting"
+                  ? "Encrypting bid with FHE"
+                  : bidStatus === "submitting"
+                  ? "Waiting for wallet confirmation"
+                  : bidStatus === "confirming"
+                  ? "Confirming transaction on-chain"
+                  : "Encrypt and submit bid"
+              }
               className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#00E87B] text-[#08090E] rounded-[6px] font-semibold text-sm hover:bg-[#00E87B]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {bidStatus === "encrypting" ? (

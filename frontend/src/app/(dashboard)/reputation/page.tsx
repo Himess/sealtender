@@ -298,8 +298,8 @@ export default function ReputationPage() {
                         </span>
                       </td>
                       <td className="px-5 py-[14px]">
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1 h-2 bg-[#1E2230] rounded-full overflow-hidden">
+                        <div className="flex items-center gap-3" aria-label={`Reputation score: ${score} out of 100`}>
+                          <div className="flex-1 h-2 bg-[#1E2230] rounded-full overflow-hidden" role="progressbar" aria-valuenow={score} aria-valuemin={0} aria-valuemax={100} aria-label={`Score ${score}`}>
                             <div
                               className={`h-full rounded-full transition-all ${scoreBarColor(
                                 score

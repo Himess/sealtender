@@ -301,6 +301,7 @@ export default function BidsPage() {
                       <td className="px-5 py-[14px] text-right">
                         <Link
                           href={`/tenders/${tender.index}`}
+                          aria-label={`View details for tender #${tender.index}`}
                           className="font-body text-[12px] text-[#00E87B] hover:text-[#00E87B]/80 transition-colors"
                         >
                           View &rarr;

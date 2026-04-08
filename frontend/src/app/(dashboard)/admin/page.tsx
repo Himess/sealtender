@@ -291,6 +291,7 @@ export default function AdminPage() {
                       <button
                         onClick={() => handleRemoveBidder(bidder.address)}
                         disabled={isRemoving}
+                        aria-label={`Remove bidder ${bidder.name || bidder.address}`}
                         className="inline-flex items-center gap-1 px-2 py-1 text-xs text-[#FF4444] hover:bg-[#FF4444]/10 rounded transition-colors disabled:opacity-50"
                       >
                         <Trash2 size={12} />
