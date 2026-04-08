@@ -1,0 +1,23 @@
+{
+  "name": "@sealtender/sdk",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for the SealTender FHE-encrypted procurement protocol",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist/**/*"],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["fhe", "procurement", "zama", "fhevm", "sealed-bid", "ethereum"],
+  "license": "MIT",
+  "peerDependencies": {
+    "ethers": "^6.0.0"
+  },
+  "dependencies": {
+    "fhevmjs": "^0.6.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

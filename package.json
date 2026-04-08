@@ -1,0 +1,43 @@
+{
+  "name": "sealtender",
+  "version": "1.0.0",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "npx hardhat test",
+    "test:encrypted": "npx hardhat test test/EncryptedTender.test.ts",
+    "test:escrow": "npx hardhat test test/BidEscrow.test.ts",
+    "test:integration": "npx hardhat test test/Integration.test.ts",
+    "compile": "npx hardhat compile"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@fhevm/hardhat-plugin": "^0.4.2",
+    "@fhevm/mock-utils": "^0.4.2",
+    "@fhevm/solidity": "^0.11.1",
+    "@nomicfoundation/hardhat-chai-matchers": "^2.1.2",
+    "@nomicfoundation/hardhat-ethers": "^3.1.3",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.12",
+    "@nomicfoundation/hardhat-verify": "^2.1.3",
+    "@openzeppelin/confidential-contracts": "^0.4.0",
+    "@openzeppelin/contracts": "^5.6.1",
+    "@typechain/ethers-v6": "^0.5.1",
+    "@typechain/hardhat": "^9.1.0",
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
+    "@zama-fhe/relayer-sdk": "^0.4.1",
+    "chai": "^4.5.0",
+    "ethers": "^6.16.0",
+    "hardhat": "^2.28.6",
+    "hardhat-deploy": "^1.0.4",
+    "ts-node": "^10.9.2",
+    "typechain": "^8.3.2",
+    "typescript": "^6.0.2"
+  }
+}
