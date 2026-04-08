@@ -31,6 +31,8 @@ contract BidEscrow is Ownable2Step, ReentrancyGuard {
         uint256 amount
     );
     event RequiredDepositSet(uint256 indexed tenderId, uint256 amount);
+    event CallerAuthorized(address indexed caller);
+    event CallerDeauthorized(address indexed caller);
 
     // --- Errors ---
     error InsufficientDeposit();
@@ -57,10 +59,12 @@ contract BidEscrow is Ownable2Step, ReentrancyGuard {
     function authorizeCaller(address caller) external onlyOwner {
         if (caller == address(0)) revert ZeroAddress();
         authorizedCallers[caller] = true;
+        emit CallerAuthorized(caller);
     }
 
     function deauthorizeCaller(address caller) external onlyOwner {
         authorizedCallers[caller] = false;
+        emit CallerDeauthorized(caller);
     }
 
     function setRequiredDeposit(uint256 tenderId, uint256 amount) external onlyAuthorized {

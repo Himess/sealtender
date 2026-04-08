@@ -2,7 +2,23 @@
 
 ## Kamu İhale Dolandırıcılığı — Küresel Ölçek
 
-Kamu ihaleleri, dünya genelinde **$13 trilyon**luk bir pazar oluşturmaktadır. Bu pazarın tahmini **%10-25**'i yolsuzluk ve dolandırıcılığa kaybolmaktadır — yani yıllık **$1.3 - $3.25 trilyon** zarar.
+Kamu ihaleleri, dünya genelinde **$13 trilyon**luk bir pazar oluşturmaktadır (OECD, 2023). Bu pazarın tahmini **%10-25**'i yolsuzluk ve dolandırıcılığa kaybolmaktadır — yani yıllık **$1.3 - $3.25 trilyon** zarar (World Bank, Transparency International).
+
+### Kaynak Verileri
+
+| Kaynak | Tahmin | Yıl |
+|--------|--------|-----|
+| OECD Government at a Glance | Kamu harcamalarının %12-15'i ihale | 2023 |
+| World Bank | Gelişmekte olan ülkelerde %25 kayıp | 2022 |
+| Transparency International CPI | Sektörel rüşvet %10-30 arası | 2023 |
+| EU Anti-Fraud Office (OLAF) | AB ihalelerinde %1.2B+ yıllık tespit | 2022 |
+
+### Gerçek Dünya Örnekleri
+
+- **Japonya — Dango:** İnşaat firmalarının onlarca yıldır sürdürdüğü sistematik ihale paylaşımı. Firmalar sırayla "kazanan" belirlenir, diğerleri bilerek yüksek teklif verir. 2005'te Adalet Bakanlığı soruşturmasında 26 firma mahkum edildi.
+- **Brezilya — Lava Jato (Araba Yıkama):** Petrobras'ın $5.3 milyarlık ihale yolsuzluğu skandalı. İnşaat firmaları, petrol şirketi yöneticilerine rüşvet vererek milyarlarca dolarlık ihaleleri paylaştı. 2014-2021 arasında 400+ kişi tutuklandı.
+- **İngiltere — NHS İnşaat:** 2023'te ortaya çıkan hastane inşaat ihalelerinde, altı firma 10 yıl boyunca teklif fiyatlarını koordine etti. Competition and Markets Authority (CMA) toplam £60M ceza verdi.
+- **Türkiye — EKAP İhlalleri:** 2019-2023 arası Sayıştay raporlarında, çeşitli belediyelerde ihale komisyonu üyelerinin teklif zarflarını açmadan önce bilgi sızdırdığı vakalar tespit edildi.
 
 Türkiye özelinde, EKAP (Elektronik Kamu Alımları Platforması) üzerinden yürütülen ihaleler hala ciddi manipülasyon risklerine açıktır: teklif sızıntısı, hayalet firmaların katılımı, değerlendirme sürecinde kayırma ve ihale sonrası sözleşme manipülasyonu en yaygın sorunlardır.
 
@@ -147,6 +163,8 @@ Puan = (kazanma + zamanında tamamlama) * 100 / (toplam teklif + slash * 2)
 | Composability | Dispute + Escrow + Registry entegrasyonu | Silo sistemler |
 | Censorship Resistance | Hiçbir otorite teklifi engelleyemez | Merkezi sistemlerde mümkün |
 | Global Access | İnternet olan herkes katılabilir | Coğrafi/bürokratik engeller |
+| Deterministic Execution | Aynı girdi her zaman aynı çıktı | İnsan kararları özneldir |
+| Audit Trail | Her işlem block explorer'da görünür | Kapalı sunucu logları |
 
 ## Zama FHE Avantajları
 

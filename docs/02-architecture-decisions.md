@@ -65,7 +65,17 @@ Rank:  FHE.min(encPrice_1, encPrice_2, ...) → winner
 - CollisionDetector: 10 firma = 45 FHE.eq çağrısı
 - Gerçek dünyada büyük altyapı ihalelerine genellikle 5-8 firma katılır
 
-**Alternatif:** Turnuva stili (round-robin) ile daha fazla firma desteklenebilir ama karmaşıklık artar.
+**HCU Maliyet Analizi:**
+
+| Firma Sayısı | Gate HCU | Ranking HCU | Collision HCU | Toplam Gas |
+|-------------|----------|-------------|---------------|------------|
+| 3 | 33 | 14 | 12 | ~5M |
+| 5 | 55 | 28 | 40 | ~10M |
+| 7 | 77 | 42 | 84 | ~16M |
+| 10 | 110 | 63 | 180 | ~23M |
+| 20 | 220 | 133 | 760 | ~95M (imkansız) |
+
+**Alternatif:** Turnuva stili (round-robin) ile daha fazla firma desteklenebilir ama karmaşıklık artar. `evaluateBatch()` fonksiyonu batch processing destekler, ama toplam gas hala O(n^2) kalır.
 
 ---
 
@@ -99,15 +109,23 @@ Rank:  FHE.min(encPrice_1, encPrice_2, ...) → winner
 
 ---
 
-## Karar 7: Oracle-Bazlı Fiyat Ayarlaması
+## Karar 7: Oracle-Bazlı Fiyat Ayarlaması + Otomatik Ödeme
 
-**Karar:** Uzun süreli sözleşmelerde malzeme fiyat değişimleri, oracle-bazlı `PriceEscalation` modülü ile yönetilir.
+**Karar:** Uzun süreli sözleşmelerde malzeme fiyat değişimleri, oracle-bazlı `PriceEscalation` modülü ile yönetilir. Chainlink AggregatorV3Interface entegre edilmiştir.
 
 **Gerekçe:**
 - İnşaat ihaleleri 1-5 yıl sürebilir; çelik, çimento fiyatları %50+ değişebilir
-- Chainlink/Pyth oracle entegrasyonu planlanmıştır (hackathon'da owner-controlled)
+- **Chainlink oracle entegrasyonu tamamlandı:** `setPriceFeed(materialId, feedAddress)` ile Chainlink feed bağlanır
+- `getLatestPrice()` önce Chainlink feed kontrol eder, yoksa manuel `latestPrices` fallback kullanır
+- Chainlink verisinde staleness check: `block.timestamp - updatedAt < 1 days`
 - Threshold + cap sistemi hem firmayı hem belediyeyi korur
 - `MAX_PRICE_CHANGE_BPS = 5000` (50%) sanity check, oracle manipülasyonunu sınırlar
+
+**Otomatik Ödeme Mekanizması (YENİ):**
+- `setTenderWinner(tenderId, winnerAddress)` ile kazanan belirlenir
+- `depositEscalationBudget(tenderId)` ile belediye eskalasyon bütçesi yatırır
+- `evaluateEscalation()` tetiklendiğinde, ek ödeme otomatik olarak kazanana gönderilir
+- Yetersiz bütçe durumunda `InsufficientEscalationBudget` revert eder
 
 **Parametreler:**
 | Parametre | Açıklama |
@@ -116,6 +134,9 @@ Rank:  FHE.min(encPrice_1, encPrice_2, ...) → winner
 | thresholdPercent | Tetikleme eşiği (bps) |
 | capPercent | Maksimum ayarlama (bps) |
 | periodSeconds | Minimum değerlendirme periyodu |
+| priceFeeds[materialId] | Chainlink feed adresi |
+| escalationBudget[tenderId] | Belediyenin yatırdığı eskalasyon bütçesi |
+| tenderWinner[tenderId] | Kazanan firma adresi |
 
 ---
 
@@ -175,13 +196,15 @@ Company Complaint → Stake 0.01 ETH
 | Özellik | Hackathon | Üretim |
 |---------|-----------|--------|
 | KYC | Mock whitelist | WorldID / Polygon ID |
-| Oracle | Owner-controlled | Chainlink / Pyth |
+| Oracle | Chainlink + manual fallback | Chainlink + TWAP + multi-oracle |
 | Max Bidders | 10 | 50+ (turnuva stili) |
-| Token | MockUSDC | USDC (Circle) |
+| Token | ConfidentialUSDC (ERC7984 wrap/unwrap + faucet) | USDC (Circle) + ConfidentialUSDC |
 | Decryption | Gateway (trusted) | Threshold (trustless) |
-| Frontend | Basic Next.js | Full dApp + mobile |
-| Audit | Self-audit | Professional (Trail of Bits) |
+| Frontend | Basic Next.js + RainbowKit + wagmi | Full dApp + mobile |
+| Audit | Self-audit (90/100) | Professional (Trail of Bits) |
 | Chain | Sepolia | Mainnet + L2 |
-| Gas | Unoptimized | Assembly + batch |
-| Governance | Owner | DAO / Multi-sig |
+| Gas | viaIR + 800 runs optimizer | Assembly + batch + L2 |
+| Governance | Owner (Ownable2Step) | DAO / Multi-sig + Timelock |
 | Legal | N/A | Regulatory compliance |
+| Escalation | Auto-payment to winner | Escrow-funded multi-material |
+| Testing | 367 tests (unit + integration + edge) | Formal verification + fuzzing |

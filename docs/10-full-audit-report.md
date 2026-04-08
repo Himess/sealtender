@@ -14,16 +14,19 @@
 
 | Contract | Lines of Code | Complexity |
 |----------|--------------|------------|
-| ISealTender.sol | 97 | Low |
-| IBidderRegistry.sol | 8 | Low |
-| TenderFactory.sol | 93 | Medium |
-| EncryptedTender.sol | 186 | High |
-| BidEscrow.sol | 177 | High |
-| BidderRegistry.sol | 164 | Medium |
-| DisputeManager.sol | 189 | High |
-| PriceEscalation.sol | 118 | Medium |
-| CollisionDetector.sol | 70 | Medium |
-| **Total** | **~1,102** | |
+| ISealTender.sol | 98 | Low |
+| IBidderRegistry.sol | 19 | Low |
+| TenderFactory.sol | 122 | Medium |
+| EncryptedTender.sol | 350 | High |
+| BidEscrow.sol | 182 | High |
+| BidderRegistry.sol | 174 | Medium |
+| DisputeManager.sol | 190 | High |
+| PriceEscalation.sol | 177 | High |
+| CollisionDetector.sol | 83 | Medium |
+| ConfidentialUSDC.sol | 108 | Medium |
+| MockUSDC.sol | 11 | Low |
+| MockV3Aggregator.sol | 32 | Low |
+| **Total** | **~1,546** | |
 
 ### 1.2 Categories Evaluated
 
@@ -257,16 +260,59 @@ All ETH transfers use the Checks-Effects-Interactions pattern with `nonReentrant
 | makePubliclyDecryptable on result only | Yes |
 | No plaintext leakage | Verified |
 | Pairwise check is O(n^2) — gas bounded by max 10 | Yes |
+| Proof array length matches price array | Yes (`encPrices.length == proofs.length`) |
 
 ### 5.2 EncryptedTender
 
 | Check | Status |
 |-------|--------|
-| Bids stored as raw bytes (not FHE types) | Yes |
-| No FHE operations in EncryptedTender | Correct (evaluation off-chain) |
-| Encrypted bytes are opaque (no parsing) | Yes |
+| Bids stored as native FHE types (euint64, euint32) | Yes |
+| On-chain FHE evaluation in evaluateBatch() | Yes |
+| FHE.fromExternal() validates encrypted inputs | Yes |
+| FHE.allowThis() grants contract access to ciphertexts | Yes |
+| FHE.allow(sender) lets bidder read own data | Yes |
+| Gate check uses FHE.ge() for minimum requirements | Yes |
+| Price ranking uses FHE.lt() + FHE.select() | Yes |
+| makePubliclyDecryptable only on winner idx + price | Yes |
+| checkSignatures() verifies KMS decryption proof | Yes |
+| No plaintext values stored until revealWinner() | Verified |
 
-**Note:** The current architecture stores encrypted bid bytes but does NOT perform FHE evaluation on-chain in EncryptedTender. Evaluation scores are submitted by the owner after off-chain FHE computation. This is a hackathon simplification. In production, evaluation should use FHE operations on-chain via a dedicated EvaluationEngine contract.
+**Note:** EncryptedTender performs FULL on-chain FHE evaluation. The `evaluateBatch()` function executes gate checks (FHE.ge), qualification AND (FHE.and), price masking (FHE.select), and minimum tracking (FHE.lt + FHE.select) — all on encrypted data. The `requestReveal()` function calls `FHE.makePubliclyDecryptable()` only on the winner index and price. `revealWinner()` verifies the KMS signature via `FHE.checkSignatures()`.
+
+### 5.3 ConfidentialUSDC
+
+| Check | Status |
+|-------|--------|
+| Uses ZamaEthereumConfig | Yes |
+| Inherits ERC7984 (OpenZeppelin confidential) | Yes |
+| FHE.asEuint64() for amount conversion | Yes |
+| Wrap/unwrap uses SafeERC20 for underlying | Yes |
+| Faucet bounded (10K max, 1 hour cooldown) | Yes |
+| No encrypted amount leakage in events | Events log plaintext amount (known at call time) |
+
+**Note:** Event amounts in ConfidentialUSDC are plaintext because the caller knows the amount they are wrapping/minting. This is acceptable — the FHE encryption protects balance privacy, not transaction input privacy.
+
+---
+
+## 5.5 Oracle Security Audit (Chainlink Integration)
+
+### PriceEscalation — Chainlink AggregatorV3Interface
+
+| Check | Status |
+|-------|--------|
+| Uses AggregatorV3Interface.latestRoundData() | Yes |
+| Validates price > 0 | Yes (`require(price > 0)`) |
+| Staleness check (< 1 day) | Yes (`block.timestamp - updatedAt < 1 days`) |
+| Manual fallback when no feed set | Yes (returns `latestPrices[materialId]`) |
+| MAX_PRICE_CHANGE_BPS sanity cap on manual updates | Yes (50%) |
+| Auto-payment to winner from budget | Yes (with InsufficientEscalationBudget check) |
+| Budget tracking (escalationBudget mapping) | Yes |
+| Payment failure handling | Yes (`PaymentFailed` revert) |
+
+**Findings:**
+- **P1-2 Upgraded:** Oracle is no longer purely owner-controlled. Chainlink feeds provide external price validation.
+- **Remaining risk:** Owner can still call `updateOraclePrice()` for materials without Chainlink feeds. The 50% cap limits single-update manipulation.
+- **Missing:** No multi-oracle consensus. A single Chainlink feed could be manipulated or go stale beyond the 1-day check window.
 
 ---
 
@@ -292,7 +338,7 @@ All ETH transfers use the Checks-Effects-Interactions pattern with `nonReentrant
 | Consistent naming | 5/5 | camelCase functions, _prefixed internals |
 | Error handling | 5/5 | Custom errors throughout |
 | Event coverage | 4/5 | Missing events for some view functions |
-| Test coverage | 4/5 | 258 tests, some edge cases missing |
+| Test coverage | 5/5 | 367 tests including edge cases + gas benchmarks |
 | Code duplication | 4/5 | Minimal, shared via ISealTender |
 
 ---
@@ -305,12 +351,14 @@ All ETH transfers use the Checks-Effects-Interactions pattern with `nonReentrant
 | State Management | 20 | 19 | -1 for no tender existence check in DM |
 | Reentrancy Protection | 15 | 15 | Full coverage |
 | Input Validation | 15 | 13 | -2 for weight sum and period validation |
-| FHE Integration | 15 | 13 | -2 for off-chain evaluation (hackathon) |
+| FHE Integration | 15 | 15 | Full on-chain evaluation + KMS signature verification |
 | Gas Optimization | 10 | 9 | -1 for some batch opportunities missed |
 | Code Quality | 5 | 4 | -1 for incomplete NatSpec |
-| **Total** | **100** | **90** | |
+| **Total** | **100** | **92** | |
 
-**Grade: A-**
+**Grade: A**
+
+**Note:** FHE Integration score improved from 13 to 15 because evaluation is now fully on-chain in `evaluateBatch()` using real TFHE operations (FHE.ge, FHE.lt, FHE.select, FHE.and). KMS signature verification via `FHE.checkSignatures()` adds cryptographic integrity to the reveal process.
 
 ---
 
@@ -321,7 +369,7 @@ All ETH transfers use the Checks-Effects-Interactions pattern with `nonReentrant
 1. **Multi-sig + Timelock** on all owner functions
 2. **Real KYC** integration (WorldID / Polygon ID)
 3. **Chainlink/Pyth** oracle for price escalation
-4. **On-chain FHE evaluation** (move scoring from off-chain to on-chain)
+4. **Multi-oracle consensus** for PriceEscalation (TWAP + median of multiple feeds)
 5. **Professional audit** (Trail of Bits, OpenZeppelin, or Spearbit)
 6. **Formal verification** of BidEscrow and DisputeManager
 

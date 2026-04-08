@@ -19,7 +19,7 @@ ETHERSCAN_API_KEY=your_etherscan_api_key
 
 ## Deployment Order
 
-Contracts must be deployed in this exact order due to constructor dependencies.
+Contracts must be deployed in this exact order due to constructor dependencies. The deployment script is in `deploy/001_deploy_all.ts` and deploys everything in one go with `npx hardhat deploy --network sepolia --tags SealTender`.
 
 ### Step 1: BidderRegistry
 
@@ -34,15 +34,7 @@ npx hardhat deploy --network sepolia --tags BidderRegistry
 BidderRegistry deployed to: 0x...
 ```
 
-### Step 2: TenderFactory
-
-```bash
-npx hardhat deploy --network sepolia --tags TenderFactory
-```
-
-**Constructor:** `(address _registry)` — BidderRegistry address from Step 1
-
-### Step 3: BidEscrow
+### Step 2: BidEscrow
 
 ```bash
 npx hardhat deploy --network sepolia --tags BidEscrow
@@ -50,7 +42,24 @@ npx hardhat deploy --network sepolia --tags BidEscrow
 
 **Constructor:** `()` — no arguments
 
-### Step 4: DisputeManager
+### Step 3: ConfidentialUSDC
+
+```bash
+npx hardhat deploy --network sepolia --tags ConfidentialUSDC
+```
+
+**Constructor:** `(address initialOwner)` — deployer address  
+**Note:** Inherits `ZamaEthereumConfig` and `ERC7984` for FHE-encrypted token balances.
+
+### Step 4: TenderFactory
+
+```bash
+npx hardhat deploy --network sepolia --tags TenderFactory
+```
+
+**Constructor:** `(address _registry, address _escrow)` — BidderRegistry + BidEscrow addresses
+
+### Step 5: DisputeManager
 
 ```bash
 npx hardhat deploy --network sepolia --tags DisputeManager
@@ -58,19 +67,20 @@ npx hardhat deploy --network sepolia --tags DisputeManager
 
 **Constructor:** `(address _escrow, address _municipality, address _registry)`
 
-- `_escrow`: BidEscrow address from Step 3
+- `_escrow`: BidEscrow address from Step 2
 - `_municipality`: Municipality treasury address (deployer or multisig)
 - `_registry`: BidderRegistry address from Step 1
 
-### Step 5: PriceEscalation
+### Step 6: PriceEscalation
 
 ```bash
 npx hardhat deploy --network sepolia --tags PriceEscalation
 ```
 
-**Constructor:** `()` — no arguments
+**Constructor:** `()` — no arguments  
+**Note:** Supports Chainlink AggregatorV3Interface via `setPriceFeed()` post-deploy.
 
-### Step 6: CollisionDetector
+### Step 7: CollisionDetector
 
 ```bash
 npx hardhat deploy --network sepolia --tags CollisionDetector
@@ -79,39 +89,38 @@ npx hardhat deploy --network sepolia --tags CollisionDetector
 **Constructor:** `()` — no arguments  
 **Note:** Inherits `ZamaEthereumConfig` for FHE integration.
 
-### Step 7: MockUSDC (Testnet Only)
-
-```bash
-npx hardhat deploy --network sepolia --tags MockUSDC
-```
-
 ---
 
 ## Post-Deployment Configuration
 
 After all contracts are deployed, run the setup script to wire them together.
 
-### Wire Factory
+### Authorize Factory
 
 ```typescript
-// factory.setDisputeManager(disputeManager.address)
-await factory.setDisputeManager(DISPUTE_MANAGER_ADDRESS);
+// CRITICAL: Factory needs escrow access to call setRequiredDeposit() in createTender()
+await escrow.authorizeCaller(FACTORY_ADDRESS);
 
-// factory.setEscalation(escalation.address)
-await factory.setEscalation(ESCALATION_ADDRESS);
-
-// factory.setCollisionDetector(collisionDetector.address)
-await factory.setCollisionDetector(COLLISION_DETECTOR_ADDRESS);
+// Factory needs registry access to call addAuthorizedCaller() for new tenders
+await registry.addAuthorizedCaller(FACTORY_ADDRESS);
 ```
 
-### Authorize Callers
+### Authorize DisputeManager
 
 ```typescript
-// Allow DisputeManager to slash escrow
+// CRITICAL: Without this, DisputeManager.resolveDispute() → escrow.slash() will revert
 await escrow.authorizeCaller(DISPUTE_MANAGER_ADDRESS);
 
 // Allow DisputeManager to record slashes in registry
 await registry.addAuthorizedCaller(DISPUTE_MANAGER_ADDRESS);
+```
+
+### Wire Factory
+
+```typescript
+await factory.setDisputeManager(DISPUTE_MANAGER_ADDRESS);
+await factory.setEscalation(ESCALATION_ADDRESS);
+await factory.setCollisionDetector(COLLISION_DETECTOR_ADDRESS);
 ```
 
 ### Verify Wiring
@@ -120,7 +129,9 @@ await registry.addAuthorizedCaller(DISPUTE_MANAGER_ADDRESS);
 console.log("Factory.disputeManager:", await factory.disputeManager());
 console.log("Factory.escalation:", await factory.escalation());
 console.log("Factory.collisionDetector:", await factory.collisionDetector());
+console.log("Escrow.authorizedCallers[Factory]:", await escrow.authorizedCallers(FACTORY));
 console.log("Escrow.authorizedCallers[DM]:", await escrow.authorizedCallers(DM));
+console.log("Registry.authorizedCallers[Factory]:", await registry.authorizedCallers(FACTORY));
 console.log("Registry.authorizedCallers[DM]:", await registry.authorizedCallers(DM));
 ```
 
@@ -205,10 +216,13 @@ sourcify: {
 
 ### Post-Deployment
 
-- [ ] Factory wired to DisputeManager, Escalation, CollisionDetector
+- [ ] Escrow authorized TenderFactory as caller
+- [ ] Registry authorized TenderFactory as caller
 - [ ] Escrow authorized DisputeManager as caller
 - [ ] Registry authorized DisputeManager as caller
+- [ ] Factory wired to DisputeManager, Escalation, CollisionDetector
 - [ ] Court authority set on DisputeManager (if applicable)
+- [ ] Chainlink price feeds configured on PriceEscalation (if applicable)
 - [ ] All addresses saved to `deployments/sepolia/`
 - [ ] Frontend `.env.local` updated with addresses
 
@@ -256,3 +270,42 @@ This ensures no active tender can be affected by protocol changes.
 | **Total deployment** | **~10M** | **~0.30 ETH** |
 
 **Recommended deployer balance:** 1.0 ETH (covers deployment + several test tenders).
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| `NotAuthorized()` on createTender | Factory not authorized in Escrow | `escrow.authorizeCaller(factory.address)` |
+| `CallerNotAuthorized()` on recordBid | Tender not authorized in Registry | Factory should auto-authorize; check `registry.addAuthorizedCaller(factory)` |
+| `NotAuthorized()` on slash | DisputeManager not authorized in Escrow | `escrow.authorizeCaller(disputeManager.address)` |
+| `Stale oracle data` on evaluateEscalation | Chainlink feed not updated in 24h | Check feed address, use testnet feed |
+| `Invalid oracle price` on getLatestPrice | Chainlink feed returns price <= 0 | Verify feed contract is deployed and initialized |
+| `DepositAlreadyExists()` on deposit | Bidder already deposited for this tender | Each bidder can only deposit once per tender |
+| `MaxBiddersReached()` on submitBid | 10 bidders already submitted | Tender is full; create a new tender |
+| `FaucetCooldown()` on cUSDC faucet | Less than 1 hour since last faucet use | Wait for cooldown to expire |
+| viaIR compilation errors | Solidity optimizer issue | Ensure `hardhat.config.ts` has `viaIR: true` and `evmVersion: "cancun"` |
+
+### Verifying Post-Deploy Wiring
+
+Run this check script after deployment to ensure all cross-contract permissions are correct:
+
+```typescript
+const escrowContract = await ethers.getContractAt("BidEscrow", ESCROW_ADDRESS);
+const registryContract = await ethers.getContractAt("BidderRegistry", REGISTRY_ADDRESS);
+const factoryContract = await ethers.getContractAt("TenderFactory", FACTORY_ADDRESS);
+
+// These should all return true
+console.assert(await escrowContract.authorizedCallers(FACTORY_ADDRESS), "Factory not authorized in Escrow");
+console.assert(await escrowContract.authorizedCallers(DM_ADDRESS), "DM not authorized in Escrow");
+console.assert(await registryContract.authorizedCallers(FACTORY_ADDRESS), "Factory not authorized in Registry");
+console.assert(await registryContract.authorizedCallers(DM_ADDRESS), "DM not authorized in Registry");
+
+// These should return the correct addresses
+console.assert(await factoryContract.disputeManager() === DM_ADDRESS, "Factory.disputeManager wrong");
+console.assert(await factoryContract.escalation() === ESCALATION_ADDRESS, "Factory.escalation wrong");
+console.assert(await factoryContract.collisionDetector() === CD_ADDRESS, "Factory.collisionDetector wrong");
+```

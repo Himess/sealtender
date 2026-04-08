@@ -145,10 +145,19 @@ contract BidderRegistry is Ownable2Step {
         return profiles[bidder];
     }
 
+    /**
+     * @notice Calculate a bidder's reputation score (0-100).
+     * @dev Arithmetic is safe against overflow: Solidity 0.8+ has built-in
+     *      overflow/underflow checks on all arithmetic operations. The
+     *      multiplication `(p.totalWins + p.completedOnTime) * 100` will
+     *      revert automatically if it exceeds uint256 max, which is only
+     *      possible with astronomically large values (~1.15e75 bids).
+     */
     function getReputationScore(address bidder) external view returns (uint256) {
         BidderProfile storage p = profiles[bidder];
         if (!p.verified) return 0;
 
+        // Safe: Solidity 0.8+ reverts on overflow for all arithmetic ops
         uint256 numerator = (p.totalWins + p.completedOnTime) * 100;
         uint256 denominator = p.totalBids + p.totalSlashes * 2;
 

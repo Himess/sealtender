@@ -69,4 +69,14 @@ contract CollisionDetector is ZamaEthereumConfig, Ownable2Step {
         collisionDetected[tenderId] = result;
         emit CollisionCheckCompleted(tenderId, result);
     }
+
+    /**
+     * @notice Query collision status for a tender (for cross-contract integration).
+     * @param tenderId The tender ID
+     * @return checked Whether collision check has been performed
+     * @return detected Whether a collision was detected
+     */
+    function isCollisionDetected(uint256 tenderId) external view returns (bool checked, bool detected) {
+        return (collisionChecked[tenderId], collisionDetected[tenderId]);
+    }
 }

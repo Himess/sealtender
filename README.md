@@ -44,19 +44,22 @@ SealTender uses Fully Homomorphic Encryption (FHE) via [Zama's fhEVM](https://do
 | **BidEscrow** | Holds ETH escrow deposits | Freeze/slash for disputes, ReentrancyGuard |
 | **BidderRegistry** | KYC whitelist + on-chain reputation | Score: (wins + completions) / (bids + 2*slashes) |
 | **DisputeManager** | Company/citizen/court complaints | 0.01 ETH stake, burn on dismiss |
-| **PriceEscalation** | Oracle-based material price adjustment | 50% sanity cap, threshold + cap per rule |
+| **PriceEscalation** | Chainlink oracle + auto-payment escalation | 50% sanity cap, AggregatorV3Interface, budget |
 | **CollisionDetector** | FHE pairwise price equality check | O(n^2) FHE.eq, max 10 bids |
+| **ConfidentialUSDC** | FHE-encrypted ERC7984 token | Wrap/unwrap USDC + faucet (10K/hr) |
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Smart Contracts | Solidity 0.8.27 |
-| FHE | Zama fhEVM (fhevmjs + @fhevm/solidity) |
-| Framework | Hardhat + TypeChain |
+| Smart Contracts | Solidity 0.8.27 (viaIR, 800 runs optimizer, Cancun EVM) |
+| FHE | Zama fhEVM (fhevmjs + @fhevm/solidity + ERC7984) |
+| Framework | Hardhat + TypeChain + hardhat-deploy |
 | Security | OpenZeppelin (Ownable2Step, ReentrancyGuard, Pausable) |
-| Frontend | Next.js + RainbowKit + wagmi |
+| Oracles | Chainlink AggregatorV3Interface |
+| Frontend | Next.js 16 + RainbowKit + wagmi |
 | SDK | TypeScript + ethers v6 + fhevmjs |
+| Testing | 367 tests (unit + integration + edge cases + gas benchmarks) |
 | Chain | Ethereum Sepolia (testnet) |
 
 ## Deployed Contracts (Sepolia)
@@ -94,7 +97,8 @@ SealTender/
 │   ├── token/
 │   │   └── ConfidentialUSDC.sol
 │   └── test/
-│       └── MockUSDC.sol
+│       ├── MockUSDC.sol
+│       └── MockV3Aggregator.sol
 ├── sdk/
 │   ├── src/
 │   │   ├── types.ts
@@ -225,7 +229,7 @@ See [docs/08-deployment-guide.md](docs/08-deployment-guide.md) for detailed depl
 - **Custom Errors:** Gas-efficient error handling throughout
 - **Input Validation:** Deadline, maxBidders, reputation checks enforced
 
-Self-audit score: **90/100 (A-)**. See [docs/10-full-audit-report.md](docs/10-full-audit-report.md).
+Self-audit score: **92/100 (A)**. See [docs/10-full-audit-report.md](docs/10-full-audit-report.md).
 
 ## Documentation
 
@@ -233,7 +237,7 @@ Self-audit score: **90/100 (A-)**. See [docs/10-full-audit-report.md](docs/10-fu
 |----------|-------------|
 | [01-problem-analysis](docs/01-problem-analysis.md) | $13T procurement fraud analysis (Turkish) |
 | [02-architecture-decisions](docs/02-architecture-decisions.md) | 10 key design decisions |
-| [03-implementation-plan](docs/03-implementation-plan.md) | Contract specs, 258 tests, deployment order |
+| [03-implementation-plan](docs/03-implementation-plan.md) | Contract specs, 367 tests, deployment order |
 | [04-video-script](docs/04-video-script.md) | 3-minute demo video script |
 | [05-lightpaper](docs/05-lightpaper.md) | Technical paper: FHE ops, HCU costs, trust model |
 | [06-security](docs/06-security.md) | 9 attack vectors, information leakage analysis |

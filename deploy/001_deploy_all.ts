@@ -83,6 +83,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await registryContract.addAuthorizedCaller(disputeManager.address);
   console.log("Registry: authorized DisputeManager");
 
+  // Authorize dispute manager in escrow (CRITICAL: without this, DisputeManager.resolveDispute() → escrow.slash() reverts)
+  await escrowContract.authorizeCaller(disputeManager.address);
+  console.log("Escrow: authorized DisputeManager");
+
   // Set modules in factory
   await factoryContract.setDisputeManager(disputeManager.address);
   console.log("Factory: set DisputeManager");

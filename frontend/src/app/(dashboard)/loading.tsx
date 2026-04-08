@@ -1,6 +1,6 @@
 export default function Loading() {
   return (
-    <div className="flex flex-col gap-8">
+    <div aria-busy="true" aria-label="Loading content" className="flex flex-col gap-8">
       {/* Header Skeleton */}
       <div className="space-y-2">
         <div className="h-8 w-48 bg-[#1E2230] rounded-lg animate-pulse" />

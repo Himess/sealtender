@@ -229,16 +229,16 @@ export default function DisputesPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-[#1E2230]">
-                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">ID</th>
-                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Type</th>
-                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Tender</th>
-                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
+                  <th scope="col" className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">ID</th>
+                  <th scope="col" className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Type</th>
+                  <th scope="col" className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Tender</th>
+                  <th scope="col" className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
                     Complainant
                   </th>
-                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Accused</th>
-                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Reason</th>
-                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Filed</th>
-                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Status</th>
+                  <th scope="col" className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Accused</th>
+                  <th scope="col" className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Reason</th>
+                  <th scope="col" className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Filed</th>
+                  <th scope="col" className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -307,6 +307,7 @@ export default function DisputesPage() {
               </h3>
               <button
                 onClick={() => setShowModal(false)}
+                aria-label="Close modal"
                 className="text-[#666666] hover:text-[#F0F0F0] transition-colors"
               >
                 <X size={18} />
@@ -333,10 +334,10 @@ export default function DisputesPage() {
               <>
                 {/* Type */}
                 <div>
-                  <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                  <label id="complaintTypeLabel" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                     Complaint Type
                   </label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2" role="group" aria-labelledby="complaintTypeLabel">
                     <button
                       onClick={() => setComplaintType("citizen")}
                       className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-[6px] text-xs font-medium border transition-colors ${
@@ -364,10 +365,11 @@ export default function DisputesPage() {
 
                 {/* Tender ID */}
                 <div>
-                  <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                  <label htmlFor="disputeTenderId" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                     Tender ID
                   </label>
                   <input
+                    id="disputeTenderId"
                     type="number"
                     min="0"
                     value={tenderId}
@@ -379,10 +381,11 @@ export default function DisputesPage() {
 
                 {/* Accused */}
                 <div>
-                  <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                  <label htmlFor="accusedAddress" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                     Accused Address
                   </label>
                   <input
+                    id="accusedAddress"
                     type="text"
                     value={accused}
                     onChange={(e) => setAccused(e.target.value)}
@@ -393,10 +396,11 @@ export default function DisputesPage() {
 
                 {/* Reason */}
                 <div>
-                  <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                  <label htmlFor="disputeReason" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                     Reason
                   </label>
                   <textarea
+                    id="disputeReason"
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     placeholder="Describe the complaint..."

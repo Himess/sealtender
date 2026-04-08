@@ -216,21 +216,87 @@ This is why SealTender enforces `maxBidders <= 10`. For larger tenders, a tourna
 
 ---
 
-## 6. Future Work
+## 6. Token: ConfidentialUSDC
 
-1. **Threshold Decryption:** Replace Zama Gateway with on-chain threshold scheme
-2. **Tournament Evaluation:** Support 50+ bidders via multi-round elimination
-3. **Decentralized Identity:** WorldID/Polygon ID for Sybil-resistant KYC
-4. **Cross-chain:** LayerZero/Hyperlane for multi-chain tender syndication
-5. **DAO Governance:** Community-governed protocol parameters
-6. **ZK Proofs:** Combine FHE with ZK for off-chain computation verification
-7. **Real Oracles:** Chainlink/Pyth for material price escalation
-8. **L2 Deployment:** Lower gas costs via FHE-enabled L2 (Zama's roadmap)
+SealTender includes a ConfidentialUSDC (cUSDC) token — an ERC7984 confidential token that enables FHE-encrypted balances. This provides the foundation for future on-chain payment integration.
+
+### 6.1 Features
+
+| Feature | Description |
+|---------|-------------|
+| Wrap | Deposit USDC, receive FHE-encrypted cUSDC |
+| Unwrap | Burn cUSDC, receive USDC back |
+| Faucet | Testnet-only: mint up to 10,000 cUSDC per hour |
+| FHE Balances | All balances stored as `euint64` — invisible to observers |
+| ERC7984 | OpenZeppelin confidential token standard |
+
+### 6.2 Integration Path
+
+In production, cUSDC could replace ETH escrow for bid deposits, enabling fully encrypted payment flows where even deposit amounts are hidden.
 
 ---
 
-## 7. Conclusion
+## 7. Limitations and Honest Assessment
 
-SealTender demonstrates that FHE is practical for real-world applications today. By encrypting four bid parameters and evaluating them entirely on-chain, we eliminate the most impactful procurement fraud vectors — bid leakage and evaluator bias — with mathematical guarantees rather than institutional trust.
+### 7.1 Technical Limitations
 
-The protocol operates within current fhEVM constraints (10 bidders, ~23M gas per evaluation) and provides a clear upgrade path as FHE efficiency improves. For a $13 trillion market losing $1.3-3.25 trillion annually to fraud, even a 10% reduction through cryptographic enforcement represents extraordinary impact.
+| Limitation | Impact | Mitigation |
+|-----------|--------|------------|
+| KMS trust dependency | Gateway can theoretically decrypt | Threshold decryption (roadmap) |
+| 10-bidder maximum | Excludes large-scale tenders | Tournament evaluation (roadmap) |
+| High gas cost (~23M per evaluation) | Expensive on mainnet | L2 FHE chains, batch optimization |
+| Mock KYC whitelist | No real Sybil resistance | WorldID/Polygon ID integration |
+| Single-chain only | No cross-border syndication | LayerZero/Hyperlane (roadmap) |
+| Owner-dependent liveness | Evaluation requires owner action | Timelock + DAO governance |
+
+### 7.2 Economic Limitations
+
+- Gas costs make SealTender impractical for low-value procurements (<$100K)
+- Escrow deposit in ETH exposes bidders to price volatility
+- No incentive mechanism for oracle price feed accuracy (beyond sanity cap)
+
+### 7.3 Legal Limitations
+
+- Smart contract execution is not legally recognized in most jurisdictions
+- On-chain identity does not satisfy government KYC requirements
+- Cross-border procurement has regulatory complexity that on-chain logic cannot address
+
+---
+
+## 8. Future Work
+
+1. **Threshold Decryption:** Replace Zama Gateway with on-chain threshold scheme (n-of-m key holders)
+2. **Tournament Evaluation:** Support 50+ bidders via multi-round elimination across transactions
+3. **Decentralized Identity:** WorldID/Polygon ID for Sybil-resistant, privacy-preserving KYC
+4. **Cross-chain:** LayerZero/Hyperlane for multi-chain tender syndication
+5. **DAO Governance:** Community-governed protocol parameters and dispute resolution
+6. **ZK Proofs:** Combine FHE with ZK for client-side bid validation before submission
+7. **Multi-Oracle Consensus:** Multiple Chainlink/Pyth feeds with TWAP for escalation
+8. **L2 Deployment:** Lower gas costs via Zama's FHE L2 roadmap or validium model
+9. **Confidential Payments:** Use cUSDC for escrow deposits, hiding deposit amounts
+10. **Formal Verification:** Mathematical proof of evaluation correctness using Certora or Halmos
+
+---
+
+## 9. Conclusion
+
+SealTender demonstrates that FHE is practical for real-world applications today. By encrypting four bid parameters and evaluating them entirely on-chain using Zama's fhEVM, we eliminate the most impactful procurement fraud vectors — bid leakage and evaluator bias — with mathematical guarantees rather than institutional trust.
+
+The protocol operates within current fhEVM constraints (10 bidders, ~23M gas per evaluation) and provides a clear upgrade path as FHE efficiency improves. With 11 contracts, 367 tests, Chainlink oracle integration, and a ConfidentialUSDC token, SealTender is a complete prototype ready for production hardening.
+
+For a $13 trillion market losing $1.3-3.25 trillion annually to fraud, even a 10% reduction through cryptographic enforcement represents extraordinary impact — $130 billion to $325 billion saved annually.
+
+---
+
+## 10. References
+
+1. OECD (2023). "Government at a Glance 2023." OECD Publishing.
+2. World Bank (2022). "Procurement Fraud and Corruption: Detection and Prevention."
+3. Transparency International (2023). "Corruption Perceptions Index 2023."
+4. Zama (2024). "fhEVM: Confidential Smart Contracts on EVM." https://docs.zama.ai/fhevm
+5. Chillotti, I. et al. (2020). "TFHE: Fast Fully Homomorphic Encryption over the Torus." Journal of Cryptology.
+6. European Parliament (2014). "Directive 2014/24/EU on public procurement."
+7. Republic of Turkey (2002). "Public Procurement Law No. 4734."
+8. Chainlink (2024). "Data Feeds — AggregatorV3Interface." https://docs.chain.link
+9. OpenZeppelin (2024). "Contracts v5.x — Ownable2Step, ReentrancyGuard, Pausable."
+10. Ethereum Foundation (2024). "EVM — Cancun Upgrade (EIP-4844)."

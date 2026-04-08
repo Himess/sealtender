@@ -52,29 +52,35 @@ struct EscalationRule {
 
 ## 2. TenderFactory
 
-**Inheritance:** `Ownable`  
-**Constructor:** `(address _registry)`
+**Inheritance:** `Ownable2Step`  
+**Constructor:** `(address _registry, address _escrow)`
+
+**Reverts:** `ZeroAddress()` if either parameter is zero.
 
 ### Write Functions
 
 #### createTender
 
 ```solidity
-function createTender(TenderConfig calldata _config) external onlyOwner returns (address)
+function createTender(TenderConfig calldata _config) external onlyOwner returns (uint256 tenderId, address tenderAddress)
 ```
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | _config | TenderConfig | Full tender configuration |
-| **Returns** | address | Deployed EncryptedTender contract address |
+| **Returns** | uint256, address | Tender ID and deployed EncryptedTender contract address |
 
 **Reverts:**
-- `InvalidConfig()` — deadline in the past
-- `InvalidConfig()` — maxBidders == 0 or > 10
+- `"Deadline must be future"` — deadline in the past
+- `"Must allow at least 1 bidder"` — maxBidders == 0
 
 **Events:** `TenderCreated(uint256 indexed tenderId, address tenderContract, string description)`
 
-**Side Effects:** Calls `registry.addAuthorizedCaller(tenderAddr)` automatically.
+**Side Effects:**
+1. Deploys new `EncryptedTender(tenderId, _config, registry, escrow)`
+2. Stores in `tenders[tenderId]` and `tenderConfigs[tenderId]`
+3. Calls `BidEscrow(escrow).setRequiredDeposit(tenderId, _config.escrowAmount)` if escrow > 0
+4. Calls `BidderRegistry(registry).addAuthorizedCaller(tenderAddress)`
 
 #### setDisputeManager
 
@@ -82,7 +88,8 @@ function createTender(TenderConfig calldata _config) external onlyOwner returns 
 function setDisputeManager(address _dm) external onlyOwner
 ```
 
-**Events:** `DisputeManagerSet(address indexed disputeManager)`
+**Reverts:** `ZeroAddress()`  
+**Events:** `DisputeManagerSet(address indexed dm)`
 
 #### setEscalation
 
@@ -90,7 +97,8 @@ function setDisputeManager(address _dm) external onlyOwner
 function setEscalation(address _esc) external onlyOwner
 ```
 
-**Events:** `EscalationSet(address indexed escalation)`
+**Reverts:** `ZeroAddress()`  
+**Events:** `EscalationSet(address indexed esc)`
 
 #### setCollisionDetector
 
@@ -98,38 +106,51 @@ function setEscalation(address _esc) external onlyOwner
 function setCollisionDetector(address _cd) external onlyOwner
 ```
 
-**Events:** `CollisionDetectorSet(address indexed collisionDetector)`
+**Reverts:** `ZeroAddress()`  
+**Events:** `CollisionDetectorSet(address indexed cd)`
 
 ### Read Functions
+
+#### getTender
+
+```solidity
+function getTender(uint256 id) external view returns (address)
+```
+
+#### getTenderConfig
+
+```solidity
+function getTenderConfig(uint256 id) external view returns (TenderConfig memory)
+```
+
+#### getAllTenders
+
+```solidity
+function getAllTenders() external view returns (address[] memory)
+```
+
+Returns all tender addresses. Gas-intensive for large counts; use `getTenders()` for pagination.
 
 #### getTenders
 
 ```solidity
-function getTenders(uint256 start, uint256 end) external view returns (address[] memory)
+function getTenders(uint256 offset, uint256 limit) external view returns (address[] memory)
 ```
 
-**Reverts:**
-- `InvalidRange()` — start >= end
-- `EndExceedsTenders()` — end > total count
+Paginated tender list. Returns empty array if offset >= tenderCount.
 
-#### getTenderCount
+#### tenderCount
 
 ```solidity
-function getTenderCount() external view returns (uint256)
-```
-
-#### tenderById
-
-```solidity
-function tenderById(uint256 tenderId) external view returns (address)
+function tenderCount() external view returns (uint256)
 ```
 
 ---
 
 ## 3. EncryptedTender
 
-**Inheritance:** `Ownable`, `Pausable`  
-**Constructor:** `(uint256 _tenderId, TenderConfig memory _config, address _registry, address _owner)`
+**Inheritance:** `ZamaEthereumConfig`, `Ownable2Step`, `Pausable`  
+**Constructor:** `(uint256 _tenderId, TenderConfig memory _config, address _registry, address _escrow)`
 
 ### Write Functions
 
@@ -137,100 +158,85 @@ function tenderById(uint256 tenderId) external view returns (address)
 
 ```solidity
 function submitBid(
-    bytes calldata encPrice,
-    bytes calldata encYears,
-    bytes calldata encProjects,
-    bytes calldata encBond
-) external whenNotPaused
+    externalEuint64 _encPrice, bytes calldata _priceProof,
+    externalEuint32 _encYears, bytes calldata _yearsProof,
+    externalEuint32 _encProjects, bytes calldata _projectsProof,
+    externalEuint64 _encBond, bytes calldata _bondProof
+) external onlyVerified beforeDeadline inState(TenderState.Bidding) whenNotPaused
 ```
+
+Handles both new bids and updates (if `hasBid[sender]` is true). Uses `FHE.fromExternal()` for input validation and `FHE.allowThis()`/`FHE.allow()` for access control.
 
 **Checks (in order):**
-1. `state == Bidding` → `NotBidding()`
-2. `block.timestamp < deadline` → `DeadlinePassed()`
-3. `!bids[msg.sender].exists` → `AlreadyBid()`
-4. `_bidders.length < maxBidders` → `TenderFull()`
-5. `registry.isVerified(msg.sender)` → `NotVerified()`
-6. `registry.getReputationScore(msg.sender) >= minReputation` → `InsufficientReputation()`
+1. `registry.isVerified(msg.sender)` → `NotVerifiedBidder()` (onlyVerified modifier)
+2. `block.timestamp < config.deadline` → `DeadlinePassed()` (beforeDeadline modifier)
+3. `state == TenderState.Bidding` → `InvalidState()` (inState modifier)
+4. `bidders.length < config.maxBidders` → `MaxBiddersReached()`
+5. `escrow.deposits(tenderId, msg.sender) >= config.escrowAmount` → `EscrowRequired()`
+6. `registry.getReputationScore(msg.sender) >= config.minReputation` → `InsufficientReputation()`
 
-**Events:** `BidSubmitted(address indexed bidder)`
+**Events:** `BidSubmitted(address indexed bidder, uint256 timestamp)` (new bid) or `BidUpdated(address indexed bidder, uint256 version)` (update)
 
-#### updateBid
+**Side Effects:** Calls `registry.recordBid(msg.sender)` if this contract is authorized
 
-```solidity
-function updateBid(
-    bytes calldata encPrice,
-    bytes calldata encYears,
-    bytes calldata encProjects,
-    bytes calldata encBond
-) external whenNotPaused
-```
-
-**Checks:**
-1. `state == Bidding` → `NotBidding()`
-2. `block.timestamp < deadline` → `DeadlinePassed()`
-3. `bids[msg.sender].exists` → `NotBidding()`
-
-**Events:** `BidUpdated(address indexed bidder, uint256 version)`
-
-#### startEvaluation
+#### evaluateBatch
 
 ```solidity
-function startEvaluation() external onlyOwner
+function evaluateBatch(uint256 startIdx, uint256 endIdx) external onlyOwner afterDeadline whenNotPaused
 ```
 
+Performs on-chain FHE evaluation of bids in the specified range. Automatically transitions state from Bidding to Evaluating on first call.
+
+**FHE Operations per bidder:**
+1. `FHE.ge(encYears, minYears)` — gate check
+2. `FHE.ge(encProjects, minProjects)` — gate check
+3. `FHE.ge(encBond, minBond)` — gate check
+4. `FHE.and()` — combine qualification results
+5. `FHE.select(qualified, encPrice, maxUint64)` — mask unqualified
+6. `FHE.lt(effectivePrice, currentMinPrice)` — price comparison
+7. `FHE.select(isLower, ...)` — update minimum price and winner index
+
 **Checks:**
-1. `state == Bidding` → `NotBidding()`
-2. `block.timestamp >= deadline` → `DeadlineNotPassed()`
-3. `_bidders.length > 0` → `NoBids()`
+1. `block.timestamp >= config.deadline` → `DeadlineNotPassed()` (afterDeadline)
+2. `state == Evaluating` (or Bidding on first call) → `NotEvaluating()`
+3. `startIdx < endIdx` → `InvalidRange()`
+4. `endIdx <= bidders.length` → `EndExceedsBidders()`
+5. `startIdx == evaluatedCount` → `MustEvaluateInOrder()`
 
-**State Change:** `Bidding → Evaluating`  
-**Events:** `EvaluationStarted()`
+**Events:** `EvaluationBatchCompleted(uint256 startIdx, uint256 endIdx)`, `EvaluationCompleted(uint256 totalBidders)` (when all evaluated)
 
-#### submitScore
+#### requestReveal
 
 ```solidity
-function submitScore(uint256 bidderIndex, uint256 score) external onlyOwner
+function requestReveal() external onlyOwner
 ```
 
-**Checks:**
-1. `state == Evaluating` → `NotEvaluating()`
-2. `bidderIndex == evaluatedCount` → `MustEvaluateInOrder()`
-3. `bidderIndex < _bidders.length` → `InvalidRange()`
+Makes the encrypted winner index and price publicly decryptable via `FHE.makePubliclyDecryptable()`. Stores handles for later verification.
 
-#### completeEvaluation
-
-```solidity
-function completeEvaluation() external onlyOwner
-```
-
-**Checks:**
-1. `state == Evaluating` → `NotEvaluating()`
-2. `evaluatedCount == _bidders.length` → `InvalidRange()`
-
-**State Change:** `Evaluating → Revealed`  
-**Events:** `EvaluationCompleted()`
+**Checks:** `evaluationComplete == true` → `EvaluationNotComplete()`, `!revealed` → `AlreadyRevealed()`  
+**Events:** `RevealRequested(bytes32 idxHandle, bytes32 priceHandle)`
 
 #### revealWinner
 
 ```solidity
-function revealWinner(uint256 winnerIndex, uint256 price) external onlyOwner
+function revealWinner(uint256 winnerIdx, uint256 price, bytes calldata decryptionProof) external onlyOwner
 ```
 
-**Checks:**
-1. `state == Revealed` → `NotRevealed()`
-2. `winnerIndex < _bidders.length` → `InvalidRange()`
+Verifies the KMS decryption proof using `FHE.checkSignatures()`, then stores the winner address and price.
 
-**State Change:** `Revealed → Completed`  
+**Checks:** `!revealed`, `winnerIdx < bidders.length`  
+**State Change:** `→ Revealed`  
+**Side Effects:** Calls `registry.recordWin(winnerAddress)` if authorized  
 **Events:** `WinnerRevealed(address winner, uint256 price)`
 
-#### cancel
+#### cancelTender
 
 ```solidity
-function cancel() external onlyOwner
+function cancelTender() external onlyOwner
 ```
 
 **State Change:** `Any → Cancelled`  
-**Events:** `TenderCancelled()`
+**Events:** `TenderCancelled(uint256 timestamp)`
 
 #### pause / unpause
 
@@ -241,44 +247,45 @@ function unpause() external onlyOwner
 
 ### Read Functions
 
-#### config
+#### getMyBid
 
 ```solidity
-function config() external view returns (
-    string description, uint256 deadline, uint32 weightYears,
-    uint32 weightProjects, uint32 weightBond, uint32 minYears,
-    uint32 minProjects, uint64 minBond, uint256 escrowAmount,
-    uint256 maxBidders, uint256 minReputation
+function getMyBid() external view returns (
+    euint64 encPrice, euint32 encYears, euint32 encProjects,
+    euint64 encBond, uint256 timestamp, uint256 version
 )
 ```
 
-#### bids
+Returns the caller's own encrypted bid data. Only the bid owner can decrypt via reencryption.
+
+#### getConfig
 
 ```solidity
-function bids(address bidder) external view returns (
-    bytes encPrice, bytes encYears, bytes encProjects,
-    bytes encBond, uint256 version, bool exists
-)
+function getConfig() external view returns (TenderConfig memory)
 ```
 
 #### getBidders
 
 ```solidity
-function getBidders(uint256 start, uint256 end) external view returns (address[] memory)
+function getBidders(uint256 offset, uint256 limit) external view returns (address[] memory)
 ```
 
-**Reverts:** `InvalidRange()`, `EndExceedsBidders()`
+Paginated bidder list. Returns empty array if offset >= total.
 
 #### Other Views
 
 ```solidity
 function tenderId() external view returns (uint256)
 function state() external view returns (TenderState)
-function winner() external view returns (address)
-function winnerPrice() external view returns (uint256)
+function winnerAddress() external view returns (address)
+function revealedPrice() external view returns (uint256)
+function revealed() external view returns (bool)
 function evaluatedCount() external view returns (uint256)
-function getBidderCount() external view returns (uint256)
-function getScore(uint256 index) external view returns (uint256)
+function evaluationComplete() external view returns (bool)
+function hasBid(address bidder) external view returns (bool)
+function getBidVersion(address bidder) external view returns (uint256)
+function winnerIdxHandle() external view returns (bytes32)
+function winnerPriceHandle() external view returns (bytes32)
 ```
 
 ---
@@ -512,7 +519,8 @@ function courtAuthority() external view returns (address)
 ## 7. PriceEscalation
 
 **Inheritance:** `Ownable2Step`  
-**Constructor:** `()`
+**Constructor:** `()`  
+**Dependencies:** `@chainlink/contracts AggregatorV3Interface`
 
 ### Constants
 
@@ -533,13 +541,22 @@ function setEscalationRule(
 ) external onlyOwner
 ```
 
+**Events:** `EscalationRuleSet(uint256 indexed tenderId, bytes32 materialId)`
+
 #### evaluateEscalation
 
 ```solidity
 function evaluateEscalation(uint256 tenderId, bytes32 materialId) external onlyOwner returns (uint256 extraPayment)
 ```
 
-**Reverts:** `NoRuleSet()`, `PeriodNotElapsed()`, `EscalationCapExceeded()`
+**Reverts:** `NoRuleSet()`, `PeriodNotElapsed()`, `EscalationCapExceeded()`, `InsufficientEscalationBudget(tenderId, required, available)`, `PaymentFailed()`
+
+**Side Effects:**
+- Updates `totalEscalationPaid[tenderId]`
+- Updates `rule.lastEvaluated` timestamp
+- If `tenderWinner[tenderId]` is set and budget sufficient, sends ETH to winner automatically
+
+**Events:** `EscalationTriggered(uint256 indexed tenderId, bytes32 materialId, uint256 extraPayment)`, `EscalationPayment(uint256 indexed tenderId, address indexed winner, uint256 amount)`
 
 #### updateOraclePrice
 
@@ -547,7 +564,28 @@ function evaluateEscalation(uint256 tenderId, bytes32 materialId) external onlyO
 function updateOraclePrice(bytes32 materialId, uint256 newPrice) external onlyOwner
 ```
 
-**Reverts:** `PriceChangeExceedsLimit()` — change > 50% of current price
+Manual fallback for materials without Chainlink feeds.
+
+**Reverts:** `PriceChangeExceedsLimit()` — change > 50% of current price  
+**Events:** `OraclePriceUpdated(bytes32 indexed materialId, uint256 newPrice)`
+
+#### setPriceFeed
+
+```solidity
+function setPriceFeed(bytes32 materialId, address feed) external onlyOwner
+```
+
+Links a Chainlink AggregatorV3Interface feed to a material ID. When set, `getLatestPrice()` reads from Chainlink instead of `latestPrices`.
+
+**Events:** `PriceFeedSet(bytes32 indexed materialId, address feed)`
+
+#### setTenderWinner
+
+```solidity
+function setTenderWinner(uint256 tenderId, address winner) external onlyOwner
+```
+
+Sets the winner address for automatic escalation payments. Called after tender evaluation is complete.
 
 #### setTenderPrice
 
@@ -555,13 +593,34 @@ function updateOraclePrice(bytes32 materialId, uint256 newPrice) external onlyOw
 function setTenderPrice(uint256 tenderId, uint256 price) external onlyOwner
 ```
 
+#### depositEscalationBudget
+
+```solidity
+function depositEscalationBudget(uint256 tenderId) external payable
+```
+
+Anyone (typically the municipality) can deposit ETH as escalation budget for a tender. The budget is consumed when `evaluateEscalation()` triggers auto-payment to the winner.
+
+**Events:** `EscalationBudgetDeposited(uint256 indexed tenderId, uint256 amount)`
+
 ### Read Functions
 
 ```solidity
 function getBaselinePrice(uint256 tenderId, bytes32 materialId) external view returns (uint256)
-function getLatestPrice(bytes32 materialId) external view returns (uint256)
+function getLatestPrice(bytes32 materialId) public view returns (uint256)
 function getTotalEscalation(uint256 tenderId) external view returns (uint256)
 function tenderPrice(uint256 tenderId) external view returns (uint256)
+function priceFeeds(bytes32 materialId) external view returns (address)
+function escalationBudget(uint256 tenderId) external view returns (uint256)
+function tenderWinner(uint256 tenderId) external view returns (address)
+```
+
+#### getLatestPrice Logic
+
+```solidity
+// 1. Check if Chainlink feed exists for this material
+// 2. If yes: call latestRoundData(), validate price > 0 and freshness < 1 day
+// 3. If no: fallback to manual latestPrices[materialId]
 ```
 
 ---
@@ -576,10 +635,24 @@ function tenderPrice(uint256 tenderId) external view returns (uint256)
 #### checkCollision
 
 ```solidity
-function checkCollision(uint256 tenderId, inEuint64[] calldata encPrices) external onlyOwner
+function checkCollision(
+    uint256 tenderId,
+    externalEuint64[] calldata encPrices,
+    bytes[] calldata proofs
+) external onlyOwner
 ```
 
-**Requirements:** `!collisionChecked[tenderId]`, `encPrices.length >= 2`, `encPrices.length <= 10`  
+Performs O(n^2) pairwise FHE equality checks on encrypted bid prices.
+
+**Requirements:**
+- `!collisionChecked[tenderId]` — "Already checked"
+- `encPrices.length >= 2` — "Need at least 2 bids"
+- `encPrices.length <= 10` — "Max 10 bids"
+- `encPrices.length == proofs.length` — "Length mismatch"
+
+**FHE Operations:** For each pair (i,j): `FHE.eq(prices[i], prices[j])` + `FHE.or(anyCollision, eq)`  
+**Post-operation:** `FHE.makePubliclyDecryptable(anyCollision)` + store handle
+
 **Events:** `CollisionCheckStarted(uint256 indexed tenderId, uint256 bidCount)`
 
 #### setCollisionResult
@@ -588,8 +661,8 @@ function checkCollision(uint256 tenderId, inEuint64[] calldata encPrices) extern
 function setCollisionResult(uint256 tenderId, bool result) external onlyOwner
 ```
 
-Called after Gateway decryption callback.  
-**Requirements:** `collisionChecked[tenderId]`  
+Called after Gateway decryption callback resolves the collision boolean.  
+**Requirements:** `collisionChecked[tenderId]` — "Not checked yet"  
 **Events:** `CollisionCheckCompleted(uint256 indexed tenderId, bool hasCollision)`
 
 ### Read Functions
@@ -598,4 +671,121 @@ Called after Gateway decryption callback.
 function collisionChecked(uint256 tenderId) external view returns (bool)
 function collisionDetected(uint256 tenderId) external view returns (bool)
 function collisionHandle(uint256 tenderId) external view returns (bytes32)
+function isCollisionDetected(uint256 tenderId) external view returns (bool checked, bool detected)
+```
+
+---
+
+## 9. ConfidentialUSDC
+
+**Inheritance:** `ZamaEthereumConfig`, `ERC7984`, `Ownable2Step`  
+**Constructor:** `(address initialOwner)`  
+**Token Standard:** ERC7984 (OpenZeppelin Confidential Contracts)
+
+### Constants
+
+```solidity
+uint256 public constant FAUCET_MAX = 10_000 * 1e6;    // 10,000 USDC
+uint256 public constant FAUCET_COOLDOWN = 1 hours;
+```
+
+### Admin Functions
+
+#### mint
+
+```solidity
+function mint(address to, uint256 amount) external onlyOwner
+```
+
+Mints encrypted cUSDC tokens to the specified address. Amount is converted to `euint64` via `FHE.asEuint64()`.
+
+**Events:** `Minted(address indexed to, uint256 amount)`
+
+#### burn
+
+```solidity
+function burn(address from, uint256 amount) external onlyOwner
+```
+
+Burns encrypted cUSDC tokens from the specified address.
+
+**Events:** `Burned(address indexed from, uint256 amount)`
+
+#### setUnderlyingUSDC
+
+```solidity
+function setUnderlyingUSDC(address _usdc) external onlyOwner
+```
+
+Sets the underlying USDC token address for wrap/unwrap functionality.
+
+**Events:** `UnderlyingUSDCSet(address indexed token)`
+
+### Wrap/Unwrap Functions
+
+#### wrap
+
+```solidity
+function wrap(uint256 amount) external
+```
+
+Transfers `amount` of underlying USDC from caller to contract, mints equivalent encrypted cUSDC.
+
+**Requirements:** `underlyingUSDC` must be set, amount > 0, caller must have approved contract  
+**Reverts:** `WrapDisabled()`, `WrapAmountZero()`  
+**Events:** `Wrapped(address indexed user, uint256 amount)`
+
+#### unwrap
+
+```solidity
+function unwrap(uint256 amount) external
+```
+
+Burns encrypted cUSDC from caller, transfers equivalent underlying USDC back.
+
+**Requirements:** `underlyingUSDC` must be set, amount > 0, caller must have sufficient cUSDC balance  
+**Reverts:** `WrapDisabled()`, `WrapAmountZero()`  
+**Events:** `Unwrapped(address indexed user, uint256 amount)`
+
+### Faucet
+
+#### faucet
+
+```solidity
+function faucet(uint256 amount) external
+```
+
+Testnet-only function that mints encrypted cUSDC without requiring underlying USDC.
+
+**Requirements:**
+- `amount > 0` — `FaucetAmountZero()`
+- `amount <= 10_000 * 1e6` — `FaucetAmountExceedsMax()`
+- `block.timestamp >= lastFaucetTime[sender] + 1 hour` — `FaucetCooldown()`
+
+**Events:** `FaucetUsed(address indexed user, uint256 amount)`
+
+---
+
+## 10. MockUSDC (Test Only)
+
+**Inheritance:** `ERC20`  
+**Constructor:** `()` — name "Mock USDC", symbol "USDC"
+
+```solidity
+function mint(address to, uint256 amount) external  // No access control (test only)
+function decimals() public pure override returns (uint8)  // Returns 6
+```
+
+---
+
+## 11. MockV3Aggregator (Test Only)
+
+Chainlink `AggregatorV3Interface` mock for PriceEscalation testing.
+
+```solidity
+constructor(uint8 decimals_, int256 initialPrice)
+function updateAnswer(int256 newPrice) external
+function setUpdatedAt(uint256 ts) external
+function latestRoundData() external view returns (uint80, int256, uint256, uint256, uint80)
+function decimals() external view returns (uint8)
 ```

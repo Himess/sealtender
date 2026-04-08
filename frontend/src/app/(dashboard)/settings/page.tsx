@@ -51,6 +51,7 @@ export default function SettingsPage() {
               </div>
               <button
                 onClick={() => copyToClipboard(address || "")}
+                aria-label="Copy wallet address"
                 className="text-[#666666] hover:text-[#888888] transition-colors"
               >
                 <Copy size={14} />
@@ -126,6 +127,7 @@ export default function SettingsPage() {
                   href={`https://sepolia.etherscan.io/address/${addr}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label={`View ${name} on Etherscan`}
                   className="text-[#666666] hover:text-[#888888] transition-colors"
                 >
                   <ExternalLink size={10} />

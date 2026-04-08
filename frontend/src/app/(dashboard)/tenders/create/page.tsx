@@ -117,6 +117,7 @@ export default function CreateTenderPage() {
       <div className="flex items-center gap-3">
         <Link
           href="/tenders"
+          aria-label="Back to tenders"
           className="w-8 h-8 rounded-lg bg-[#0D0F14] border border-[#1E2230] flex items-center justify-center text-[#888888] hover:text-[#F0F0F0] hover:border-[#00E87B]/30 transition-colors"
         >
           <ArrowLeft size={16} />
@@ -158,10 +159,11 @@ export default function CreateTenderPage() {
           <div className="space-y-4">
             {/* Description */}
             <div>
-              <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+              <label htmlFor="description" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                 Description
               </label>
               <textarea
+                id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe the procurement requirements..."
@@ -181,11 +183,12 @@ export default function CreateTenderPage() {
 
             {/* Deadline */}
             <div>
-              <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+              <label htmlFor="deadline" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                 <Calendar size={12} className="inline mr-1" />
                 Bidding Deadline
               </label>
               <input
+                id="deadline"
                 type="datetime-local"
                 value={deadline}
                 onChange={(e) => setDeadline(e.target.value)}
@@ -213,10 +216,11 @@ export default function CreateTenderPage() {
             </div>
 
             <div>
-              <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+              <label htmlFor="maxBidders" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                 Max Bidders
               </label>
               <input
+                id="maxBidders"
                 type="number"
                 min={1}
                 max={10}

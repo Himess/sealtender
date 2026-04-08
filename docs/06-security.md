@@ -249,7 +249,54 @@ These metadata leaks are equivalent to what is visible in traditional sealed-bid
 
 ---
 
-## 5. Comparison Matrix: Security Properties
+## 5. Additional Attack Vectors
+
+### Attack 10: KMS Collusion (Threshold Decryption)
+
+**Threat:** If Zama's KMS operators collude, they could decrypt all encrypted bid data.
+
+**Analysis:**
+- Current architecture relies on Zama's centralized KMS for key management
+- KMS uses a 9-of-13 threshold scheme internally (per Zama documentation)
+- Compromising 9 of 13 key holders would expose all FHE ciphertexts
+- This includes all bid prices, qualifications, and bond capacities
+
+**Residual Risk:** Critical dependency on Zama's operational security. No protocol-level mitigation exists in the current architecture.
+
+**Mitigation (Roadmap):** On-chain threshold decryption with community-operated key holders, eliminating single-vendor dependency.
+
+**Severity:** Critical if exploited, but requires compromising Zama's internal infrastructure.
+
+---
+
+### Attack 11: Flash Loan Attack
+
+**Threat:** An attacker uses a flash loan to temporarily meet escrow requirements.
+
+**Analysis:**
+- `BidEscrow.deposit()` accepts ETH via `msg.value` — no flash loan vector (ETH cannot be flash-borrowed in the same way as ERC-20)
+- Even if escrow were token-based, the deposit is held across transactions (not atomic)
+- Flash loans are single-transaction — the deposit would be locked before the loan expires
+
+**Severity:** Not applicable (ETH escrow model prevents flash loan attacks).
+
+---
+
+### Attack 12: Smart Contract Upgrade Attack
+
+**Threat:** An attacker exploits an upgrade mechanism to replace contract logic.
+
+**Analysis:**
+- SealTender contracts are NOT upgradeable — no proxy pattern, no DELEGATECALL
+- Each tender is a separate contract deployed by the factory
+- Factory address is stored in registry and escrow but cannot replace existing tenders
+- `Ownable2Step` prevents accidental ownership transfer
+
+**Severity:** Not applicable (non-upgradeable architecture by design).
+
+---
+
+## 6. Comparison Matrix: Security Properties
 
 | Property | SealTender | Commit-Reveal | MPC | TEE |
 |----------|-----------|---------------|-----|-----|
@@ -263,3 +310,18 @@ These metadata leaks are equivalent to what is visible in traditional sealed-bid
 | Liveness dependency | Owner | All parties | n-of-m | Hardware vendor |
 | Auditability | Full on-chain | Full on-chain | Partial | Attestation logs |
 | Gas cost | High (~23M) | Low (~100K) | Off-chain | Off-chain |
+| KMS dependency | Zama (centralized) | None | Distributed | Hardware vendor |
+| Upgrade risk | None (immutable) | None | Protocol-dependent | Firmware updates |
+
+---
+
+## 7. Mitigation Strategy Summary
+
+| Risk | Current Status | Short-term | Long-term |
+|------|---------------|------------|-----------|
+| KMS compromise | Accepted | Monitor Zama security bulletins | Threshold decryption |
+| Malicious owner | Partial | Multi-sig (Gnosis Safe) | DAO + timelock controller |
+| Sybil attack | Weak | Rate limiting + higher escrow | WorldID + Polygon ID |
+| Oracle manipulation | Improved (Chainlink) | Multi-oracle consensus | TWAP + median oracle |
+| Citizen complaint spam | Not mitigated | Per-address rate limit | Reputation-gated complaints |
+| Gas cost DoS | Bounded (max 10) | Batch evaluation | L2 FHE deployment |

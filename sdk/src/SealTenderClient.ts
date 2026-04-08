@@ -46,6 +46,14 @@ import {
   materialIdToBytes32,
 } from "./utils";
 
+import {
+  FHEEncryptionError,
+  ContractCallError,
+  TransactionError,
+  ValidationError,
+  WalletNotConnectedError,
+} from "./errors";
+
 /**
  * SealTenderClient provides a high-level TypeScript API for the SealTender protocol.
  *
@@ -156,7 +164,7 @@ export class SealTenderClient {
 
     const provider = this.signer.provider;
     if (!provider) {
-      throw new Error("Signer must be connected to a provider for FHE operations");
+      throw new WalletNotConnectedError();
     }
 
     const network = await provider.getNetwork();
@@ -187,28 +195,35 @@ export class SealTenderClient {
     await this.initFhevm();
 
     if (!this.fhevmInstance) {
-      throw new Error("FHE instance not initialized");
+      throw new FHEEncryptionError("FHE instance not initialized");
     }
 
     const signerAddress = await this.signer.getAddress();
 
-    const input = this.fhevmInstance.createEncryptedInput(
-      tenderAddress as `0x${string}`,
-      signerAddress as `0x${string}`
-    );
+    try {
+      const input = this.fhevmInstance.createEncryptedInput(
+        tenderAddress as `0x${string}`,
+        signerAddress as `0x${string}`
+      );
 
-    // Encrypt all 4 bid fields: price (uint64), years (uint32), projects (uint32), bond (uint64)
-    input.add64(bid.price);
-    input.add32(bid.yearsExperience);
-    input.add32(bid.completedProjects);
-    input.add64(bid.bondCapacity);
+      // Encrypt all 4 bid fields: price (uint64), years (uint32), projects (uint32), bond (uint64)
+      input.add64(bid.price);
+      input.add32(bid.yearsExperience);
+      input.add32(bid.completedProjects);
+      input.add64(bid.bondCapacity);
 
-    const encrypted = await input.encrypt();
+      const encrypted = await input.encrypt();
 
-    return {
-      handles: encrypted.handles,
-      inputProof: encrypted.inputProof,
-    };
+      return {
+        handles: encrypted.handles,
+        inputProof: encrypted.inputProof,
+      };
+    } catch (err) {
+      if (err instanceof FHEEncryptionError) throw err;
+      throw new FHEEncryptionError(
+        err instanceof Error ? err.message : "Failed to encrypt bid data"
+      );
+    }
   }
 
   // ─── Tender Lifecycle ───────────────────────────────────────────────────
@@ -253,7 +268,11 @@ export class SealTenderClient {
       .find((e: ethers.LogDescription | null) => e?.name === "TenderCreated");
 
     if (!event) {
-      throw new Error("TenderCreated event not found in transaction receipt");
+      throw new ContractCallError(
+        "TenderCreated event not found in transaction receipt",
+        "TenderFactory",
+        "createTender"
+      );
     }
 
     return {
@@ -504,8 +523,9 @@ export class SealTenderClient {
     scores: bigint[]
   ): Promise<void> {
     if (scores.length !== endIdx - startIdx) {
-      throw new Error(
-        `Score count (${scores.length}) must match range (${endIdx - startIdx})`
+      throw new ValidationError(
+        `Score count (${scores.length}) must match range (${endIdx - startIdx})`,
+        "scores"
       );
     }
 
@@ -529,8 +549,9 @@ export class SealTenderClient {
   ): Promise<void> {
     const count = await this.getBidderCount(tenderAddress);
     if (BigInt(scores.length) !== count) {
-      throw new Error(
-        `Score count (${scores.length}) must match bidder count (${count})`
+      throw new ValidationError(
+        `Score count (${scores.length}) must match bidder count (${count})`,
+        "scores"
       );
     }
 
@@ -880,7 +901,11 @@ export class SealTenderClient {
       .find((e: ethers.LogDescription | null) => e?.name === "DisputeFiled");
 
     if (!event) {
-      throw new Error("DisputeFiled event not found in transaction receipt");
+      throw new ContractCallError(
+        "DisputeFiled event not found in transaction receipt",
+        "DisputeManager",
+        "fileCompanyComplaint"
+      );
     }
 
     return event.args[0];
@@ -920,7 +945,11 @@ export class SealTenderClient {
       .find((e: ethers.LogDescription | null) => e?.name === "DisputeFiled");
 
     if (!event) {
-      throw new Error("DisputeFiled event not found in transaction receipt");
+      throw new ContractCallError(
+        "DisputeFiled event not found in transaction receipt",
+        "DisputeManager",
+        "fileCitizenComplaint"
+      );
     }
 
     return event.args[0];

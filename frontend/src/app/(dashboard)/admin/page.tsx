@@ -254,11 +254,11 @@ export default function AdminPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-[#1E2230]">
-                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Name</th>
-                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Address</th>
-                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Reg. ID</th>
-                  <th className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Status</th>
-                  <th className="text-right px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Action</th>
+                  <th scope="col" className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Name</th>
+                  <th scope="col" className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Address</th>
+                  <th scope="col" className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Reg. ID</th>
+                  <th scope="col" className="text-left px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Status</th>
+                  <th scope="col" className="text-right px-5 py-[14px] font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -350,6 +350,7 @@ export default function AdminPage() {
                 </span>
                 <button
                   onClick={() => copyToClipboard(addr)}
+                  aria-label={`Copy ${name} address`}
                   className="text-[#666666] hover:text-[#888888] transition-colors"
                 >
                   <Copy size={12} />
@@ -358,6 +359,7 @@ export default function AdminPage() {
                   href={`https://sepolia.etherscan.io/address/${addr}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label={`View ${name} on Etherscan`}
                   className="text-[#666666] hover:text-[#888888] transition-colors"
                 >
                   <ExternalLink size={12} />
@@ -378,6 +380,7 @@ export default function AdminPage() {
               </h3>
               <button
                 onClick={() => setShowAddModal(false)}
+                aria-label="Close modal"
                 className="text-[#666666] hover:text-[#F0F0F0] transition-colors"
               >
                 <X size={18} />
@@ -405,10 +408,11 @@ export default function AdminPage() {
             ) : (
               <>
                 <div>
-                  <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                  <label htmlFor="bidderWalletAddr" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                     Wallet Address
                   </label>
                   <input
+                    id="bidderWalletAddr"
                     type="text"
                     value={newBidderAddr}
                     onChange={(e) => setNewBidderAddr(e.target.value)}
@@ -417,10 +421,11 @@ export default function AdminPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                  <label htmlFor="bidderCompanyName" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                     Company Name
                   </label>
                   <input
+                    id="bidderCompanyName"
                     type="text"
                     value={newBidderName}
                     onChange={(e) => setNewBidderName(e.target.value)}
@@ -429,10 +434,11 @@ export default function AdminPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                  <label htmlFor="bidderRegId" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                     Registration ID
                   </label>
                   <input
+                    id="bidderRegId"
                     type="text"
                     value={newBidderRegId}
                     onChange={(e) => setNewBidderRegId(e.target.value)}

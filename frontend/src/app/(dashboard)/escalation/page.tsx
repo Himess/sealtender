@@ -135,10 +135,11 @@ export default function EscalationPage() {
 
       {/* Tender Selector */}
       <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6">
-        <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-2">
+        <label htmlFor="selectTender" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-2">
           Select Tender
         </label>
         <select
+          id="selectTender"
           value={selectedTender}
           onChange={(e) => setSelectedTender(e.target.value)}
           className="w-full md:w-64 px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
@@ -204,10 +205,11 @@ export default function EscalationPage() {
         </h2>
         <div className="flex gap-3 items-end">
           <div className="flex-1">
-            <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+            <label htmlFor="checkMaterialName" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
               Material Name
             </label>
             <input
+              id="checkMaterialName"
               type="text"
               value={checkMaterial}
               onChange={(e) => setCheckMaterial(e.target.value)}
@@ -299,6 +301,7 @@ export default function EscalationPage() {
               </h3>
               <button
                 onClick={() => setShowTrackModal(false)}
+                aria-label="Close modal"
                 className="text-[#666666] hover:text-[#F0F0F0] transition-colors"
               >
                 <X size={18} />
@@ -325,10 +328,11 @@ export default function EscalationPage() {
             ) : (
               <>
                 <div>
-                  <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                  <label htmlFor="trackMaterialName" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                     Material Name
                   </label>
                   <input
+                    id="trackMaterialName"
                     type="text"
                     value={materialName}
                     onChange={(e) => setMaterialName(e.target.value)}
@@ -337,10 +341,11 @@ export default function EscalationPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                  <label htmlFor="trackBaselinePrice" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                     Baseline Price (wei)
                   </label>
                   <input
+                    id="trackBaselinePrice"
                     type="number"
                     value={baselinePrice}
                     onChange={(e) => setBaselinePrice(e.target.value)}

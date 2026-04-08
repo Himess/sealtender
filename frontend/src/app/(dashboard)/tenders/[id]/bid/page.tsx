@@ -210,6 +210,7 @@ export default function BidPage({
       <div className="flex items-center gap-3">
         <Link
           href={`/tenders/${id}`}
+          aria-label="Back to tender details"
           className="w-8 h-8 rounded-lg bg-[#0D0F14] border border-[#1E2230] flex items-center justify-center text-[#888888] hover:text-[#F0F0F0] hover:border-[#00E87B]/30 transition-colors"
         >
           <ArrowLeft size={16} />
@@ -287,10 +288,11 @@ export default function BidPage({
 
             <div className="space-y-4">
               <div>
-                <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                <label htmlFor="bidPrice" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                   Bid Price (USDC)
                 </label>
                 <input
+                  id="bidPrice"
                   type="number"
                   step="0.01"
                   value={price}
@@ -301,10 +303,11 @@ export default function BidPage({
               </div>
 
               <div>
-                <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                <label htmlFor="deliveryYears" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                   Delivery Timeline (Years)
                 </label>
                 <input
+                  id="deliveryYears"
                   type="number"
                   min="1"
                   value={deliveryYears}
@@ -315,10 +318,11 @@ export default function BidPage({
               </div>
 
               <div>
-                <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                <label htmlFor="pastProjects" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                   Past Projects
                 </label>
                 <input
+                  id="pastProjects"
                   type="number"
                   min="0"
                   value={pastProjects}
@@ -329,10 +333,11 @@ export default function BidPage({
               </div>
 
               <div>
-                <label className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                <label htmlFor="bondAmount" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
                   Bond Amount (ETH)
                 </label>
                 <input
+                  id="bondAmount"
                   type="number"
                   step="0.001"
                   value={bondAmount}

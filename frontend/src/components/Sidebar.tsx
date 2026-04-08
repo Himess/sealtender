@@ -56,6 +56,7 @@ export function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={isActive ? "page" : undefined}
                 className={`flex items-center gap-[10px] w-full py-[10px] px-3 transition-all ${
                   isActive
                     ? "bg-[#151820] rounded-[6px]"
@@ -86,6 +87,7 @@ export function Sidebar() {
         {/* Settings Link */}
         <Link
           href="/settings"
+          aria-current={pathname === "/settings" ? "page" : undefined}
           className={`flex items-center gap-[10px] py-2 transition-all ${
             pathname === "/settings"
               ? "text-[#F0F0F0]"

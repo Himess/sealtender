@@ -3,24 +3,29 @@
 ## Sözleşme Mimarisi
 
 ```
-ISealTender.sol          ← Shared enums, structs, events interface
-IBidderRegistry.sol      ← Registry interface
+interfaces/
+│   ├── ISealTender.sol          ← Shared enums (TenderState, DisputeType, etc.), structs, events
+│   └── IBidderRegistry.sol      ← Registry interface (isVerified, getReputationScore, record*)
 │
 ├── core/
-│   ├── TenderFactory.sol     ← Creates & tracks tenders (owner: municipality)
-│   ├── EncryptedTender.sol   ← Single tender with FHE bids (Pausable)
-│   └── BidEscrow.sol         ← ETH escrow (Ownable2Step, ReentrancyGuard)
+│   ├── TenderFactory.sol     ← Creates & tracks tenders, 2 constructor args (registry, escrow)
+│   ├── EncryptedTender.sol   ← FHE bids with on-chain evaluation (Ownable2Step, Pausable)
+│   └── BidEscrow.sol         ← ETH escrow with freeze/slash (Ownable2Step, ReentrancyGuard)
 │
 ├── identity/
-│   └── BidderRegistry.sol    ← KYC whitelist + reputation (Ownable2Step)
+│   └── BidderRegistry.sol    ← KYC whitelist + on-chain reputation (Ownable2Step)
 │
 ├── modules/
-│   ├── DisputeManager.sol    ← Complaints & slash (3 params: escrow, municipality, registry)
-│   ├── PriceEscalation.sol   ← Oracle-based material price adjustment
-│   └── CollisionDetector.sol ← FHE pairwise equality detection
+│   ├── DisputeManager.sol    ← Complaints & slash, 3 constructor params (escrow, municipality, registry)
+│   ├── PriceEscalation.sol   ← Chainlink AggregatorV3Interface + manual fallback + auto-payment
+│   └── CollisionDetector.sol ← FHE pairwise equality detection (ZamaEthereumConfig)
 │
-└── token/
-    └── MockUSDC.sol          ← Test ERC-20 token
+├── token/
+│   └── ConfidentialUSDC.sol  ← FHE-encrypted ERC7984 token with wrap/unwrap + faucet
+│
+└── test/
+    ├── MockUSDC.sol          ← Standard ERC-20 test token (6 decimals)
+    └── MockV3Aggregator.sol  ← Chainlink AggregatorV3Interface mock for testing
 ```
 
 ---
@@ -77,88 +82,127 @@ struct EscalationRule {
 
 ## TenderFactory.sol
 
-**Role:** Tender deployment and tracking. Auto-authorizes new tenders in BidderRegistry.
+**Role:** Tender deployment and tracking. Inherits `Ownable2Step`. Auto-authorizes new tenders in BidderRegistry and sets required deposit in BidEscrow.
+
+### Constructor
+
+```solidity
+constructor(address _registry, address _escrow)
+```
+
+Takes 2 parameters: registry and escrow addresses. Validates neither is zero.
 
 ### Functions
 
 | Function | Signature | Access |
 |----------|-----------|--------|
-| constructor | `(address _registry)` | — |
-| createTender | `(TenderConfig calldata _config) → address` | onlyOwner |
+| createTender | `(TenderConfig calldata _config) → (uint256 tenderId, address tenderAddress)` | onlyOwner |
 | setDisputeManager | `(address _dm)` | onlyOwner |
 | setEscalation | `(address _esc)` | onlyOwner |
 | setCollisionDetector | `(address _cd)` | onlyOwner |
-| getTenders | `(uint256 start, uint256 end) → address[]` | view |
-| getTenderCount | `() → uint256` | view |
-| tenderById | `(uint256) → address` | view |
+| getTender | `(uint256 id) → address` | view |
+| getTenderConfig | `(uint256 id) → TenderConfig` | view |
+| getAllTenders | `() → address[]` | view |
+| getTenders | `(uint256 offset, uint256 limit) → address[]` | view (paginated) |
+
+### createTender Side Effects
+
+1. Deploys a new `EncryptedTender` contract
+2. Stores address in `tenders[tenderId]` and config in `tenderConfigs[tenderId]`
+3. Calls `BidEscrow.setRequiredDeposit(tenderId, escrowAmount)` if escrow > 0
+4. Calls `BidderRegistry.addAuthorizedCaller(tenderAddress)` so the tender can record bids/wins
 
 ### Events
 
 - `TenderCreated(uint256 indexed tenderId, address tenderContract, string description)`
-- `DisputeManagerSet(address indexed disputeManager)`
-- `EscalationSet(address indexed escalation)`
-- `CollisionDetectorSet(address indexed collisionDetector)`
+- `DisputeManagerSet(address indexed dm)`
+- `EscalationSet(address indexed esc)`
+- `CollisionDetectorSet(address indexed cd)`
 
 ### Validation
 
 - `_config.deadline > block.timestamp`
-- `_config.maxBidders > 0 && _config.maxBidders <= 10`
+- `_config.maxBidders > 0`
 
 ---
 
 ## EncryptedTender.sol
 
-**Role:** Single tender instance. Manages FHE-encrypted bids, evaluation, and winner revelation.
+**Role:** Single tender instance. Manages FHE-encrypted bids with on-chain evaluation using real TFHE operations. Inherits `ZamaEthereumConfig`, `Ownable2Step`, `Pausable`.
 
-### EncryptedBid Struct (Internal)
+### BidData Struct (Internal)
 
 ```solidity
-struct EncryptedBid {
-    bytes encPrice;
-    bytes encYears;
-    bytes encProjects;
-    bytes encBond;
-    uint256 version;
-    bool exists;
+struct BidData {
+    euint64 encPrice;     // FHE-encrypted price
+    euint32 encYears;     // FHE-encrypted experience years
+    euint32 encProjects;  // FHE-encrypted completed projects
+    euint64 encBond;      // FHE-encrypted bond capacity
+    uint256 timestamp;    // Block timestamp of submission
+    uint256 version;      // Update counter
 }
 ```
+
+**Note:** Bid data is stored as actual FHE types (`euint64`, `euint32`), not raw bytes. This enables on-chain FHE evaluation in `evaluateBatch()`.
+
+### Constructor
+
+```solidity
+constructor(uint256 _tenderId, TenderConfig memory _config, address _registry, address _escrow)
+```
+
+Takes 4 parameters. Created by TenderFactory, which passes registry and escrow addresses.
 
 ### Functions
 
 | Function | Signature | Access |
 |----------|-----------|--------|
-| constructor | `(uint256 _tenderId, TenderConfig, address _registry, address _owner)` | — |
-| submitBid | `(bytes encPrice, bytes encYears, bytes encProjects, bytes encBond)` | verified bidder |
-| updateBid | `(bytes encPrice, bytes encYears, bytes encProjects, bytes encBond)` | existing bidder |
-| startEvaluation | `()` | onlyOwner |
-| submitScore | `(uint256 bidderIndex, uint256 score)` | onlyOwner |
-| completeEvaluation | `()` | onlyOwner |
-| revealWinner | `(uint256 winnerIndex, uint256 price)` | onlyOwner |
-| cancel | `()` | onlyOwner |
-| pause | `()` | onlyOwner |
-| unpause | `()` | onlyOwner |
-| getBidders | `(uint256 start, uint256 end) → address[]` | view |
-| getBidderCount | `() → uint256` | view |
-| getScore | `(uint256 index) → uint256` | view |
+| submitBid | `(externalEuint64 price, bytes proof, externalEuint32 years, bytes proof, externalEuint32 projects, bytes proof, externalEuint64 bond, bytes proof)` | onlyVerified, beforeDeadline |
+| evaluateBatch | `(uint256 startIdx, uint256 endIdx)` | onlyOwner, afterDeadline |
+| requestReveal | `()` | onlyOwner (after evaluation complete) |
+| revealWinner | `(uint256 winnerIdx, uint256 price, bytes decryptionProof)` | onlyOwner |
+| cancelTender | `()` | onlyOwner |
+| pause / unpause | `()` | onlyOwner |
+| getMyBid | `() → (euint64, euint32, euint32, euint64, uint256, uint256)` | view (msg.sender only) |
+| getBidVersion | `(address bidder) → uint256` | view |
+| getConfig | `() → TenderConfig` | view |
+| getBidders | `(uint256 offset, uint256 limit) → address[]` | view |
+
+### On-Chain FHE Evaluation Flow
+
+`evaluateBatch()` performs real FHE operations on-chain:
+
+1. **Gate Check:** For each bidder, `FHE.ge()` compares encrypted qualifications against minimums
+2. **Qualification:** `FHE.and()` combines gate results into a single `ebool qualified`
+3. **Price Masking:** `FHE.select(qualified, encPrice, maxUint64)` masks unqualified bids
+4. **Ranking:** `FHE.lt()` + `FHE.select()` track minimum price and winner index
+5. **Batch Support:** Can evaluate in multiple batches via `startIdx`/`endIdx`
 
 ### State Transitions
 
 ```
-Bidding → [startEvaluation] → Evaluating → [completeEvaluation] → Revealed → [revealWinner] → Completed
-   ↓                              ↓                                    ↓
-[cancel]                      [cancel]                             [cancel]
-   ↓                              ↓                                    ↓
-Cancelled                    Cancelled                            Cancelled
+Bidding → [evaluateBatch] → Evaluating → [evaluateBatch complete] → evaluationComplete=true
+                                                 ↓
+                                          [requestReveal] → FHE.makePubliclyDecryptable()
+                                                 ↓
+                                          [revealWinner] → Revealed (with KMS signature check)
+   ↓
+[cancelTender] → Cancelled (from any state)
 ```
 
-### Bid Submission Checks
+### Bid Submission Flow
 
-1. `state == Bidding`
-2. `block.timestamp < deadline`
-3. `!bids[msg.sender].exists` (no duplicate)
-4. `_bidders.length < maxBidders`
-5. `registry.isVerified(msg.sender)`
-6. `registry.getReputationScore(msg.sender) >= minReputation`
+The `submitBid()` function handles both new bids and updates (if `hasBid[sender]` is true):
+
+1. `state == Bidding` (inState modifier)
+2. `block.timestamp < deadline` (beforeDeadline modifier)
+3. `registry.isVerified(msg.sender)` (onlyVerified modifier)
+4. `bidders.length < config.maxBidders` (MaxBiddersReached check)
+5. `escrow.deposits(tenderId, msg.sender) >= config.escrowAmount` (EscrowRequired check)
+6. `registry.getReputationScore(msg.sender) >= config.minReputation` (InsufficientReputation check)
+7. `FHE.fromExternal()` validates and converts encrypted inputs
+8. `FHE.allowThis()` + `FHE.allow(sender)` sets permissions
+9. Records bid in registry via `registry.recordBid()`
 
 ---
 
@@ -280,6 +324,8 @@ Dismissed:
 
 ## PriceEscalation.sol
 
+**Role:** Material price escalation with Chainlink AggregatorV3Interface integration and automatic payment to tender winners. Inherits `Ownable2Step`.
+
 ### Functions
 
 | Function | Signature | Access |
@@ -289,9 +335,35 @@ Dismissed:
 | evaluateEscalation | `(uint256 tenderId, bytes32 materialId) → uint256 extraPayment` | onlyOwner |
 | updateOraclePrice | `(bytes32 materialId, uint256 newPrice)` | onlyOwner |
 | setTenderPrice | `(uint256 tenderId, uint256 price)` | onlyOwner |
+| **setPriceFeed** | `(bytes32 materialId, address feed)` | onlyOwner |
+| **setTenderWinner** | `(uint256 tenderId, address winner)` | onlyOwner |
+| **depositEscalationBudget** | `(uint256 tenderId) payable` | anyone |
 | getBaselinePrice | `(uint256 tenderId, bytes32 materialId) → uint256` | view |
 | getLatestPrice | `(bytes32 materialId) → uint256` | view |
 | getTotalEscalation | `(uint256 tenderId) → uint256` | view |
+
+### Chainlink Integration
+
+```solidity
+function getLatestPrice(bytes32 materialId) public view returns (uint256) {
+    address feed = priceFeeds[materialId];
+    if (feed != address(0)) {
+        (, int256 price,, uint256 updatedAt,) = AggregatorV3Interface(feed).latestRoundData();
+        require(price > 0, "Invalid oracle price");
+        require(block.timestamp - updatedAt < 1 days, "Stale oracle data");
+        return uint256(price);
+    }
+    return latestPrices[materialId]; // fallback to manual
+}
+```
+
+### Auto-Payment Flow
+
+`evaluateEscalation()` sonunda, eğer `tenderWinner[tenderId]` ve `escalationBudget[tenderId]` set edilmişse:
+
+1. Winner adresine `extraPayment` kadar ETH otomatik gönderilir
+2. `escalationBudget` azaltılır
+3. Yetersiz bütçede `InsufficientEscalationBudget(tenderId, required, available)` revert
 
 ### Constants
 
@@ -335,20 +407,64 @@ FHE.makePubliclyDecryptable(anyCollision)
 
 ---
 
-## Test Özeti
+## ConfidentialUSDC.sol
 
-**Toplam: 258 test**
+**Role:** FHE-encrypted ERC7984 token backed by USDC. Inherits `ZamaEthereumConfig`, `ERC7984`, `Ownable2Step`.
 
-| Modül | Test Sayısı |
+### Constructor
+
+```solidity
+constructor(address initialOwner) ERC7984("Confidential USDC", "cUSDC", "") Ownable(initialOwner)
+```
+
+### Functions
+
+| Function | Signature | Access |
+|----------|-----------|--------|
+| mint | `(address to, uint256 amount)` | onlyOwner |
+| burn | `(address from, uint256 amount)` | onlyOwner |
+| setUnderlyingUSDC | `(address _usdc)` | onlyOwner |
+| wrap | `(uint256 amount)` | anyone (requires USDC approval) |
+| unwrap | `(uint256 amount)` | anyone |
+| faucet | `(uint256 amount)` | anyone (max 10,000 USDC, 1 hour cooldown) |
+
+### Constants
+
+- `FAUCET_MAX = 10_000 * 1e6` (10,000 USDC)
+- `FAUCET_COOLDOWN = 1 hours`
+
+### Wrap/Unwrap Flow
+
+1. User approves ConfidentialUSDC to spend their USDC
+2. `wrap(amount)`: transfers USDC from user, mints encrypted cUSDC
+3. `unwrap(amount)`: burns encrypted cUSDC, transfers USDC back to user
+4. If `underlyingUSDC` not set, wrap/unwrap revert with `WrapDisabled()`
+
+---
+
+## MockV3Aggregator.sol (Test Helper)
+
+Chainlink AggregatorV3Interface mock for testing PriceEscalation. Provides `updateAnswer(int256)` and `setUpdatedAt(uint256)` for test scenarios.
+
+---
+
+## Test Ozeti
+
+**Toplam: 367 test**
+
+| Modul | Test Sayisi |
 |-------|-------------|
+| BidEscrow | 62 |
+| BidderRegistry | 32 |
+| EncryptedTender | 35 |
 | TenderFactory | 28 |
-| EncryptedTender | 52 |
-| BidEscrow | 48 |
-| BidderRegistry | 36 |
-| DisputeManager | 38 |
-| PriceEscalation | 26 |
-| CollisionDetector | 14 |
-| Integration (E2E) | 16 |
+| DisputeManager | 31 |
+| PriceEscalation | 27 |
+| CollisionDetector | 13 |
+| ConfidentialUSDC | 26 |
+| EdgeCases | 78 |
+| GasBenchmark | 16 |
+| Integration (E2E) | 19 |
 
 ### Test Kategorileri
 
@@ -361,21 +477,25 @@ FHE.makePubliclyDecryptable(anyCollision)
 
 ---
 
-## Dağıtım Sırası
+## Dagitim Sirasi
 
 ```
 1. BidderRegistry (initialOwner = deployer)
-2. TenderFactory (registry address)
-3. BidEscrow ()
-4. DisputeManager (escrow, municipality, registry)
-5. PriceEscalation ()
-6. CollisionDetector ()
-7. MockUSDC ()
+2. BidEscrow ()
+3. ConfidentialUSDC (initialOwner = deployer)
+4. TenderFactory (registry.address, escrow.address)
+5. DisputeManager (escrow.address, deployer, registry.address)
+6. PriceEscalation ()
+7. CollisionDetector ()
 
 Post-deploy setup:
-- factory.setDisputeManager(disputeManager)
-- factory.setEscalation(escalation)
-- factory.setCollisionDetector(collisionDetector)
-- escrow.authorizeCaller(disputeManager)
-- registry.addAuthorizedCaller(disputeManager)
+- escrow.authorizeCaller(factory.address)        — Factory can set required deposits
+- registry.addAuthorizedCaller(factory.address)   — Factory can authorize new tenders
+- registry.addAuthorizedCaller(disputeManager.address) — DM can record slashes
+- escrow.authorizeCaller(disputeManager.address)  — DM can slash escrow (CRITICAL)
+- factory.setDisputeManager(disputeManager.address)
+- factory.setEscalation(escalation.address)
+- factory.setCollisionDetector(collisionDetector.address)
 ```
+
+**Not:** Factory'nin escrow'da authorize edilmesi zorunludur, aksi halde `createTender()` icindeki `setRequiredDeposit()` cagrisi revert eder.

@@ -185,6 +185,7 @@ export default function TendersPage() {
           <input
             type="text"
             placeholder="Search tenders by description..."
+            aria-label="Search tenders"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"

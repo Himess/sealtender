@@ -60,5 +60,15 @@ export {
   depositStatusLabel,
 } from "./utils";
 
+// ─── Errors ─────────────────────────────────────────────────────────────────
+export {
+  SealTenderError,
+  FHEEncryptionError,
+  ContractCallError,
+  TransactionError,
+  ValidationError,
+  WalletNotConnectedError,
+} from "./errors";
+
 // ─── Client ─────────────────────────────────────────────────────────────────
 export { SealTenderClient } from "./SealTenderClient";

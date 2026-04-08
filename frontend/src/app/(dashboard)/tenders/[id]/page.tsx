@@ -109,6 +109,7 @@ export default function TenderDetailPage({
         <div className="flex items-center gap-3">
           <Link
             href="/tenders"
+            aria-label="Back to tenders"
             className="w-8 h-8 rounded-lg bg-[#0D0F14] border border-[#1E2230] flex items-center justify-center text-[#888888] hover:text-[#F0F0F0] hover:border-[#00E87B]/30 transition-colors"
           >
             <ArrowLeft size={16} />
@@ -248,6 +249,7 @@ export default function TenderDetailPage({
           href={`https://sepolia.etherscan.io/address/${addr}`}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label="View contract on Etherscan"
           className="flex items-center gap-2 px-4 py-[10px] bg-[#0D0F14] border border-[#1E2230] text-[#888888] rounded-[6px] text-sm hover:border-[#00E87B]/30 transition-colors"
         >
           <ExternalLink size={14} />

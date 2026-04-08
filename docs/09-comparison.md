@@ -169,8 +169,85 @@
 
 ---
 
+## Part 4: Detailed Feature Comparison
+
+### Evaluation Methodology
+
+SealTender uses a two-stage Gate + Price Ranking model, while alternatives vary:
+
+| System | Evaluation Method | Objectivity | On-chain |
+|--------|------------------|-------------|----------|
+| SealTender | FHE gate check + encrypted price ranking | Fully deterministic | Yes |
+| EKAP | Human committee + software scoring | Semi-subjective | No |
+| TED | MEAT criteria (quality + price) | Standardized but flexible | No |
+| SAM.gov | FAR-compliant best value | Multi-factor scoring | No |
+| Commit-Reveal | Off-chain after reveal | Depends on implementation | Partial |
+| MPC | Secret-shared computation | Deterministic | No |
+
+### Dispute Resolution Comparison
+
+| System | Dispute Process | Speed | Cost | Transparency |
+|--------|----------------|-------|------|-------------|
+| SealTender | On-chain stake/slash (0.01 ETH) | Seconds (tx) | ~$5 gas | Full on-chain |
+| EKAP | Administrative courts | Months | Legal fees | Closed proceedings |
+| TED | National review bodies | Weeks-months | Varies | Published decisions |
+| SAM.gov | GAO protest, Court of Claims | 100 days (GAO) | Legal fees | FOIA-accessible |
+
+### Identity and Access
+
+| System | Identity Model | Sybil Resistance | Privacy |
+|--------|---------------|-------------------|---------|
+| SealTender | Mock KYC whitelist + reputation | Weak (hackathon) | Address only |
+| EKAP | Government ID + tax records | Strong | Full identity known |
+| TED | National registration | Strong | Published in TED |
+| SAM.gov | DUNS/UEI + SAM registration | Strong | Published in FPDS |
+| Commit-Reveal | None (permissionless) | None | Address only |
+
+### Price Adjustment Mechanisms
+
+| System | Price Adjustment | Trigger | Automation |
+|--------|-----------------|---------|------------|
+| SealTender | Chainlink oracle + auto-payment | Threshold exceeded | Fully automatic |
+| EKAP | Ministerial decree | Government decision | Manual |
+| TED | Contract amendment | Negotiation | Manual |
+| SAM.gov | EPA/REA clause | Request + approval | Semi-manual |
+
+---
+
+## Part 5: When to Use What
+
+### Use SealTender When:
+- Bid confidentiality is the primary concern
+- The procurement is high-value (>$100K) where gas costs are negligible
+- On-chain auditability and immutability are required
+- You need mathematical (not institutional) trust guarantees
+- Fewer than 10 qualified firms are expected
+
+### Use Traditional Systems When:
+- Legal compliance requires a recognized platform (EKAP, TED, SAM.gov)
+- Thousands of bidders need to participate
+- Complex evaluation criteria (MEAT, best-value) are required
+- Subcontracting, set-asides, or multi-year contract management is needed
+- Gas costs are prohibitive for the procurement value
+
+### Use Commit-Reveal When:
+- Losing bid privacy is acceptable
+- Gas cost must be minimal
+- Simple price-only evaluation is sufficient
+- No on-chain computation during evaluation is needed
+
+### Use MPC When:
+- Established trusted parties can coordinate
+- Large-scale computation is needed
+- Off-chain execution is acceptable
+- Custom privacy policies are required
+
+---
+
 ## Conclusion
 
 SealTender occupies a unique position: it is the only approach that enables **on-chain computation on encrypted bids** with **full EVM composability** and **no trusted hardware**. Its limitations — high gas cost, 10-bidder cap, and dependence on Zama's KMS — are real but improvable as FHE technology matures.
 
 For high-value public procurement where bid confidentiality directly impacts billions of dollars, the trade-off of higher gas costs for mathematical privacy guarantees is clearly justified. As Zama's coprocessor model evolves and L2 FHE chains reduce costs, SealTender's approach will become increasingly practical for broader procurement use cases.
+
+The addition of Chainlink oracle integration for price escalation and ConfidentialUSDC for encrypted token balances further differentiates SealTender from both traditional and crypto-native alternatives, providing a complete procurement infrastructure rather than just an evaluation engine.
