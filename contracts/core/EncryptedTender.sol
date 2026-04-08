@@ -6,7 +6,7 @@ import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {TenderConfig, TenderState} from "../interfaces/ISealTender.sol";
+import {TenderConfig, TenderState, TenderSpecification} from "../interfaces/ISealTender.sol";
 import {BidderRegistry} from "../identity/BidderRegistry.sol";
 import {BidEscrow} from "./BidEscrow.sol";
 
@@ -28,6 +28,7 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable {
     // --- State ---
     uint256 public tenderId;
     TenderConfig public config;
+    TenderSpecification public spec;
     TenderState public state;
     BidderRegistry public registry;
     BidEscrow public escrow;
@@ -100,6 +101,7 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable {
     constructor(
         uint256 _tenderId,
         TenderConfig memory _config,
+        TenderSpecification memory _spec,
         address _registry,
         address _escrow
     ) Ownable(msg.sender) {
@@ -109,6 +111,7 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable {
 
         tenderId = _tenderId;
         config = _config;
+        spec = _spec;
         registry = BidderRegistry(_registry);
         escrow = BidEscrow(_escrow);
         state = TenderState.Bidding;
@@ -316,6 +319,10 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable {
 
     function getConfig() external view returns (TenderConfig memory) {
         return config;
+    }
+
+    function getSpec() external view returns (TenderSpecification memory) {
+        return spec;
     }
 
     function getBidders(

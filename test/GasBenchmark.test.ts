@@ -62,6 +62,17 @@ describe("GasBenchmark", function () {
     await escrow.authorizeCaller(await factory.getAddress());
   });
 
+  const defaultSpec = () => ({
+    category: "construction",
+    totalAreaM2: 4200,
+    estimatedValueMin: 2000000n * 1000000n,
+    estimatedValueMax: 3000000n * 1000000n,
+    boqReference: "BOQ-Rev3-2026",
+    standardsReference: "ISO-9001",
+    completionDays: 540,
+    liquidatedDamages: 500n * 1000000n,
+  });
+
   it("should benchmark registerBidder gas", async function () {
     const tx = await registry.registerBidder(alice.address);
     const receipt = await tx.wait();
@@ -77,7 +88,7 @@ describe("GasBenchmark", function () {
       minYears: 2, minProjects: 3, minBond: 5000,
       escrowAmount: 0, maxBidders: 5, minReputation: 0,
     };
-    const tx = await factory.createTender(config);
+    const tx = await factory.createTender(config, defaultSpec());
     const receipt = await tx.wait();
     console.log(`    createTender gas: ${receipt!.gasUsed.toString()}`);
     expect(receipt!.gasUsed).to.be.gt(0);
@@ -94,7 +105,7 @@ describe("GasBenchmark", function () {
     };
     const TenderFactory = await ethers.getContractFactory("EncryptedTender");
     const tender = await TenderFactory.deploy(
-      0, config, await registry.getAddress(), await escrow.getAddress()
+      0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress()
     );
     await tender.waitForDeployment();
     await registry.addAuthorizedCaller(await tender.getAddress());
@@ -126,7 +137,7 @@ describe("GasBenchmark", function () {
   });
 
   it("should benchmark fileCompanyComplaint gas", async function () {
-    const STAKE = ethers.parseEther("0.01");
+    const STAKE = await disputeManager.getComplaintStake(0);
     const tx = await disputeManager.connect(alice).fileCompanyComplaint(
       0, bob.address, "Test complaint", { value: STAKE }
     );

@@ -56,6 +56,17 @@ struct TenderConfig {
     uint256 minReputation;
 }
 
+struct TenderSpecification {
+    string category;           // "construction", "IT", "furniture", "vehicle"
+    uint256 totalAreaM2;       // Total area in square meters (0 if N/A)
+    uint256 estimatedValueMin; // Minimum estimated value (USD, 6 decimals)
+    uint256 estimatedValueMax; // Maximum estimated value (USD, 6 decimals)
+    string boqReference;       // Bill of Quantities reference (e.g. "BOQ-Rev3-2026")
+    string standardsReference; // Standards (e.g. "ISO-9001, NFPA-13, ASHRAE")
+    uint256 completionDays;    // Expected completion in days
+    uint256 liquidatedDamages; // Daily penalty for delay (USD, 6 decimals)
+}
+
 struct Dispute {
     address complainant;
     address accused;

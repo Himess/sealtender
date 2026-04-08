@@ -27,6 +27,17 @@ describe("TenderFactory", function () {
     ...overrides,
   });
 
+  const defaultSpec = () => ({
+    category: "construction",
+    totalAreaM2: 4200,
+    estimatedValueMin: 2000000n * 1000000n,
+    estimatedValueMax: 3000000n * 1000000n,
+    boqReference: "BOQ-Rev3-2026",
+    standardsReference: "ISO-9001",
+    completionDays: 540,
+    liquidatedDamages: 500n * 1000000n,
+  });
+
   beforeEach(async function () {
     [owner, alice, bob] = await ethers.getSigners();
 
@@ -85,45 +96,45 @@ describe("TenderFactory", function () {
   describe("createTender", function () {
     it("should create a tender", async function () {
       const config = await makeConfig();
-      await expect(factory.createTender(config))
+      await expect(factory.createTender(config, defaultSpec()))
         .to.emit(factory, "TenderCreated");
     });
 
     it("should increment tender count", async function () {
       const config = await makeConfig();
-      await factory.createTender(config);
+      await factory.createTender(config, defaultSpec());
       expect(await factory.tenderCount()).to.equal(1);
     });
 
     it("should store tender address", async function () {
       const config = await makeConfig();
-      await factory.createTender(config);
+      await factory.createTender(config, defaultSpec());
       const addr = await factory.getTender(0);
       expect(addr).to.not.equal(ethers.ZeroAddress);
     });
 
     it("should auto-authorize tender in registry", async function () {
       const config = await makeConfig();
-      await factory.createTender(config);
+      await factory.createTender(config, defaultSpec());
       const addr = await factory.getTender(0);
       expect(await registry.authorizedCallers(addr)).to.be.true;
     });
 
     it("should revert with past deadline", async function () {
       const config = await makeConfig({ deadline: (await time.latest()) - 1 });
-      await expect(factory.createTender(config))
+      await expect(factory.createTender(config, defaultSpec()))
         .to.be.revertedWith("Deadline must be future");
     });
 
     it("should revert with zero maxBidders", async function () {
       const config = await makeConfig({ maxBidders: 0 });
-      await expect(factory.createTender(config))
+      await expect(factory.createTender(config, defaultSpec()))
         .to.be.revertedWith("Must allow at least 1 bidder");
     });
 
     it("should only allow owner to create", async function () {
       const config = await makeConfig();
-      await expect(factory.connect(alice).createTender(config))
+      await expect(factory.connect(alice).createTender(config, defaultSpec()))
         .to.be.revertedWithCustomError(factory, "OwnableUnauthorizedAccount");
     });
   });
@@ -180,9 +191,9 @@ describe("TenderFactory", function () {
 
     it("should return tenders in range", async function () {
       const config = await makeConfig();
-      await factory.createTender(config);
+      await factory.createTender(config, defaultSpec());
       const config2 = await makeConfig({ description: "Second" });
-      await factory.createTender(config2);
+      await factory.createTender(config2, defaultSpec());
 
       const result = await factory.getTenders(0, 10);
       expect(result.length).to.equal(2);
@@ -190,7 +201,7 @@ describe("TenderFactory", function () {
 
     it("should clamp end to tenderCount", async function () {
       const config = await makeConfig();
-      await factory.createTender(config);
+      await factory.createTender(config, defaultSpec());
       const result = await factory.getTenders(0, 100);
       expect(result.length).to.equal(1);
     });
@@ -199,7 +210,7 @@ describe("TenderFactory", function () {
   describe("getAllTenders", function () {
     it("should return all tenders", async function () {
       const config = await makeConfig();
-      await factory.createTender(config);
+      await factory.createTender(config, defaultSpec());
       const all = await factory.getAllTenders();
       expect(all.length).to.equal(1);
     });

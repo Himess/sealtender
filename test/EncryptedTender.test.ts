@@ -28,12 +28,23 @@ describe("EncryptedTender", function () {
     minReputation: 0,
   });
 
+  const defaultSpec = () => ({
+    category: "construction",
+    totalAreaM2: 4200,
+    estimatedValueMin: 2000000n * 1000000n,
+    estimatedValueMax: 3000000n * 1000000n,
+    boqReference: "BOQ-Rev3-2026",
+    standardsReference: "ISO-9001",
+    completionDays: 540,
+    liquidatedDamages: 500n * 1000000n,
+  });
+
   async function deployTender(configOverrides: any = {}) {
     deadline = (await time.latest()) + 86400;
     const config = { ...defaultConfig(), ...configOverrides };
     const Factory = await ethers.getContractFactory("EncryptedTender");
     tender = await Factory.deploy(
-      0, config, await registry.getAddress(), await escrow.getAddress()
+      0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress()
     );
     await tender.waitForDeployment();
     // Authorize tender on registry
@@ -81,7 +92,7 @@ describe("EncryptedTender", function () {
       const Factory = await ethers.getContractFactory("EncryptedTender");
       const pastConfig = { ...defaultConfig(), deadline: (await time.latest()) - 1 };
       await expect(
-        Factory.deploy(0, pastConfig, await registry.getAddress(), await escrow.getAddress())
+        Factory.deploy(0, pastConfig, defaultSpec(), await registry.getAddress(), await escrow.getAddress())
       ).to.be.revertedWith("Deadline must be future");
     });
 
@@ -89,7 +100,7 @@ describe("EncryptedTender", function () {
       const Factory = await ethers.getContractFactory("EncryptedTender");
       const config = { ...defaultConfig(), maxBidders: 0 };
       await expect(
-        Factory.deploy(0, config, await registry.getAddress(), await escrow.getAddress())
+        Factory.deploy(0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress())
       ).to.be.revertedWith("Must allow at least 1 bidder");
     });
 
@@ -97,7 +108,7 @@ describe("EncryptedTender", function () {
       const Factory = await ethers.getContractFactory("EncryptedTender");
       const config = { ...defaultConfig(), maxBidders: 11 };
       await expect(
-        Factory.deploy(0, config, await registry.getAddress(), await escrow.getAddress())
+        Factory.deploy(0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress())
       ).to.be.revertedWith("Max 10 bidders");
     });
   });

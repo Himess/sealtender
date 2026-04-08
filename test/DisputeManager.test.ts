@@ -13,9 +13,12 @@ describe("DisputeManager", function () {
   let complainant: HardhatEthersSigner;
   let accused: HardhatEthersSigner;
   let courtAuthority: HardhatEthersSigner;
-  const STAKE = ethers.parseEther("0.01");
   const TENDER_ID = 0;
   const DEPOSIT_AMOUNT = ethers.parseEther("1");
+  // Dynamic stake: 5% of escrow. When no escrow set, minimum = 0.001 ETH
+  const MIN_STAKE = ethers.parseEther("0.001");
+  // When escrow = 1 ETH, stake = 5% of 1 ETH = 0.05 ETH
+  const STAKE_WITH_ESCROW = ethers.parseEther("0.05");
 
   beforeEach(async function () {
     [owner, municipality, complainant, accused, courtAuthority] = await ethers.getSigners();
@@ -89,11 +92,11 @@ describe("DisputeManager", function () {
   });
 
   describe("fileCompanyComplaint", function () {
-    it("should file complaint with sufficient stake", async function () {
+    it("should file complaint with sufficient stake (no escrow = min stake)", async function () {
       await expect(
         disputeManager.connect(complainant).fileCompanyComplaint(
           TENDER_ID, accused.address, "Fraud",
-          { value: STAKE }
+          { value: MIN_STAKE }
         )
       ).to.emit(disputeManager, "DisputeFiled")
         .withArgs(0, TENDER_ID, complainant.address, accused.address);
@@ -103,16 +106,33 @@ describe("DisputeManager", function () {
       await expect(
         disputeManager.connect(complainant).fileCompanyComplaint(
           TENDER_ID, accused.address, "Fraud",
-          { value: STAKE / 2n }
+          { value: MIN_STAKE / 2n }
         )
       ).to.be.revertedWithCustomError(disputeManager, "InsufficientStake");
     });
 
     it("should increment dispute count", async function () {
       await disputeManager.connect(complainant).fileCompanyComplaint(
-        TENDER_ID, accused.address, "Fraud", { value: STAKE }
+        TENDER_ID, accused.address, "Fraud", { value: MIN_STAKE }
       );
       expect(await disputeManager.disputeCount()).to.equal(1);
+    });
+
+    it("should use dynamic 5% stake when escrow is set", async function () {
+      await escrow.setRequiredDeposit(TENDER_ID, DEPOSIT_AMOUNT);
+      const dynamicStake = await disputeManager.getComplaintStake(TENDER_ID);
+      expect(dynamicStake).to.equal(STAKE_WITH_ESCROW);
+      await expect(
+        disputeManager.connect(complainant).fileCompanyComplaint(
+          TENDER_ID, accused.address, "Fraud",
+          { value: STAKE_WITH_ESCROW }
+        )
+      ).to.emit(disputeManager, "DisputeFiled");
+    });
+
+    it("should return minimum stake when escrow is zero", async function () {
+      const stake = await disputeManager.getComplaintStake(TENDER_ID);
+      expect(stake).to.equal(MIN_STAKE);
     });
   });
 
@@ -167,20 +187,22 @@ describe("DisputeManager", function () {
     });
 
     it("should resolve as Dismissed and send stake to municipality", async function () {
+      const stake = await disputeManager.getComplaintStake(TENDER_ID);
       await disputeManager.connect(complainant).fileCompanyComplaint(
-        TENDER_ID, accused.address, "Fraud", { value: STAKE }
+        TENDER_ID, accused.address, "Fraud", { value: stake }
       );
 
       const muniBalBefore = await ethers.provider.getBalance(municipality.address);
       await disputeManager.resolveDispute(0, 4); // Dismissed
       const muniBalAfter = await ethers.provider.getBalance(municipality.address);
 
-      expect(muniBalAfter - muniBalBefore).to.equal(STAKE);
+      expect(muniBalAfter - muniBalBefore).to.equal(stake);
     });
 
     it("should resolve as Slashed and slash escrow to municipality", async function () {
+      const stake = await disputeManager.getComplaintStake(TENDER_ID);
       await disputeManager.connect(complainant).fileCompanyComplaint(
-        TENDER_ID, accused.address, "Fraud", { value: STAKE }
+        TENDER_ID, accused.address, "Fraud", { value: stake }
       );
       await escrow.freeze(TENDER_ID, accused.address);
 
@@ -237,7 +259,7 @@ describe("DisputeManager", function () {
   describe("timeoutDispute", function () {
     it("should timeout dispute after 30 days", async function () {
       await disputeManager.connect(complainant).fileCompanyComplaint(
-        TENDER_ID, accused.address, "Fraud", { value: STAKE }
+        TENDER_ID, accused.address, "Fraud", { value: MIN_STAKE }
       );
       // Advance time by 30 days
       await time.increase(30 * 24 * 60 * 60);
@@ -248,7 +270,7 @@ describe("DisputeManager", function () {
 
     it("should revert timeout before deadline", async function () {
       await disputeManager.connect(complainant).fileCompanyComplaint(
-        TENDER_ID, accused.address, "Fraud", { value: STAKE }
+        TENDER_ID, accused.address, "Fraud", { value: MIN_STAKE }
       );
       // Try timeout immediately (before 30 days)
       await expect(disputeManager.timeoutDispute(0))
@@ -257,7 +279,7 @@ describe("DisputeManager", function () {
 
     it("should return stake to complainant on timeout", async function () {
       await disputeManager.connect(complainant).fileCompanyComplaint(
-        TENDER_ID, accused.address, "Fraud", { value: STAKE }
+        TENDER_ID, accused.address, "Fraud", { value: MIN_STAKE }
       );
       await time.increase(30 * 24 * 60 * 60);
 
@@ -266,7 +288,7 @@ describe("DisputeManager", function () {
       const balAfter = await ethers.provider.getBalance(complainant.address);
 
       // Complainant should get their stake back (called by owner, so complainant pays no gas)
-      expect(balAfter - balBefore).to.equal(STAKE);
+      expect(balAfter - balBefore).to.equal(MIN_STAKE);
     });
   });
 });

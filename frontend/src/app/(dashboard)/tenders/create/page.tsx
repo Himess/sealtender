@@ -25,6 +25,15 @@ export default function CreateTenderPage() {
   const [description, setDescription] = useState("");
   const [deadline, setDeadline] = useState("");
   const [maxBidders, setMaxBidders] = useState("5");
+  // Specification fields
+  const [category, setCategory] = useState("construction");
+  const [totalAreaM2, setTotalAreaM2] = useState("");
+  const [estimatedValueMin, setEstimatedValueMin] = useState("");
+  const [estimatedValueMax, setEstimatedValueMax] = useState("");
+  const [boqReference, setBoqReference] = useState("");
+  const [standardsReference, setStandardsReference] = useState("");
+  const [completionDays, setCompletionDays] = useState("");
+  const [liquidatedDamages, setLiquidatedDamages] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const dismissToast = useCallback(() => setToast(null), []);
@@ -84,11 +93,37 @@ export default function CreateTenderPage() {
       Math.floor(new Date(deadline).getTime() / 1000)
     );
 
+    const config = {
+      description,
+      deadline: deadlineUnix,
+      weightYears: 30,
+      weightProjects: 30,
+      weightBond: 40,
+      minYears: 2,
+      minProjects: 3,
+      minBond: BigInt(5000),
+      escrowAmount: BigInt(0),
+      maxBidders: BigInt(parseInt(maxBidders)),
+      minReputation: BigInt(0),
+    };
+
+    const USD_DECIMALS = BigInt(1000000); // 6 decimals
+    const spec = {
+      category,
+      totalAreaM2: BigInt(totalAreaM2 || "0"),
+      estimatedValueMin: BigInt(estimatedValueMin || "0") * USD_DECIMALS,
+      estimatedValueMax: BigInt(estimatedValueMax || "0") * USD_DECIMALS,
+      boqReference: boqReference || "",
+      standardsReference: standardsReference || "",
+      completionDays: BigInt(completionDays || "0"),
+      liquidatedDamages: BigInt(liquidatedDamages || "0") * USD_DECIMALS,
+    };
+
     writeContract({
       address: ADDRESSES.TenderFactory,
       abi: factoryAbi,
       functionName: "createTender",
-      args: [description, deadlineUnix, parseInt(maxBidders)],
+      args: [config, spec],
     });
   }
 
@@ -256,6 +291,144 @@ export default function CreateTenderPage() {
               <p className="font-body text-[12px] text-[#666666] mt-1">
                 Maximum number of encrypted bids accepted (1-10)
               </p>
+            </div>
+          </div>
+
+          {/* Specification */}
+          <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6 space-y-5">
+            <div className="flex items-center gap-2 font-body text-[14px] text-[#F0F0F0] font-medium">
+              <FileText size={16} className="text-[#FFB800]" />
+              Tender Specification
+            </div>
+
+            <div className="space-y-4">
+              {/* Category */}
+              <div>
+                <label htmlFor="category" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                  Category
+                </label>
+                <select
+                  id="category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
+                >
+                  <option value="construction">Construction</option>
+                  <option value="IT">IT</option>
+                  <option value="furniture">Furniture</option>
+                  <option value="vehicle">Vehicle</option>
+                </select>
+              </div>
+
+              {/* Total Area */}
+              <div>
+                <label htmlFor="totalAreaM2" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                  Total Area (m2)
+                </label>
+                <input
+                  id="totalAreaM2"
+                  type="number"
+                  min={0}
+                  value={totalAreaM2}
+                  onChange={(e) => setTotalAreaM2(e.target.value)}
+                  placeholder="0 if not applicable"
+                  className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
+                />
+              </div>
+
+              {/* Estimated Value Range */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="estimatedValueMin" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                    Est. Value Min ($)
+                  </label>
+                  <input
+                    id="estimatedValueMin"
+                    type="number"
+                    min={0}
+                    value={estimatedValueMin}
+                    onChange={(e) => setEstimatedValueMin(e.target.value)}
+                    placeholder="2000000"
+                    className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="estimatedValueMax" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                    Est. Value Max ($)
+                  </label>
+                  <input
+                    id="estimatedValueMax"
+                    type="number"
+                    min={0}
+                    value={estimatedValueMax}
+                    onChange={(e) => setEstimatedValueMax(e.target.value)}
+                    placeholder="3000000"
+                    className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* BOQ Reference */}
+              <div>
+                <label htmlFor="boqReference" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                  BOQ Reference
+                </label>
+                <input
+                  id="boqReference"
+                  type="text"
+                  value={boqReference}
+                  onChange={(e) => setBoqReference(e.target.value)}
+                  placeholder="BOQ-Rev3-2026"
+                  className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
+                />
+              </div>
+
+              {/* Standards Reference */}
+              <div>
+                <label htmlFor="standardsReference" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                  Standards Reference
+                </label>
+                <input
+                  id="standardsReference"
+                  type="text"
+                  value={standardsReference}
+                  onChange={(e) => setStandardsReference(e.target.value)}
+                  placeholder="ISO-9001, NFPA-13, ASHRAE"
+                  className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
+                />
+              </div>
+
+              {/* Completion Days + Liquidated Damages */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="completionDays" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                    Completion Days
+                  </label>
+                  <input
+                    id="completionDays"
+                    type="number"
+                    min={0}
+                    value={completionDays}
+                    onChange={(e) => setCompletionDays(e.target.value)}
+                    placeholder="540"
+                    className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="liquidatedDamages" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                    Liquidated Damages ($/day)
+                  </label>
+                  <input
+                    id="liquidatedDamages"
+                    type="number"
+                    min={0}
+                    value={liquidatedDamages}
+                    onChange={(e) => setLiquidatedDamages(e.target.value)}
+                    placeholder="500"
+                    className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 

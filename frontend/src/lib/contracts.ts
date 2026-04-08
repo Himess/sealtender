@@ -21,10 +21,11 @@ export const ADDRESSES = {
 // ============================================================================
 
 export const TenderFactoryABI = [
-  "function createTender(string description, uint256 deadline, uint8 maxBidders) external returns (address)",
+  "function createTender(tuple(string description, uint256 deadline, uint32 weightYears, uint32 weightProjects, uint32 weightBond, uint32 minYears, uint32 minProjects, uint64 minBond, uint256 escrowAmount, uint256 maxBidders, uint256 minReputation) _config, tuple(string category, uint256 totalAreaM2, uint256 estimatedValueMin, uint256 estimatedValueMax, string boqReference, string standardsReference, uint256 completionDays, uint256 liquidatedDamages) _spec) external returns (uint256 tenderId, address tenderAddress)",
   "function getTender(uint256 index) external view returns (address)",
   "function tenderCount() external view returns (uint256)",
   "function getAllTenders() external view returns (address[])",
+  "function getTenderSpec(uint256 id) external view returns (tuple(string category, uint256 totalAreaM2, uint256 estimatedValueMin, uint256 estimatedValueMax, string boqReference, string standardsReference, uint256 completionDays, uint256 liquidatedDamages))",
   "function owner() external view returns (address)",
 ] as const;
 
@@ -74,7 +75,7 @@ export const DisputeManagerABI = [
   "function resolveDispute(uint256 disputeId, bool upheld) external",
   "function getDispute(uint256 disputeId) external view returns (uint8 disputeType, uint256 tenderId, address complainant, address accused, string reason, uint8 status, uint256 filedAt)",
   "function disputeCount() external view returns (uint256)",
-  "function companyComplaintFee() external view returns (uint256)",
+  "function getComplaintStake(uint256 tenderId) external view returns (uint256)",
   "function owner() external view returns (address)",
 ] as const;
 
@@ -118,6 +119,17 @@ export interface TenderConfig {
   deadline: bigint;
   maxBidders: number;
   creator: `0x${string}`;
+}
+
+export interface TenderSpecification {
+  category: string;
+  totalAreaM2: bigint;
+  estimatedValueMin: bigint;
+  estimatedValueMax: bigint;
+  boqReference: string;
+  standardsReference: string;
+  completionDays: bigint;
+  liquidatedDamages: bigint;
 }
 
 export interface BidderProfile {

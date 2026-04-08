@@ -93,6 +93,17 @@ describe("Integration", function () {
     await registry.registerBidder(charlie.address);
   });
 
+  const defaultSpec = () => ({
+    category: "construction",
+    totalAreaM2: 4200,
+    estimatedValueMin: 2000000n * 1000000n,
+    estimatedValueMax: 3000000n * 1000000n,
+    boqReference: "BOQ-Rev3-2026",
+    standardsReference: "ISO-9001",
+    completionDays: 540,
+    liquidatedDamages: 500n * 1000000n,
+  });
+
   describe("Full tender lifecycle", function () {
     it("should complete: create -> bid -> evaluate -> reveal", async function () {
       const config = {
@@ -106,7 +117,7 @@ describe("Integration", function () {
       // Create tender directly (owner = deployer, can call evaluateBatch)
       const TF = await ethers.getContractFactory("EncryptedTender");
       const tender = await TF.deploy(
-        0, config, await registry.getAddress(), await escrow.getAddress()
+        0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress()
       );
       await tender.waitForDeployment();
       const tenderAddr = await tender.getAddress();
@@ -155,7 +166,7 @@ describe("Integration", function () {
 
       const TF = await ethers.getContractFactory("EncryptedTender");
       const tender = await TF.deploy(
-        0, config, await registry.getAddress(), await escrow.getAddress()
+        0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress()
       );
       await tender.waitForDeployment();
       const tenderAddr = await tender.getAddress();
@@ -242,7 +253,7 @@ describe("Integration", function () {
         escrowAmount: DEPOSIT, maxBidders: 5, minReputation: 0,
       };
 
-      await factory.createTender(config);
+      await factory.createTender(config, defaultSpec());
       const tenderAddr = await factory.getTender(0);
       const tender = await ethers.getContractAt("EncryptedTender", tenderAddr) as EncryptedTender;
 
@@ -273,8 +284,8 @@ describe("Integration", function () {
 
       await registry.addAuthorizedCaller(await disputeManager.getAddress());
 
-      // File complaint
-      const STAKE = ethers.parseEther("0.01");
+      // Dynamic stake: 5% of 1 ETH = 0.05 ETH
+      const STAKE = await disputeManager.getComplaintStake(0);
       await disputeManager.connect(alice).fileCompanyComplaint(
         0, bob.address, "Corruption", { value: STAKE }
       );
@@ -288,7 +299,8 @@ describe("Integration", function () {
     });
 
     it("should file and dismiss dispute - stake goes to municipality", async function () {
-      const STAKE = ethers.parseEther("0.01");
+      // No escrow set for tender 0 here, so minimum stake = 0.001 ETH
+      const STAKE = await disputeManager.getComplaintStake(0);
       const muniBalBefore = await ethers.provider.getBalance(municipality.address);
 
       await disputeManager.connect(alice).fileCompanyComplaint(
@@ -376,7 +388,7 @@ describe("Integration", function () {
 
       const TenderFactory = await ethers.getContractFactory("EncryptedTender");
       const tender = await TenderFactory.deploy(
-        0, config, await registry.getAddress(), await escrow.getAddress()
+        0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress()
       );
       await tender.waitForDeployment();
       await registry.addAuthorizedCaller(await tender.getAddress());
@@ -415,7 +427,7 @@ describe("Integration", function () {
         minYears: 1, minProjects: 1, minBond: 1000,
         escrowAmount: 0, maxBidders: 3, minReputation: 0,
       };
-      await factory.createTender(config);
+      await factory.createTender(config, defaultSpec());
       const tenderAddr = await factory.getTender(0);
       expect(await registry.authorizedCallers(tenderAddr)).to.be.true;
     });

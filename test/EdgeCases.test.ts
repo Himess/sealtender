@@ -76,6 +76,17 @@ describe("EdgeCases", function () {
     await escrow.authorizeCaller(await disputeManager.getAddress());
   });
 
+  const defaultSpec = () => ({
+    category: "construction",
+    totalAreaM2: 4200,
+    estimatedValueMin: 2000000n * 1000000n,
+    estimatedValueMax: 3000000n * 1000000n,
+    boqReference: "BOQ-Rev3-2026",
+    standardsReference: "ISO-9001",
+    completionDays: 540,
+    liquidatedDamages: 500n * 1000000n,
+  });
+
   // --- BidderRegistry Edge Cases ---
   describe("BidderRegistry Edge Cases", function () {
     it("should not verify an already removed bidder without re-registration", async function () {
@@ -240,14 +251,14 @@ describe("EdgeCases", function () {
     });
 
     it("should handle company complaint with exact stake", async function () {
-      const STAKE = await disputeManager.COMPLAINT_STAKE();
+      const STAKE = await disputeManager.getComplaintStake(0);
       await disputeManager.connect(alice).fileCompanyComplaint(0, bob.address, "Reason", { value: STAKE });
       const dispute = await disputeManager.getDispute(0);
       expect(dispute.stake).to.equal(STAKE);
     });
 
     it("should handle company complaint with overpayment", async function () {
-      const STAKE = await disputeManager.COMPLAINT_STAKE();
+      const STAKE = await disputeManager.getComplaintStake(0);
       await disputeManager.connect(alice).fileCompanyComplaint(0, bob.address, "Reason", { value: STAKE * 2n });
       const dispute = await disputeManager.getDispute(0);
       expect(dispute.stake).to.equal(STAKE * 2n);
@@ -451,9 +462,9 @@ describe("EdgeCases", function () {
         minYears: 1, minProjects: 1, minBond: 1000,
         escrowAmount: 0, maxBidders: 5, minReputation: 0,
       };
-      await factory.createTender(config1);
+      await factory.createTender(config1, defaultSpec());
       const config2 = { ...config1, description: "T2", deadline: (await time.latest()) + 86400 };
-      await factory.createTender(config2);
+      await factory.createTender(config2, defaultSpec());
       expect(await factory.tenderCount()).to.equal(2);
       expect(await factory.getTender(0)).to.not.equal(await factory.getTender(1));
     });
@@ -476,7 +487,7 @@ describe("EdgeCases", function () {
       };
       const TenderFactory = await ethers.getContractFactory("EncryptedTender");
       tender = await TenderFactory.deploy(
-        0, config, await registry.getAddress(), await escrow.getAddress()
+        0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress()
       );
       await tender.waitForDeployment();
       await registry.addAuthorizedCaller(await tender.getAddress());

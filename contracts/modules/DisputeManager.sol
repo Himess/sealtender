@@ -20,7 +20,8 @@ contract DisputeManager is Ownable2Step, ReentrancyGuard {
     BidderRegistry public registry;
 
     uint256 public disputeCount;
-    uint256 public constant COMPLAINT_STAKE = 0.01 ether;
+    uint256 public constant COMPLAINT_STAKE_BPS = 500; // 5% of escrow
+    uint256 public constant BPS_BASE = 10000;
     uint256 public constant DISPUTE_TIMEOUT = 30 days;
 
     mapping(uint256 => Dispute) public disputes;
@@ -43,7 +44,7 @@ contract DisputeManager is Ownable2Step, ReentrancyGuard {
     );
 
     // --- Errors ---
-    error InsufficientStake();
+    error InsufficientStake(uint256 required, uint256 provided);
     error InvalidDisputeId(uint256 disputeId);
     error DisputeAlreadyResolved(uint256 disputeId);
     error NotCourtAuthority();
@@ -67,6 +68,16 @@ contract DisputeManager is Ownable2Step, ReentrancyGuard {
         courtAuthority = _courtAuthority;
     }
 
+    // --- Dynamic Stake ---
+
+    function getComplaintStake(uint256 tenderId) public view returns (uint256) {
+        uint256 escrowAmount = escrow.requiredDeposit(tenderId);
+        uint256 stake = (escrowAmount * COMPLAINT_STAKE_BPS) / BPS_BASE;
+        // Minimum 0.001 ETH to prevent zero-stake spam on low-escrow tenders
+        uint256 minStake = 0.001 ether;
+        return stake > minStake ? stake : minStake;
+    }
+
     // --- Filing ---
 
     function fileCompanyComplaint(
@@ -74,7 +85,8 @@ contract DisputeManager is Ownable2Step, ReentrancyGuard {
         address accused,
         string calldata reason
     ) external payable returns (uint256) {
-        if (msg.value < COMPLAINT_STAKE) revert InsufficientStake();
+        uint256 requiredStake = getComplaintStake(tenderId);
+        if (msg.value < requiredStake) revert InsufficientStake(requiredStake, msg.value);
         return _fileDispute(tenderId, accused, DisputeType.Company, msg.value, reason);
     }
 

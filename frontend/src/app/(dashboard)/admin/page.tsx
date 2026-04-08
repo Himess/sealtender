@@ -117,7 +117,8 @@ export default function AdminPage() {
   const { data: companyFee } = useReadContract({
     address: ADDRESSES.DisputeManager,
     abi: disputeAbi,
-    functionName: "companyComplaintFee",
+    functionName: "getComplaintStake",
+    args: [BigInt(1)], // Example tender ID
   });
 
   // Add bidder
@@ -186,9 +187,9 @@ export default function AdminPage() {
             This page is restricted to the protocol owner. Connect with the
             owner wallet to access admin functions.
           </p>
-          {factoryOwner && (
+          {typeof factoryOwner === "string" && (
             <p className="font-body text-[12px] text-[#666666] font-mono">
-              Owner: {truncateAddr(factoryOwner as string)}
+              Owner: {truncateAddr(factoryOwner)}
             </p>
           )}
         </div>

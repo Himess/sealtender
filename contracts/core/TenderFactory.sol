@@ -6,7 +6,7 @@ import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {EncryptedTender} from "./EncryptedTender.sol";
 import {BidderRegistry} from "../identity/BidderRegistry.sol";
 import {BidEscrow} from "./BidEscrow.sol";
-import {TenderConfig} from "../interfaces/ISealTender.sol";
+import {TenderConfig, TenderSpecification} from "../interfaces/ISealTender.sol";
 
 /**
  * @title TenderFactory
@@ -23,6 +23,7 @@ contract TenderFactory is Ownable2Step {
     uint256 public tenderCount;
     mapping(uint256 => address) public tenders;
     mapping(uint256 => TenderConfig) public tenderConfigs;
+    mapping(uint256 => TenderSpecification) public tenderSpecs;
 
     // --- Events ---
     event TenderCreated(uint256 indexed tenderId, address tenderContract, string description);
@@ -41,16 +42,17 @@ contract TenderFactory is Ownable2Step {
 
     // --- Create ---
 
-    function createTender(TenderConfig calldata _config) external onlyOwner returns (uint256 tenderId, address tenderAddress) {
+    function createTender(TenderConfig calldata _config, TenderSpecification calldata _spec) external onlyOwner returns (uint256 tenderId, address tenderAddress) {
         require(_config.deadline > block.timestamp, "Deadline must be future");
         require(_config.maxBidders > 0, "Must allow at least 1 bidder");
 
         tenderId = tenderCount++;
-        EncryptedTender tender = new EncryptedTender(tenderId, _config, registry, escrow);
+        EncryptedTender tender = new EncryptedTender(tenderId, _config, _spec, registry, escrow);
         tenderAddress = address(tender);
 
         tenders[tenderId] = tenderAddress;
         tenderConfigs[tenderId] = _config;
+        tenderSpecs[tenderId] = _spec;
 
         // Set required deposit in escrow
         if (_config.escrowAmount > 0) {
@@ -91,6 +93,10 @@ contract TenderFactory is Ownable2Step {
 
     function getTenderConfig(uint256 id) external view returns (TenderConfig memory) {
         return tenderConfigs[id];
+    }
+
+    function getTenderSpec(uint256 id) external view returns (TenderSpecification memory) {
+        return tenderSpecs[id];
     }
 
     function getAllTenders() external view returns (address[] memory) {
