@@ -21,11 +21,11 @@ export const ADDRESSES = {
 // ============================================================================
 
 export const TenderFactoryABI = [
-  "function createTender(tuple(string description, uint256 deadline, uint32 weightYears, uint32 weightProjects, uint32 weightBond, uint32 minYears, uint32 minProjects, uint64 minBond, uint256 escrowAmount, uint256 maxBidders, uint256 minReputation) _config, tuple(string category, uint256 totalAreaM2, uint256 estimatedValueMin, uint256 estimatedValueMax, string boqReference, string standardsReference, uint256 completionDays, uint256 liquidatedDamages) _spec) external returns (uint256 tenderId, address tenderAddress)",
+  "function createTender((string description, uint256 deadline, uint32 weightYears, uint32 weightProjects, uint32 weightBond, uint32 minYears, uint32 minProjects, uint64 minBond, uint256 escrowAmount, uint256 maxBidders, uint256 minReputation) config, (string category, uint256 totalAreaM2, uint256 estimatedValueMin, uint256 estimatedValueMax, string boqReference, string standardsReference, uint256 completionDays, uint256 liquidatedDamages) spec) external returns (uint256 tenderId, address tenderAddress)",
   "function getTender(uint256 index) external view returns (address)",
   "function tenderCount() external view returns (uint256)",
   "function getAllTenders() external view returns (address[])",
-  "function getTenderSpec(uint256 id) external view returns (tuple(string category, uint256 totalAreaM2, uint256 estimatedValueMin, uint256 estimatedValueMax, string boqReference, string standardsReference, uint256 completionDays, uint256 liquidatedDamages))",
+  "function getTenderSpec(uint256 id) external view returns ((string category, uint256 totalAreaM2, uint256 estimatedValueMin, uint256 estimatedValueMax, string boqReference, string standardsReference, uint256 completionDays, uint256 liquidatedDamages))",
   "function owner() external view returns (address)",
 ] as const;
 
