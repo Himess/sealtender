@@ -1,10 +1,13 @@
 import { HardhatUserConfig } from "hardhat/config";
+import * as dotenv from "dotenv";
 import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-chai-matchers";
 import "@nomicfoundation/hardhat-verify";
 import "@typechain/hardhat";
 import "hardhat-deploy";
 import "@fhevm/hardhat-plugin";
+
+dotenv.config();
 
 const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY || "";
 

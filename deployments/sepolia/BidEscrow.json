@@ -1,0 +1,868 @@
+{
+  "address": "0xC080244d26B0Ffd2CFBeB3e166ABe1186DDC5447",
+  "abi": [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "DepositAlreadyExists",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "DepositFrozen",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "DepositNotActive",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InsufficientDeposit",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NoDeposit",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotAuthorized",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnableInvalidOwner",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "OwnableUnauthorizedAccount",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ReentrancyGuardReentrantCall",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "TransferFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ZeroAddress",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "CallerAuthorized",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "CallerDeauthorized",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "tenderId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "bidder",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "EscrowDeposited",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "tenderId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "bidder",
+          "type": "address"
+        }
+      ],
+      "name": "EscrowFrozen",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "tenderId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "bidder",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "EscrowRefunded",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "tenderId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "bidder",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "EscrowReleased",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "tenderId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "bidder",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "EscrowSlashed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "tenderId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "bidder",
+          "type": "address"
+        }
+      ],
+      "name": "EscrowUnfrozen",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferStarted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "tenderId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "RequiredDepositSet",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "acceptOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "authorizeCaller",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "authorizedCallers",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "deauthorizeCaller",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "tenderId",
+          "type": "uint256"
+        }
+      ],
+      "name": "deposit",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "depositStatus",
+      "outputs": [
+        {
+          "internalType": "enum DepositStatus",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "deposits",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "tenderId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "bidder",
+          "type": "address"
+        }
+      ],
+      "name": "freeze",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "tenderId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "bidder",
+          "type": "address"
+        }
+      ],
+      "name": "getDeposit",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "tenderId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "bidder",
+          "type": "address"
+        }
+      ],
+      "name": "getDepositStatus",
+      "outputs": [
+        {
+          "internalType": "enum DepositStatus",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "pendingOwner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "tenderId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "bidder",
+          "type": "address"
+        }
+      ],
+      "name": "refund",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "tenderId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "bidder",
+          "type": "address"
+        }
+      ],
+      "name": "release",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "renounceOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "requiredDeposit",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "tenderId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "setRequiredDeposit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "tenderId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "bidder",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "recipient",
+          "type": "address"
+        }
+      ],
+      "name": "slash",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "totalEscrow",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "tenderId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "bidder",
+          "type": "address"
+        }
+      ],
+      "name": "unfreeze",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x7e84e3de47426c47c14c22b19ae77ae3ead6ca67e33cc5aacb3eef4a491a1126",
+  "receipt": {
+    "to": null,
+    "from": "0xF505e2E71df58D7244189072008f25f6b6aaE5ae",
+    "contractAddress": "0xC080244d26B0Ffd2CFBeB3e166ABe1186DDC5447",
+    "transactionIndex": 60,
+    "gasUsed": "889608",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000040000000000000001000000000000000040000000000000000000020000020000000000000800000000000000000000000000000400400000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x1051db0fdc9d74fa49ec2c881500779fca465c10ecb31a864884603834324f18",
+    "transactionHash": "0x7e84e3de47426c47c14c22b19ae77ae3ead6ca67e33cc5aacb3eef4a491a1126",
+    "logs": [
+      {
+        "transactionIndex": 60,
+        "blockNumber": 10623706,
+        "transactionHash": "0x7e84e3de47426c47c14c22b19ae77ae3ead6ca67e33cc5aacb3eef4a491a1126",
+        "address": "0xC080244d26B0Ffd2CFBeB3e166ABe1186DDC5447",
+        "topics": [
+          "0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0",
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "0x000000000000000000000000f505e2e71df58d7244189072008f25f6b6aae5ae"
+        ],
+        "data": "0x",
+        "logIndex": 191,
+        "blockHash": "0x1051db0fdc9d74fa49ec2c881500779fca465c10ecb31a864884603834324f18"
+      }
+    ],
+    "blockNumber": 10623706,
+    "cumulativeGasUsed": "6914597",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "numDeployments": 1,
+  "solcInputHash": "9c116f36f5f5650a4311cceb8faa6dad",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.27+commit.40a35a09\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"DepositAlreadyExists\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"DepositFrozen\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"DepositNotActive\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InsufficientDeposit\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NoDeposit\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotAuthorized\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"OwnableInvalidOwner\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"OwnableUnauthorizedAccount\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ReentrancyGuardReentrantCall\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"TransferFailed\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ZeroAddress\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"caller\",\"type\":\"address\"}],\"name\":\"CallerAuthorized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"caller\",\"type\":\"address\"}],\"name\":\"CallerDeauthorized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tenderId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"bidder\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"EscrowDeposited\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tenderId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"bidder\",\"type\":\"address\"}],\"name\":\"EscrowFrozen\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tenderId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"bidder\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"EscrowRefunded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tenderId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"bidder\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"EscrowReleased\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tenderId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"bidder\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"recipient\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"EscrowSlashed\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tenderId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"bidder\",\"type\":\"address\"}],\"name\":\"EscrowUnfrozen\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferStarted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tenderId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"RequiredDepositSet\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"acceptOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"caller\",\"type\":\"address\"}],\"name\":\"authorizeCaller\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"authorizedCallers\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"caller\",\"type\":\"address\"}],\"name\":\"deauthorizeCaller\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tenderId\",\"type\":\"uint256\"}],\"name\":\"deposit\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"depositStatus\",\"outputs\":[{\"internalType\":\"enum DepositStatus\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"deposits\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tenderId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"bidder\",\"type\":\"address\"}],\"name\":\"freeze\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tenderId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"bidder\",\"type\":\"address\"}],\"name\":\"getDeposit\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tenderId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"bidder\",\"type\":\"address\"}],\"name\":\"getDepositStatus\",\"outputs\":[{\"internalType\":\"enum DepositStatus\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pendingOwner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tenderId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"bidder\",\"type\":\"address\"}],\"name\":\"refund\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tenderId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"bidder\",\"type\":\"address\"}],\"name\":\"release\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"requiredDeposit\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tenderId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"setRequiredDeposit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tenderId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"bidder\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"recipient\",\"type\":\"address\"}],\"name\":\"slash\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"totalEscrow\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tenderId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"bidder\",\"type\":\"address\"}],\"name\":\"unfreeze\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"errors\":{\"OwnableInvalidOwner(address)\":[{\"details\":\"The owner is not a valid owner account. (eg. `address(0)`)\"}],\"OwnableUnauthorizedAccount(address)\":[{\"details\":\"The caller account is not authorized to perform an operation.\"}],\"ReentrancyGuardReentrantCall()\":[{\"details\":\"Unauthorized reentrant call.\"}]},\"kind\":\"dev\",\"methods\":{\"acceptOwnership()\":{\"details\":\"The new owner accepts the ownership transfer.\"},\"owner()\":{\"details\":\"Returns the address of the current owner.\"},\"pendingOwner()\":{\"details\":\"Returns the address of the pending owner.\"},\"renounceOwnership()\":{\"details\":\"Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.\"},\"transferOwnership(address)\":{\"details\":\"Starts the ownership transfer of the contract to a new account. Replaces the pending transfer if there is one. Can only be called by the current owner. Setting `newOwner` to the zero address is allowed; this can be used to cancel an initiated ownership transfer.\"}},\"title\":\"BidEscrow\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"notice\":\"Holds ETH escrow deposits for tender bidders.\",\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/core/BidEscrow.sol\":\"BidEscrow\"},\"evmVersion\":\"cancun\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":800},\"remappings\":[],\"viaIR\":true},\"sources\":{\"@openzeppelin/contracts/access/Ownable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.0.0) (access/Ownable.sol)\\n\\npragma solidity ^0.8.20;\\n\\nimport {Context} from \\\"../utils/Context.sol\\\";\\n\\n/**\\n * @dev Contract module which provides a basic access control mechanism, where\\n * there is an account (an owner) that can be granted exclusive access to\\n * specific functions.\\n *\\n * The initial owner is set to the address provided by the deployer. This can\\n * later be changed with {transferOwnership}.\\n *\\n * This module is used through inheritance. It will make available the modifier\\n * `onlyOwner`, which can be applied to your functions to restrict their use to\\n * the owner.\\n */\\nabstract contract Ownable is Context {\\n    address private _owner;\\n\\n    /**\\n     * @dev The caller account is not authorized to perform an operation.\\n     */\\n    error OwnableUnauthorizedAccount(address account);\\n\\n    /**\\n     * @dev The owner is not a valid owner account. (eg. `address(0)`)\\n     */\\n    error OwnableInvalidOwner(address owner);\\n\\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\\n\\n    /**\\n     * @dev Initializes the contract setting the address provided by the deployer as the initial owner.\\n     */\\n    constructor(address initialOwner) {\\n        if (initialOwner == address(0)) {\\n            revert OwnableInvalidOwner(address(0));\\n        }\\n        _transferOwnership(initialOwner);\\n    }\\n\\n    /**\\n     * @dev Throws if called by any account other than the owner.\\n     */\\n    modifier onlyOwner() {\\n        _checkOwner();\\n        _;\\n    }\\n\\n    /**\\n     * @dev Returns the address of the current owner.\\n     */\\n    function owner() public view virtual returns (address) {\\n        return _owner;\\n    }\\n\\n    /**\\n     * @dev Throws if the sender is not the owner.\\n     */\\n    function _checkOwner() internal view virtual {\\n        if (owner() != _msgSender()) {\\n            revert OwnableUnauthorizedAccount(_msgSender());\\n        }\\n    }\\n\\n    /**\\n     * @dev Leaves the contract without owner. It will not be possible to call\\n     * `onlyOwner` functions. Can only be called by the current owner.\\n     *\\n     * NOTE: Renouncing ownership will leave the contract without an owner,\\n     * thereby disabling any functionality that is only available to the owner.\\n     */\\n    function renounceOwnership() public virtual onlyOwner {\\n        _transferOwnership(address(0));\\n    }\\n\\n    /**\\n     * @dev Transfers ownership of the contract to a new account (`newOwner`).\\n     * Can only be called by the current owner.\\n     */\\n    function transferOwnership(address newOwner) public virtual onlyOwner {\\n        if (newOwner == address(0)) {\\n            revert OwnableInvalidOwner(address(0));\\n        }\\n        _transferOwnership(newOwner);\\n    }\\n\\n    /**\\n     * @dev Transfers ownership of the contract to a new account (`newOwner`).\\n     * Internal function without access restriction.\\n     */\\n    function _transferOwnership(address newOwner) internal virtual {\\n        address oldOwner = _owner;\\n        _owner = newOwner;\\n        emit OwnershipTransferred(oldOwner, newOwner);\\n    }\\n}\\n\",\"keccak256\":\"0xff6d0bb2e285473e5311d9d3caacb525ae3538a80758c10649a4d61029b017bb\",\"license\":\"MIT\"},\"@openzeppelin/contracts/access/Ownable2Step.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.1.0) (access/Ownable2Step.sol)\\n\\npragma solidity ^0.8.20;\\n\\nimport {Ownable} from \\\"./Ownable.sol\\\";\\n\\n/**\\n * @dev Contract module which provides access control mechanism, where\\n * there is an account (an owner) that can be granted exclusive access to\\n * specific functions.\\n *\\n * This extension of the {Ownable} contract includes a two-step mechanism to transfer\\n * ownership, where the new owner must call {acceptOwnership} in order to replace the\\n * old one. This can help prevent common mistakes, such as transfers of ownership to\\n * incorrect accounts, or to contracts that are unable to interact with the\\n * permission system.\\n *\\n * The initial owner is specified at deployment time in the constructor for `Ownable`. This\\n * can later be changed with {transferOwnership} and {acceptOwnership}.\\n *\\n * This module is used through inheritance. It will make available all functions\\n * from parent (Ownable).\\n */\\nabstract contract Ownable2Step is Ownable {\\n    address private _pendingOwner;\\n\\n    event OwnershipTransferStarted(address indexed previousOwner, address indexed newOwner);\\n\\n    /**\\n     * @dev Returns the address of the pending owner.\\n     */\\n    function pendingOwner() public view virtual returns (address) {\\n        return _pendingOwner;\\n    }\\n\\n    /**\\n     * @dev Starts the ownership transfer of the contract to a new account. Replaces the pending transfer if there is one.\\n     * Can only be called by the current owner.\\n     *\\n     * Setting `newOwner` to the zero address is allowed; this can be used to cancel an initiated ownership transfer.\\n     */\\n    function transferOwnership(address newOwner) public virtual override onlyOwner {\\n        _pendingOwner = newOwner;\\n        emit OwnershipTransferStarted(owner(), newOwner);\\n    }\\n\\n    /**\\n     * @dev Transfers ownership of the contract to a new account (`newOwner`) and deletes any pending owner.\\n     * Internal function without access restriction.\\n     */\\n    function _transferOwnership(address newOwner) internal virtual override {\\n        delete _pendingOwner;\\n        super._transferOwnership(newOwner);\\n    }\\n\\n    /**\\n     * @dev The new owner accepts the ownership transfer.\\n     */\\n    function acceptOwnership() public virtual {\\n        address sender = _msgSender();\\n        if (pendingOwner() != sender) {\\n            revert OwnableUnauthorizedAccount(sender);\\n        }\\n        _transferOwnership(sender);\\n    }\\n}\\n\",\"keccak256\":\"0xdcad8898fda432696597752e8ec361b87d85c82cb258115427af006dacf7128c\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/Context.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.0.1) (utils/Context.sol)\\n\\npragma solidity ^0.8.20;\\n\\n/**\\n * @dev Provides information about the current execution context, including the\\n * sender of the transaction and its data. While these are generally available\\n * via msg.sender and msg.data, they should not be accessed in such a direct\\n * manner, since when dealing with meta-transactions the account sending and\\n * paying for execution may not be the actual sender (as far as an application\\n * is concerned).\\n *\\n * This contract is only required for intermediate, library-like contracts.\\n */\\nabstract contract Context {\\n    function _msgSender() internal view virtual returns (address) {\\n        return msg.sender;\\n    }\\n\\n    function _msgData() internal view virtual returns (bytes calldata) {\\n        return msg.data;\\n    }\\n\\n    function _contextSuffixLength() internal view virtual returns (uint256) {\\n        return 0;\\n    }\\n}\\n\",\"keccak256\":\"0x493033a8d1b176a037b2cc6a04dad01a5c157722049bbecf632ca876224dd4b2\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/ReentrancyGuard.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.5.0) (utils/ReentrancyGuard.sol)\\n\\npragma solidity ^0.8.20;\\n\\nimport {StorageSlot} from \\\"./StorageSlot.sol\\\";\\n\\n/**\\n * @dev Contract module that helps prevent reentrant calls to a function.\\n *\\n * Inheriting from `ReentrancyGuard` will make the {nonReentrant} modifier\\n * available, which can be applied to functions to make sure there are no nested\\n * (reentrant) calls to them.\\n *\\n * Note that because there is a single `nonReentrant` guard, functions marked as\\n * `nonReentrant` may not call one another. This can be worked around by making\\n * those functions `private`, and then adding `external` `nonReentrant` entry\\n * points to them.\\n *\\n * TIP: If EIP-1153 (transient storage) is available on the chain you're deploying at,\\n * consider using {ReentrancyGuardTransient} instead.\\n *\\n * TIP: If you would like to learn more about reentrancy and alternative ways\\n * to protect against it, check out our blog post\\n * https://blog.openzeppelin.com/reentrancy-after-istanbul/[Reentrancy After Istanbul].\\n *\\n * IMPORTANT: Deprecated. This storage-based reentrancy guard will be removed and replaced\\n * by the {ReentrancyGuardTransient} variant in v6.0.\\n *\\n * @custom:stateless\\n */\\nabstract contract ReentrancyGuard {\\n    using StorageSlot for bytes32;\\n\\n    // keccak256(abi.encode(uint256(keccak256(\\\"openzeppelin.storage.ReentrancyGuard\\\")) - 1)) & ~bytes32(uint256(0xff))\\n    bytes32 private constant REENTRANCY_GUARD_STORAGE =\\n        0x9b779b17422d0df92223018b32b4d1fa46e071723d6817e2486d003becc55f00;\\n\\n    // Booleans are more expensive than uint256 or any type that takes up a full\\n    // word because each write operation emits an extra SLOAD to first read the\\n    // slot's contents, replace the bits taken up by the boolean, and then write\\n    // back. This is the compiler's defense against contract upgrades and\\n    // pointer aliasing, and it cannot be disabled.\\n\\n    // The values being non-zero value makes deployment a bit more expensive,\\n    // but in exchange the refund on every call to nonReentrant will be lower in\\n    // amount. Since refunds are capped to a percentage of the total\\n    // transaction's gas, it is best to keep them low in cases like this one, to\\n    // increase the likelihood of the full refund coming into effect.\\n    uint256 private constant NOT_ENTERED = 1;\\n    uint256 private constant ENTERED = 2;\\n\\n    /**\\n     * @dev Unauthorized reentrant call.\\n     */\\n    error ReentrancyGuardReentrantCall();\\n\\n    constructor() {\\n        _reentrancyGuardStorageSlot().getUint256Slot().value = NOT_ENTERED;\\n    }\\n\\n    /**\\n     * @dev Prevents a contract from calling itself, directly or indirectly.\\n     * Calling a `nonReentrant` function from another `nonReentrant`\\n     * function is not supported. It is possible to prevent this from happening\\n     * by making the `nonReentrant` function external, and making it call a\\n     * `private` function that does the actual work.\\n     */\\n    modifier nonReentrant() {\\n        _nonReentrantBefore();\\n        _;\\n        _nonReentrantAfter();\\n    }\\n\\n    /**\\n     * @dev A `view` only version of {nonReentrant}. Use to block view functions\\n     * from being called, preventing reading from inconsistent contract state.\\n     *\\n     * CAUTION: This is a \\\"view\\\" modifier and does not change the reentrancy\\n     * status. Use it only on view functions. For payable or non-payable functions,\\n     * use the standard {nonReentrant} modifier instead.\\n     */\\n    modifier nonReentrantView() {\\n        _nonReentrantBeforeView();\\n        _;\\n    }\\n\\n    function _nonReentrantBeforeView() private view {\\n        if (_reentrancyGuardEntered()) {\\n            revert ReentrancyGuardReentrantCall();\\n        }\\n    }\\n\\n    function _nonReentrantBefore() private {\\n        // On the first call to nonReentrant, _status will be NOT_ENTERED\\n        _nonReentrantBeforeView();\\n\\n        // Any calls to nonReentrant after this point will fail\\n        _reentrancyGuardStorageSlot().getUint256Slot().value = ENTERED;\\n    }\\n\\n    function _nonReentrantAfter() private {\\n        // By storing the original value once again, a refund is triggered (see\\n        // https://eips.ethereum.org/EIPS/eip-2200)\\n        _reentrancyGuardStorageSlot().getUint256Slot().value = NOT_ENTERED;\\n    }\\n\\n    /**\\n     * @dev Returns true if the reentrancy guard is currently set to \\\"entered\\\", which indicates there is a\\n     * `nonReentrant` function in the call stack.\\n     */\\n    function _reentrancyGuardEntered() internal view returns (bool) {\\n        return _reentrancyGuardStorageSlot().getUint256Slot().value == ENTERED;\\n    }\\n\\n    function _reentrancyGuardStorageSlot() internal pure virtual returns (bytes32) {\\n        return REENTRANCY_GUARD_STORAGE;\\n    }\\n}\\n\",\"keccak256\":\"0xa516cbf1c7d15d3517c2d668601ce016c54395bf5171918a14e2686977465f53\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/StorageSlot.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.1.0) (utils/StorageSlot.sol)\\n// This file was procedurally generated from scripts/generate/templates/StorageSlot.js.\\n\\npragma solidity ^0.8.20;\\n\\n/**\\n * @dev Library for reading and writing primitive types to specific storage slots.\\n *\\n * Storage slots are often used to avoid storage conflict when dealing with upgradeable contracts.\\n * This library helps with reading and writing to such slots without the need for inline assembly.\\n *\\n * The functions in this library return Slot structs that contain a `value` member that can be used to read or write.\\n *\\n * Example usage to set ERC-1967 implementation slot:\\n * ```solidity\\n * contract ERC1967 {\\n *     // Define the slot. Alternatively, use the SlotDerivation library to derive the slot.\\n *     bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;\\n *\\n *     function _getImplementation() internal view returns (address) {\\n *         return StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value;\\n *     }\\n *\\n *     function _setImplementation(address newImplementation) internal {\\n *         require(newImplementation.code.length > 0);\\n *         StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = newImplementation;\\n *     }\\n * }\\n * ```\\n *\\n * TIP: Consider using this library along with {SlotDerivation}.\\n */\\nlibrary StorageSlot {\\n    struct AddressSlot {\\n        address value;\\n    }\\n\\n    struct BooleanSlot {\\n        bool value;\\n    }\\n\\n    struct Bytes32Slot {\\n        bytes32 value;\\n    }\\n\\n    struct Uint256Slot {\\n        uint256 value;\\n    }\\n\\n    struct Int256Slot {\\n        int256 value;\\n    }\\n\\n    struct StringSlot {\\n        string value;\\n    }\\n\\n    struct BytesSlot {\\n        bytes value;\\n    }\\n\\n    /**\\n     * @dev Returns an `AddressSlot` with member `value` located at `slot`.\\n     */\\n    function getAddressSlot(bytes32 slot) internal pure returns (AddressSlot storage r) {\\n        assembly (\\\"memory-safe\\\") {\\n            r.slot := slot\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns a `BooleanSlot` with member `value` located at `slot`.\\n     */\\n    function getBooleanSlot(bytes32 slot) internal pure returns (BooleanSlot storage r) {\\n        assembly (\\\"memory-safe\\\") {\\n            r.slot := slot\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns a `Bytes32Slot` with member `value` located at `slot`.\\n     */\\n    function getBytes32Slot(bytes32 slot) internal pure returns (Bytes32Slot storage r) {\\n        assembly (\\\"memory-safe\\\") {\\n            r.slot := slot\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns a `Uint256Slot` with member `value` located at `slot`.\\n     */\\n    function getUint256Slot(bytes32 slot) internal pure returns (Uint256Slot storage r) {\\n        assembly (\\\"memory-safe\\\") {\\n            r.slot := slot\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns a `Int256Slot` with member `value` located at `slot`.\\n     */\\n    function getInt256Slot(bytes32 slot) internal pure returns (Int256Slot storage r) {\\n        assembly (\\\"memory-safe\\\") {\\n            r.slot := slot\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns a `StringSlot` with member `value` located at `slot`.\\n     */\\n    function getStringSlot(bytes32 slot) internal pure returns (StringSlot storage r) {\\n        assembly (\\\"memory-safe\\\") {\\n            r.slot := slot\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns an `StringSlot` representation of the string storage pointer `store`.\\n     */\\n    function getStringSlot(string storage store) internal pure returns (StringSlot storage r) {\\n        assembly (\\\"memory-safe\\\") {\\n            r.slot := store.slot\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns a `BytesSlot` with member `value` located at `slot`.\\n     */\\n    function getBytesSlot(bytes32 slot) internal pure returns (BytesSlot storage r) {\\n        assembly (\\\"memory-safe\\\") {\\n            r.slot := slot\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns an `BytesSlot` representation of the bytes storage pointer `store`.\\n     */\\n    function getBytesSlot(bytes storage store) internal pure returns (BytesSlot storage r) {\\n        assembly (\\\"memory-safe\\\") {\\n            r.slot := store.slot\\n        }\\n    }\\n}\\n\",\"keccak256\":\"0xcf74f855663ce2ae00ed8352666b7935f6cddea2932fdf2c3ecd30a9b1cd0e97\",\"license\":\"MIT\"},\"contracts/core/BidEscrow.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.27;\\n\\nimport {Ownable} from \\\"@openzeppelin/contracts/access/Ownable.sol\\\";\\nimport {Ownable2Step} from \\\"@openzeppelin/contracts/access/Ownable2Step.sol\\\";\\nimport {ReentrancyGuard} from \\\"@openzeppelin/contracts/utils/ReentrancyGuard.sol\\\";\\nimport {DepositStatus} from \\\"../interfaces/ISealTender.sol\\\";\\n\\n/**\\n * @title BidEscrow\\n * @notice Holds ETH escrow deposits for tender bidders.\\n */\\ncontract BidEscrow is Ownable2Step, ReentrancyGuard {\\n    // --- State ---\\n    mapping(uint256 => uint256) public requiredDeposit;\\n    mapping(uint256 => mapping(address => uint256)) public deposits;\\n    mapping(uint256 => mapping(address => DepositStatus)) public depositStatus;\\n    mapping(uint256 => uint256) public totalEscrow;\\n    mapping(address => bool) public authorizedCallers;\\n\\n    // --- Events ---\\n    event EscrowDeposited(uint256 indexed tenderId, address indexed bidder, uint256 amount);\\n    event EscrowReleased(uint256 indexed tenderId, address indexed bidder, uint256 amount);\\n    event EscrowRefunded(uint256 indexed tenderId, address indexed bidder, uint256 amount);\\n    event EscrowFrozen(uint256 indexed tenderId, address indexed bidder);\\n    event EscrowUnfrozen(uint256 indexed tenderId, address indexed bidder);\\n    event EscrowSlashed(\\n        uint256 indexed tenderId,\\n        address indexed bidder,\\n        address recipient,\\n        uint256 amount\\n    );\\n    event RequiredDepositSet(uint256 indexed tenderId, uint256 amount);\\n    event CallerAuthorized(address indexed caller);\\n    event CallerDeauthorized(address indexed caller);\\n\\n    // --- Errors ---\\n    error InsufficientDeposit();\\n    error NotAuthorized();\\n    error DepositNotActive();\\n    error DepositFrozen();\\n    error DepositAlreadyExists();\\n    error TransferFailed();\\n    error ZeroAddress();\\n    error NoDeposit();\\n\\n    // --- Modifiers ---\\n    modifier onlyAuthorized() {\\n        if (!authorizedCallers[msg.sender] && msg.sender != owner()) {\\n            revert NotAuthorized();\\n        }\\n        _;\\n    }\\n\\n    constructor() Ownable(msg.sender) {}\\n\\n    // --- Admin ---\\n\\n    function authorizeCaller(address caller) external onlyOwner {\\n        if (caller == address(0)) revert ZeroAddress();\\n        authorizedCallers[caller] = true;\\n        emit CallerAuthorized(caller);\\n    }\\n\\n    function deauthorizeCaller(address caller) external onlyOwner {\\n        authorizedCallers[caller] = false;\\n        emit CallerDeauthorized(caller);\\n    }\\n\\n    function setRequiredDeposit(uint256 tenderId, uint256 amount) external onlyAuthorized {\\n        requiredDeposit[tenderId] = amount;\\n        emit RequiredDepositSet(tenderId, amount);\\n    }\\n\\n    // --- Core ---\\n\\n    function deposit(uint256 tenderId) external payable {\\n        if (depositStatus[tenderId][msg.sender] != DepositStatus.None) {\\n            revert DepositAlreadyExists();\\n        }\\n        uint256 required = requiredDeposit[tenderId];\\n        if (msg.value < required) revert InsufficientDeposit();\\n\\n        deposits[tenderId][msg.sender] = msg.value;\\n        depositStatus[tenderId][msg.sender] = DepositStatus.Active;\\n        totalEscrow[tenderId] += msg.value;\\n\\n        emit EscrowDeposited(tenderId, msg.sender, msg.value);\\n    }\\n\\n    function release(uint256 tenderId, address bidder) external onlyAuthorized nonReentrant {\\n        _requireActive(tenderId, bidder);\\n        uint256 amount = deposits[tenderId][bidder];\\n        if (amount == 0) revert NoDeposit();\\n\\n        depositStatus[tenderId][bidder] = DepositStatus.Released;\\n        deposits[tenderId][bidder] = 0;\\n        totalEscrow[tenderId] -= amount;\\n\\n        (bool success, ) = payable(bidder).call{value: amount}(\\\"\\\");\\n        if (!success) revert TransferFailed();\\n\\n        emit EscrowReleased(tenderId, bidder, amount);\\n    }\\n\\n    function refund(uint256 tenderId, address bidder) external onlyAuthorized nonReentrant {\\n        _requireActive(tenderId, bidder);\\n        uint256 amount = deposits[tenderId][bidder];\\n        if (amount == 0) revert NoDeposit();\\n\\n        depositStatus[tenderId][bidder] = DepositStatus.Refunded;\\n        deposits[tenderId][bidder] = 0;\\n        totalEscrow[tenderId] -= amount;\\n\\n        (bool success, ) = payable(bidder).call{value: amount}(\\\"\\\");\\n        if (!success) revert TransferFailed();\\n\\n        emit EscrowRefunded(tenderId, bidder, amount);\\n    }\\n\\n    function freeze(uint256 tenderId, address bidder) external onlyAuthorized {\\n        if (depositStatus[tenderId][bidder] != DepositStatus.Active) {\\n            revert DepositNotActive();\\n        }\\n        depositStatus[tenderId][bidder] = DepositStatus.Frozen;\\n        emit EscrowFrozen(tenderId, bidder);\\n    }\\n\\n    function unfreeze(uint256 tenderId, address bidder) external onlyAuthorized {\\n        if (depositStatus[tenderId][bidder] != DepositStatus.Frozen) {\\n            revert DepositFrozen();\\n        }\\n        depositStatus[tenderId][bidder] = DepositStatus.Active;\\n        emit EscrowUnfrozen(tenderId, bidder);\\n    }\\n\\n    function slash(\\n        uint256 tenderId,\\n        address bidder,\\n        address recipient\\n    ) external onlyAuthorized nonReentrant {\\n        DepositStatus status = depositStatus[tenderId][bidder];\\n        if (status != DepositStatus.Active && status != DepositStatus.Frozen) {\\n            revert DepositNotActive();\\n        }\\n        if (recipient == address(0)) revert ZeroAddress();\\n\\n        uint256 amount = deposits[tenderId][bidder];\\n        if (amount == 0) revert NoDeposit();\\n\\n        depositStatus[tenderId][bidder] = DepositStatus.Slashed;\\n        deposits[tenderId][bidder] = 0;\\n        totalEscrow[tenderId] -= amount;\\n\\n        (bool success, ) = payable(recipient).call{value: amount}(\\\"\\\");\\n        if (!success) revert TransferFailed();\\n\\n        emit EscrowSlashed(tenderId, bidder, recipient, amount);\\n    }\\n\\n    // --- Views ---\\n\\n    function getDepositStatus(\\n        uint256 tenderId,\\n        address bidder\\n    ) external view returns (DepositStatus) {\\n        return depositStatus[tenderId][bidder];\\n    }\\n\\n    function getDeposit(uint256 tenderId, address bidder) external view returns (uint256) {\\n        return deposits[tenderId][bidder];\\n    }\\n\\n    // --- Internal ---\\n\\n    function _requireActive(uint256 tenderId, address bidder) internal view {\\n        DepositStatus status = depositStatus[tenderId][bidder];\\n        if (status == DepositStatus.Frozen) revert DepositFrozen();\\n        if (status != DepositStatus.Active) revert DepositNotActive();\\n    }\\n}\\n\",\"keccak256\":\"0x1c7bcbcfbdf0b9904a20dbda383b3d61589705152e3e353efdbe5e7a9a1c90a3\",\"license\":\"MIT\"},\"contracts/interfaces/ISealTender.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.27;\\n\\n/**\\n * @title ISealTender\\n * @notice Shared interfaces, structs, enums, and events for the SealTender protocol.\\n */\\n\\n// --- Enums ---\\n\\nenum TenderState {\\n    Created,\\n    Bidding,\\n    Evaluating,\\n    Revealed,\\n    Completed,\\n    Cancelled\\n}\\n\\nenum DisputeType {\\n    Company,\\n    Citizen,\\n    CourtOrder\\n}\\n\\nenum DisputeStatus {\\n    Open,\\n    Investigating,\\n    Slashed,\\n    Frozen,\\n    Dismissed\\n}\\n\\nenum DepositStatus {\\n    None,\\n    Active,\\n    Frozen,\\n    Released,\\n    Refunded,\\n    Slashed\\n}\\n\\n// --- Structs ---\\n\\nstruct TenderConfig {\\n    string description;\\n    uint256 deadline;\\n    uint32 weightYears;\\n    uint32 weightProjects;\\n    uint32 weightBond;\\n    uint32 minYears;\\n    uint32 minProjects;\\n    uint64 minBond;\\n    uint256 escrowAmount;\\n    uint256 maxBidders;\\n    uint256 minReputation;\\n}\\n\\nstruct TenderSpecification {\\n    string category;           // \\\"construction\\\", \\\"IT\\\", \\\"furniture\\\", \\\"vehicle\\\"\\n    uint256 totalAreaM2;       // Total area in square meters (0 if N/A)\\n    uint256 estimatedValueMin; // Minimum estimated value (USD, 6 decimals)\\n    uint256 estimatedValueMax; // Maximum estimated value (USD, 6 decimals)\\n    string boqReference;       // Bill of Quantities reference (e.g. \\\"BOQ-Rev3-2026\\\")\\n    string standardsReference; // Standards (e.g. \\\"ISO-9001, NFPA-13, ASHRAE\\\")\\n    uint256 completionDays;    // Expected completion in days\\n    uint256 liquidatedDamages; // Daily penalty for delay (USD, 6 decimals)\\n}\\n\\nstruct Dispute {\\n    address complainant;\\n    address accused;\\n    uint256 tenderId;\\n    DisputeType disputeType;\\n    DisputeStatus status;\\n    uint256 stake;\\n    string reason;\\n}\\n\\nstruct EscalationRule {\\n    bytes32 materialId;\\n    uint256 baselinePrice;\\n    uint256 thresholdPercent;\\n    uint256 capPercent;\\n    uint256 periodSeconds;\\n    uint256 lastEvaluated;\\n}\\n\\n// --- Events Interface ---\\n\\ninterface ISealTenderEvents {\\n    event TenderCreated(uint256 indexed tenderId, address tenderContract, string description);\\n    event BidSubmitted(uint256 indexed tenderId, address indexed bidder);\\n    event BidUpdated(uint256 indexed tenderId, address indexed bidder, uint256 version);\\n    event EvaluationCompleted(uint256 indexed tenderId);\\n    event WinnerRevealed(uint256 indexed tenderId, address winner, uint256 price);\\n    event EscrowDeposited(uint256 indexed tenderId, address indexed bidder, uint256 amount);\\n    event EscrowReleased(uint256 indexed tenderId, address indexed bidder, uint256 amount);\\n    event EscrowRefunded(uint256 indexed tenderId, address indexed bidder, uint256 amount);\\n    event EscrowFrozen(uint256 indexed tenderId, address indexed bidder);\\n    event EscrowUnfrozen(uint256 indexed tenderId, address indexed bidder);\\n    event EscrowSlashed(uint256 indexed tenderId, address indexed bidder, address recipient, uint256 amount);\\n    event DisputeFiled(uint256 indexed disputeId, uint256 indexed tenderId, address complainant, address accused);\\n    event DisputeResolved(uint256 indexed disputeId, DisputeStatus resolution);\\n    event ReputationUpdated(address indexed bidder, uint256 newScore);\\n    event CollisionDetected(uint256 indexed tenderId);\\n    event EscalationTriggered(uint256 indexed tenderId, bytes32 materialId, uint256 extraPayment);\\n}\\n\",\"keccak256\":\"0x0bd236879cf1f13b1a0287dbef7ac2a62a7775df0965493ee7597af107ad56c1\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x60808060405234609d573315608a57600180546001600160a01b03199081169091555f805433928116831782556001600160a01b0316907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e09080a360017f9b779b17422d0df92223018b32b4d1fa46e071723d6817e2486d003becc55f0055610e3490816100a28239f35b631e4fbdf760e01b5f525f60045260245ffd5b5f80fdfe60806040526004361015610011575f80fd5b5f3560e01c8063036429e014610bce5780632c388d5d14610b615780634584002114610b37578063536fff6c14610afa57806353a58de1146106a45780636873c21d14610a96578063715018a614610a2f57806379ba5097146109a85780637ad226dc1461085b5780638124fea61461070e578063838c4031146101715780638da5cb5b146106e95780639f489e4e146106a4578063b6b55f251461058b578063be995dc214610396578063c258159b1461036c578063d2054ea0146102ec578063e30c3978146102c6578063e603f5b4146101c2578063eca8725c146101715763f2fde38b14610100575f80fd5b3461016d57602036600319011261016d576001600160a01b03610121610cb6565b610129610d51565b16806001600160a01b031960015416176001556001600160a01b035f54167f38d16b8cac22d99fc7c124b9cd0de2d3fa1faef420bfe791d8c362d765e227005f80a3005b5f80fd5b3461016d57604036600319011261016d5761018a610ca0565b6004355f5260046020526001600160a01b0360405f2091165f526020526101be60ff60405f20541660405191829182610ccc565b0390f35b3461016d57604036600319011261016d576004356101de610ca0565b335f52600660205260ff60405f20541615806102b2575b6102a357815f52600460205260405f206001600160a01b0382165f5260205260ff60405f205416600681101561028f57600203610280576001600160a01b0390825f52600460205260405f208282165f5260205260405f20600160ff1982541617905516907f70475304dc63c16c2b65b2b09ebd7e1a4db429c37c3d29e030ddda55b856023b5f80a3005b6302dd022560e01b5f5260045ffd5b634e487b7160e01b5f52602160045260245ffd5b63ea8e4eb560e01b5f5260045ffd5b506001600160a01b035f54163314156101f5565b3461016d575f36600319011261016d5760206001600160a01b0360015416604051908152f35b3461016d57604036600319011261016d57600435602435335f52600660205260ff60405f2054161580610358575b6102a35760207fc7aeaefc827a176771f5c1d6b73d1f0f43f1b200d19cac0cda46da652b8bc7e491835f52600282528060405f2055604051908152a2005b506001600160a01b035f541633141561031a565b3461016d57602036600319011261016d576004355f526002602052602060405f2054604051908152f35b3461016d57606036600319011261016d576004356103b2610ca0565b90604435916001600160a01b03831680930361016d57335f52600660205260ff60405f2054161580610577575b6102a3576103eb610d64565b815f52600460205260405f206001600160a01b0382165f5260205260ff60405f205416600681101561028f576001811415908161056b575b5061055c57821561054d57815f52600360205260405f206001600160a01b0382165f5260205260405f205490811561053e57825f52600460205260405f206001600160a01b0382165f5260205260405f20600560ff19825416179055825f52600360205260405f206001600160a01b0382165f526020525f6040812055825f52600560205260405f206104b7838254610cdf565b90555f80808085885af16104c9610cec565b501561052f576001600160a01b036040917f79d715b2c5e43c14d7646d082f7ea072696d866f16f52cc6e8ded01bc94afff793835196875260208701521693a360017f9b779b17422d0df92223018b32b4d1fa46e071723d6817e2486d003becc55f0055005b6312171d8360e31b5f5260045ffd5b633a6a68b160e01b5f5260045ffd5b63d92e233d60e01b5f5260045ffd5b636ca34c6b60e01b5f5260045ffd5b60029150141584610423565b506001600160a01b035f54163314156103df565b602036600319011261016d57600435805f52600460205260405f206001600160a01b0333165f5260205260ff60405f205416600681101561028f5761069557805f52600260205260405f2054341061068657805f52600360205260405f206001600160a01b0333165f5260205260405f20349055805f52600460205260405f206001600160a01b0333165f5260205260405f20600160ff19825416179055805f52600560205260405f208054903482018092116106725755604051903482527f9a57bbb234b70fc26fbb5c8d65f00c0bba23b19c4a7bb1aedb26c7a04269f74760203393a3005b634e487b7160e01b5f52601160045260245ffd5b63070f6eed60e11b5f5260045ffd5b63c44bd76560e01b5f5260045ffd5b3461016d57604036600319011261016d576106bd610ca0565b6004355f5260036020526001600160a01b0360405f2091165f52602052602060405f2054604051908152f35b3461016d575f36600319011261016d5760206001600160a01b035f5416604051908152f35b3461016d57604036600319011261016d5760043561072a610ca0565b90335f52600660205260ff60405f2054161580610847575b6102a35761074e610d64565b6107588282610dc2565b805f52600360205260405f206001600160a01b0383165f5260205260405f205491821561053e576001600160a01b0390825f52600460205260405f208282165f5260205260405f20600360ff19825416179055825f52600360205260405f208282165f526020525f6040812055825f52600560205260405f206107dc858254610cdf565b905516915f80808084875af16107f0610cec565b501561052f5760207f6244ed823ca6be0f11bc890c3fafcf3c29cb23420c14243642e930b5e07e6d0a91604051908152a360017f9b779b17422d0df92223018b32b4d1fa46e071723d6817e2486d003becc55f0055005b506001600160a01b035f5416331415610742565b3461016d57604036600319011261016d57600435610877610ca0565b90335f52600660205260ff60405f2054161580610994575b6102a35761089b610d64565b6108a58282610dc2565b805f52600360205260405f206001600160a01b0383165f5260205260405f205491821561053e576001600160a01b0390825f52600460205260405f208282165f5260205260405f20600460ff19825416179055825f52600360205260405f208282165f526020525f6040812055825f52600560205260405f20610929858254610cdf565b905516915f80808084875af161093d610cec565b501561052f5760207feac97bc1917fcedc984e3d0671d4e83b359890323d5d1c2de32b28d17c356ced91604051908152a360017f9b779b17422d0df92223018b32b4d1fa46e071723d6817e2486d003becc55f0055005b506001600160a01b035f541633141561088f565b3461016d575f36600319011261016d57336001600160a01b036001541603610a1c576001600160a01b0319600154166001555f54336001600160a01b03198216175f556001600160a01b033391167f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e05f80a3005b63118cdaa760e01b5f523360045260245ffd5b3461016d575f36600319011261016d57610a47610d51565b6001600160a01b0319600154166001555f6001600160a01b0381546001600160a01b031981168355167f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e08280a3005b3461016d57602036600319011261016d576001600160a01b03610ab7610cb6565b610abf610d51565b16805f52600660205260405f2060ff1981541690557fe4f65e2ca2c83e5b4ae9247816d99b62550f320cc4196d714109b21c3dc096565f80a2005b3461016d57602036600319011261016d576001600160a01b03610b1b610cb6565b165f526006602052602060ff60405f2054166040519015158152f35b3461016d57602036600319011261016d576004355f526005602052602060405f2054604051908152f35b3461016d57602036600319011261016d576001600160a01b03610b82610cb6565b610b8a610d51565b16801561054d57805f52600660205260405f20600160ff198254161790557f6acfd92212f0ec670af78f8ba2273e4a85ac17023475650c25be0440602bff2d5f80a2005b3461016d57604036600319011261016d57600435610bea610ca0565b335f52600660205260ff60405f2054161580610c8c575b6102a357815f52600460205260405f206001600160a01b0382165f5260205260ff60405f205416600681101561028f5760010361055c576001600160a01b0390825f52600460205260405f208282165f5260205260405f20600260ff1982541617905516907fc65e773974e1a88f6455a997f6f51013f5c87b4a8d323675e61b4d2e091e059f5f80a3005b506001600160a01b035f5416331415610c01565b602435906001600160a01b038216820361016d57565b600435906001600160a01b038216820361016d57565b91906020830192600682101561028f5752565b9190820391821161067257565b3d15610d4c573d9067ffffffffffffffff8211610d385760405191601f8101601f19908116603f0116830167ffffffffffffffff811184821017610d385760405282523d5f602084013e565b634e487b7160e01b5f52604160045260245ffd5b606090565b6001600160a01b035f54163303610a1c57565b60027f9b779b17422d0df92223018b32b4d1fa46e071723d6817e2486d003becc55f005414610db35760027f9b779b17422d0df92223018b32b4d1fa46e071723d6817e2486d003becc55f0055565b633ee5aeb560e01b5f5260045ffd5b5f5260046020526001600160a01b0360405f2091165f5260205260ff60405f205416600681101561028f5760028114610280575f190161055c5756fea2646970667358221220cada1420cadc715c16472bdb86c72b504f08e4f14882a5462f35e239a2918f4d64736f6c634300081b0033",
+  "deployedBytecode": "0x60806040526004361015610011575f80fd5b5f3560e01c8063036429e014610bce5780632c388d5d14610b615780634584002114610b37578063536fff6c14610afa57806353a58de1146106a45780636873c21d14610a96578063715018a614610a2f57806379ba5097146109a85780637ad226dc1461085b5780638124fea61461070e578063838c4031146101715780638da5cb5b146106e95780639f489e4e146106a4578063b6b55f251461058b578063be995dc214610396578063c258159b1461036c578063d2054ea0146102ec578063e30c3978146102c6578063e603f5b4146101c2578063eca8725c146101715763f2fde38b14610100575f80fd5b3461016d57602036600319011261016d576001600160a01b03610121610cb6565b610129610d51565b16806001600160a01b031960015416176001556001600160a01b035f54167f38d16b8cac22d99fc7c124b9cd0de2d3fa1faef420bfe791d8c362d765e227005f80a3005b5f80fd5b3461016d57604036600319011261016d5761018a610ca0565b6004355f5260046020526001600160a01b0360405f2091165f526020526101be60ff60405f20541660405191829182610ccc565b0390f35b3461016d57604036600319011261016d576004356101de610ca0565b335f52600660205260ff60405f20541615806102b2575b6102a357815f52600460205260405f206001600160a01b0382165f5260205260ff60405f205416600681101561028f57600203610280576001600160a01b0390825f52600460205260405f208282165f5260205260405f20600160ff1982541617905516907f70475304dc63c16c2b65b2b09ebd7e1a4db429c37c3d29e030ddda55b856023b5f80a3005b6302dd022560e01b5f5260045ffd5b634e487b7160e01b5f52602160045260245ffd5b63ea8e4eb560e01b5f5260045ffd5b506001600160a01b035f54163314156101f5565b3461016d575f36600319011261016d5760206001600160a01b0360015416604051908152f35b3461016d57604036600319011261016d57600435602435335f52600660205260ff60405f2054161580610358575b6102a35760207fc7aeaefc827a176771f5c1d6b73d1f0f43f1b200d19cac0cda46da652b8bc7e491835f52600282528060405f2055604051908152a2005b506001600160a01b035f541633141561031a565b3461016d57602036600319011261016d576004355f526002602052602060405f2054604051908152f35b3461016d57606036600319011261016d576004356103b2610ca0565b90604435916001600160a01b03831680930361016d57335f52600660205260ff60405f2054161580610577575b6102a3576103eb610d64565b815f52600460205260405f206001600160a01b0382165f5260205260ff60405f205416600681101561028f576001811415908161056b575b5061055c57821561054d57815f52600360205260405f206001600160a01b0382165f5260205260405f205490811561053e57825f52600460205260405f206001600160a01b0382165f5260205260405f20600560ff19825416179055825f52600360205260405f206001600160a01b0382165f526020525f6040812055825f52600560205260405f206104b7838254610cdf565b90555f80808085885af16104c9610cec565b501561052f576001600160a01b036040917f79d715b2c5e43c14d7646d082f7ea072696d866f16f52cc6e8ded01bc94afff793835196875260208701521693a360017f9b779b17422d0df92223018b32b4d1fa46e071723d6817e2486d003becc55f0055005b6312171d8360e31b5f5260045ffd5b633a6a68b160e01b5f5260045ffd5b63d92e233d60e01b5f5260045ffd5b636ca34c6b60e01b5f5260045ffd5b60029150141584610423565b506001600160a01b035f54163314156103df565b602036600319011261016d57600435805f52600460205260405f206001600160a01b0333165f5260205260ff60405f205416600681101561028f5761069557805f52600260205260405f2054341061068657805f52600360205260405f206001600160a01b0333165f5260205260405f20349055805f52600460205260405f206001600160a01b0333165f5260205260405f20600160ff19825416179055805f52600560205260405f208054903482018092116106725755604051903482527f9a57bbb234b70fc26fbb5c8d65f00c0bba23b19c4a7bb1aedb26c7a04269f74760203393a3005b634e487b7160e01b5f52601160045260245ffd5b63070f6eed60e11b5f5260045ffd5b63c44bd76560e01b5f5260045ffd5b3461016d57604036600319011261016d576106bd610ca0565b6004355f5260036020526001600160a01b0360405f2091165f52602052602060405f2054604051908152f35b3461016d575f36600319011261016d5760206001600160a01b035f5416604051908152f35b3461016d57604036600319011261016d5760043561072a610ca0565b90335f52600660205260ff60405f2054161580610847575b6102a35761074e610d64565b6107588282610dc2565b805f52600360205260405f206001600160a01b0383165f5260205260405f205491821561053e576001600160a01b0390825f52600460205260405f208282165f5260205260405f20600360ff19825416179055825f52600360205260405f208282165f526020525f6040812055825f52600560205260405f206107dc858254610cdf565b905516915f80808084875af16107f0610cec565b501561052f5760207f6244ed823ca6be0f11bc890c3fafcf3c29cb23420c14243642e930b5e07e6d0a91604051908152a360017f9b779b17422d0df92223018b32b4d1fa46e071723d6817e2486d003becc55f0055005b506001600160a01b035f5416331415610742565b3461016d57604036600319011261016d57600435610877610ca0565b90335f52600660205260ff60405f2054161580610994575b6102a35761089b610d64565b6108a58282610dc2565b805f52600360205260405f206001600160a01b0383165f5260205260405f205491821561053e576001600160a01b0390825f52600460205260405f208282165f5260205260405f20600460ff19825416179055825f52600360205260405f208282165f526020525f6040812055825f52600560205260405f20610929858254610cdf565b905516915f80808084875af161093d610cec565b501561052f5760207feac97bc1917fcedc984e3d0671d4e83b359890323d5d1c2de32b28d17c356ced91604051908152a360017f9b779b17422d0df92223018b32b4d1fa46e071723d6817e2486d003becc55f0055005b506001600160a01b035f541633141561088f565b3461016d575f36600319011261016d57336001600160a01b036001541603610a1c576001600160a01b0319600154166001555f54336001600160a01b03198216175f556001600160a01b033391167f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e05f80a3005b63118cdaa760e01b5f523360045260245ffd5b3461016d575f36600319011261016d57610a47610d51565b6001600160a01b0319600154166001555f6001600160a01b0381546001600160a01b031981168355167f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e08280a3005b3461016d57602036600319011261016d576001600160a01b03610ab7610cb6565b610abf610d51565b16805f52600660205260405f2060ff1981541690557fe4f65e2ca2c83e5b4ae9247816d99b62550f320cc4196d714109b21c3dc096565f80a2005b3461016d57602036600319011261016d576001600160a01b03610b1b610cb6565b165f526006602052602060ff60405f2054166040519015158152f35b3461016d57602036600319011261016d576004355f526005602052602060405f2054604051908152f35b3461016d57602036600319011261016d576001600160a01b03610b82610cb6565b610b8a610d51565b16801561054d57805f52600660205260405f20600160ff198254161790557f6acfd92212f0ec670af78f8ba2273e4a85ac17023475650c25be0440602bff2d5f80a2005b3461016d57604036600319011261016d57600435610bea610ca0565b335f52600660205260ff60405f2054161580610c8c575b6102a357815f52600460205260405f206001600160a01b0382165f5260205260ff60405f205416600681101561028f5760010361055c576001600160a01b0390825f52600460205260405f208282165f5260205260405f20600260ff1982541617905516907fc65e773974e1a88f6455a997f6f51013f5c87b4a8d323675e61b4d2e091e059f5f80a3005b506001600160a01b035f5416331415610c01565b602435906001600160a01b038216820361016d57565b600435906001600160a01b038216820361016d57565b91906020830192600682101561028f5752565b9190820391821161067257565b3d15610d4c573d9067ffffffffffffffff8211610d385760405191601f8101601f19908116603f0116830167ffffffffffffffff811184821017610d385760405282523d5f602084013e565b634e487b7160e01b5f52604160045260245ffd5b606090565b6001600160a01b035f54163303610a1c57565b60027f9b779b17422d0df92223018b32b4d1fa46e071723d6817e2486d003becc55f005414610db35760027f9b779b17422d0df92223018b32b4d1fa46e071723d6817e2486d003becc55f0055565b633ee5aeb560e01b5f5260045ffd5b5f5260046020526001600160a01b0360405f2091165f5260205260ff60405f205416600681101561028f5760028114610280575f190161055c5756fea2646970667358221220cada1420cadc715c16472bdb86c72b504f08e4f14882a5462f35e239a2918f4d64736f6c634300081b0033",
+  "devdoc": {
+    "errors": {
+      "OwnableInvalidOwner(address)": [
+        {
+          "details": "The owner is not a valid owner account. (eg. `address(0)`)"
+        }
+      ],
+      "OwnableUnauthorizedAccount(address)": [
+        {
+          "details": "The caller account is not authorized to perform an operation."
+        }
+      ],
+      "ReentrancyGuardReentrantCall()": [
+        {
+          "details": "Unauthorized reentrant call."
+        }
+      ]
+    },
+    "kind": "dev",
+    "methods": {
+      "acceptOwnership()": {
+        "details": "The new owner accepts the ownership transfer."
+      },
+      "owner()": {
+        "details": "Returns the address of the current owner."
+      },
+      "pendingOwner()": {
+        "details": "Returns the address of the pending owner."
+      },
+      "renounceOwnership()": {
+        "details": "Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner."
+      },
+      "transferOwnership(address)": {
+        "details": "Starts the ownership transfer of the contract to a new account. Replaces the pending transfer if there is one. Can only be called by the current owner. Setting `newOwner` to the zero address is allowed; this can be used to cancel an initiated ownership transfer."
+      }
+    },
+    "title": "BidEscrow",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "notice": "Holds ETH escrow deposits for tender bidders.",
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 42164,
+        "contract": "contracts/core/BidEscrow.sol:BidEscrow",
+        "label": "_owner",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_address"
+      },
+      {
+        "astId": 42312,
+        "contract": "contracts/core/BidEscrow.sol:BidEscrow",
+        "label": "_pendingOwner",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_address"
+      },
+      {
+        "astId": 42783,
+        "contract": "contracts/core/BidEscrow.sol:BidEscrow",
+        "label": "requiredDeposit",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_mapping(t_uint256,t_uint256)"
+      },
+      {
+        "astId": 42789,
+        "contract": "contracts/core/BidEscrow.sol:BidEscrow",
+        "label": "deposits",
+        "offset": 0,
+        "slot": "3",
+        "type": "t_mapping(t_uint256,t_mapping(t_address,t_uint256))"
+      },
+      {
+        "astId": 42796,
+        "contract": "contracts/core/BidEscrow.sol:BidEscrow",
+        "label": "depositStatus",
+        "offset": 0,
+        "slot": "4",
+        "type": "t_mapping(t_uint256,t_mapping(t_address,t_enum(DepositStatus)45655))"
+      },
+      {
+        "astId": 42800,
+        "contract": "contracts/core/BidEscrow.sol:BidEscrow",
+        "label": "totalEscrow",
+        "offset": 0,
+        "slot": "5",
+        "type": "t_mapping(t_uint256,t_uint256)"
+      },
+      {
+        "astId": 42804,
+        "contract": "contracts/core/BidEscrow.sol:BidEscrow",
+        "label": "authorizedCallers",
+        "offset": 0,
+        "slot": "6",
+        "type": "t_mapping(t_address,t_bool)"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_bool": {
+        "encoding": "inplace",
+        "label": "bool",
+        "numberOfBytes": "1"
+      },
+      "t_enum(DepositStatus)45655": {
+        "encoding": "inplace",
+        "label": "enum DepositStatus",
+        "numberOfBytes": "1"
+      },
+      "t_mapping(t_address,t_bool)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => bool)",
+        "numberOfBytes": "32",
+        "value": "t_bool"
+      },
+      "t_mapping(t_address,t_enum(DepositStatus)45655)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => enum DepositStatus)",
+        "numberOfBytes": "32",
+        "value": "t_enum(DepositStatus)45655"
+      },
+      "t_mapping(t_address,t_uint256)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => uint256)",
+        "numberOfBytes": "32",
+        "value": "t_uint256"
+      },
+      "t_mapping(t_uint256,t_mapping(t_address,t_enum(DepositStatus)45655))": {
+        "encoding": "mapping",
+        "key": "t_uint256",
+        "label": "mapping(uint256 => mapping(address => enum DepositStatus))",
+        "numberOfBytes": "32",
+        "value": "t_mapping(t_address,t_enum(DepositStatus)45655)"
+      },
+      "t_mapping(t_uint256,t_mapping(t_address,t_uint256))": {
+        "encoding": "mapping",
+        "key": "t_uint256",
+        "label": "mapping(uint256 => mapping(address => uint256))",
+        "numberOfBytes": "32",
+        "value": "t_mapping(t_address,t_uint256)"
+      },
+      "t_mapping(t_uint256,t_uint256)": {
+        "encoding": "mapping",
+        "key": "t_uint256",
+        "label": "mapping(uint256 => uint256)",
+        "numberOfBytes": "32",
+        "value": "t_uint256"
+      },
+      "t_uint256": {
+        "encoding": "inplace",
+        "label": "uint256",
+        "numberOfBytes": "32"
+      }
+    }
+  }
+}

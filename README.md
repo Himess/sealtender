@@ -66,15 +66,15 @@ SealTender uses Fully Homomorphic Encryption (FHE) via [Zama's fhEVM](https://do
 
 | Contract | Address | Verified |
 |----------|---------|----------|
-| BidderRegistry | `0x38122E455f967B5EE8FDF0bCA3EB4A7d9AD51711` | Yes |
-| BidEscrow | `0x616f81F048192790f423Ba9357D0645E37EdE57b` | Yes |
-| ConfidentialUSDC | `0xf80777AB1F957c191dA452043214cB379B46acB5` | Yes |
-| TenderFactory | `0x6f18ea47A650C4326Dc948d9A4200C6813C5dF94` | Yes |
-| DisputeManager | `0x988eA196701550C38AD0667403B2be79a4078E68` | Yes |
-| PriceEscalation | `0x3a306d63100E0e5b428404eDf00295b004eaF949` | Yes |
-| CollisionDetector | `0xDF90Bb1930f06410a64502959a00971fB84F4CB4` | Yes |
+| BidderRegistry | `0x32F74a5C2D10e2C24f0E1fDB4C458403678CCc7b` | Pending |
+| BidEscrow | `0xC080244d26B0Ffd2CFBeB3e166ABe1186DDC5447` | Pending |
+| ConfidentialUSDC | `0xAC1f3F9Ee7dC53B542ddAc8b2383722bBC3647b9` | Pending |
+| TenderFactory | `0x694b12efB7c4E5cdCE41B6273Fce1E80137c6d52` | Pending |
+| DisputeManager | `0xaf58c1a9A2e9d90F41d63A465262Fc5e8BDBd022` | Pending |
+| PriceEscalation | `0xDE895b7d178d4869376DcF32B1db691A9C6425Bf` | Pending |
+| CollisionDetector | `0xb7BDBeb8Cd424925579dAa8c7919F2C2ad2e2ae1` | Pending |
 
-> **Note:** These addresses are from the previous Sepolia deployment. After contract changes (P0/P1/P2 fixes + wrap/unwrap), a fresh deployment is required.
+> **Fresh deployment** with all P0/P1/P2 fixes, Chainlink + Pyth oracle support, dynamic stake (5%), TenderSpecification standardization, dispute timeout, and ConfidentialUSDC wrap/unwrap. Etherscan verification pending.
 
 ## Project Structure
 

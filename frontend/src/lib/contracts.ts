@@ -3,17 +3,17 @@
 // ============================================================================
 
 export const ADDRESSES = {
-  BidderRegistry: "0x38122E455f967B5EE8FDF0bCA3EB4A7d9AD51711" as const,
-  BidEscrow: "0x616f81F048192790f423Ba9357D0645E37EdE57b" as const,
+  BidderRegistry: "0x32F74a5C2D10e2C24f0E1fDB4C458403678CCc7b" as const,
+  BidEscrow: "0xC080244d26B0Ffd2CFBeB3e166ABe1186DDC5447" as const,
   ConfidentialUSDC:
-    "0xf80777AB1F957c191dA452043214cB379B46acB5" as const,
-  TenderFactory: "0x6f18ea47A650C4326Dc948d9A4200C6813C5dF94" as const,
+    "0xAC1f3F9Ee7dC53B542ddAc8b2383722bBC3647b9" as const,
+  TenderFactory: "0x694b12efB7c4E5cdCE41B6273Fce1E80137c6d52" as const,
   DisputeManager:
-    "0x988eA196701550C38AD0667403B2be79a4078E68" as const,
+    "0xaf58c1a9A2e9d90F41d63A465262Fc5e8BDBd022" as const,
   PriceEscalation:
-    "0x3a306d63100E0e5b428404eDf00295b004eaF949" as const,
+    "0xDE895b7d178d4869376DcF32B1db691A9C6425Bf" as const,
   CollisionDetector:
-    "0xDF90Bb1930f06410a64502959a00971fB84F4CB4" as const,
+    "0xb7BDBeb8Cd424925579dAa8c7919F2C2ad2e2ae1" as const,
 } as const;
 
 // ============================================================================

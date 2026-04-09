@@ -23,13 +23,13 @@ export const GATEWAY_URL = "https://gateway.sepolia.zama.ai/";
 // ─── Default Contract Addresses (Sepolia) ───────────────────────────────────
 
 export const DEFAULT_ADDRESSES: ContractAddresses = {
-  factory: "0x0000000000000000000000000000000000000000",
-  escrow: "0x0000000000000000000000000000000000000000",
-  registry: "0x0000000000000000000000000000000000000000",
-  disputeManager: "0x0000000000000000000000000000000000000000",
-  escalation: "0x0000000000000000000000000000000000000000",
-  collisionDetector: "0x0000000000000000000000000000000000000000",
-  cusdc: "0x0000000000000000000000000000000000000000",
+  factory: "0x694b12efB7c4E5cdCE41B6273Fce1E80137c6d52",
+  escrow: "0xC080244d26B0Ffd2CFBeB3e166ABe1186DDC5447",
+  registry: "0x32F74a5C2D10e2C24f0E1fDB4C458403678CCc7b",
+  disputeManager: "0xaf58c1a9A2e9d90F41d63A465262Fc5e8BDBd022",
+  escalation: "0xDE895b7d178d4869376DcF32B1db691A9C6425Bf",
+  collisionDetector: "0xb7BDBeb8Cd424925579dAa8c7919F2C2ad2e2ae1",
+  cusdc: "0xAC1f3F9Ee7dC53B542ddAc8b2383722bBC3647b9",
 };
 
 // ─── ABIs (Human-Readable Format) ───────────────────────────────────────────

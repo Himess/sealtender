@@ -71,31 +71,29 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const registryContract = await hre.ethers.getContractAt("BidderRegistry", registry.address);
   const factoryContract = await hre.ethers.getContractAt("TenderFactory", factory.address);
 
+  // Helper to wait for tx confirmation (avoids nonce race conditions)
+  const sendTx = async (txPromise: Promise<any>, label: string) => {
+    const tx = await txPromise;
+    await tx.wait();
+    console.log(label);
+  };
+
   // Authorize factory in escrow
-  await escrowContract.authorizeCaller(factory.address);
-  console.log("Escrow: authorized TenderFactory");
+  await sendTx(escrowContract.authorizeCaller(factory.address), "Escrow: authorized TenderFactory");
 
   // Authorize factory in registry
-  await registryContract.addAuthorizedCaller(factory.address);
-  console.log("Registry: authorized TenderFactory");
+  await sendTx(registryContract.addAuthorizedCaller(factory.address), "Registry: authorized TenderFactory");
 
   // Authorize dispute manager in registry
-  await registryContract.addAuthorizedCaller(disputeManager.address);
-  console.log("Registry: authorized DisputeManager");
+  await sendTx(registryContract.addAuthorizedCaller(disputeManager.address), "Registry: authorized DisputeManager");
 
   // Authorize dispute manager in escrow (CRITICAL: without this, DisputeManager.resolveDispute() → escrow.slash() reverts)
-  await escrowContract.authorizeCaller(disputeManager.address);
-  console.log("Escrow: authorized DisputeManager");
+  await sendTx(escrowContract.authorizeCaller(disputeManager.address), "Escrow: authorized DisputeManager");
 
   // Set modules in factory
-  await factoryContract.setDisputeManager(disputeManager.address);
-  console.log("Factory: set DisputeManager");
-
-  await factoryContract.setEscalation(escalation.address);
-  console.log("Factory: set PriceEscalation");
-
-  await factoryContract.setCollisionDetector(collisionDetector.address);
-  console.log("Factory: set CollisionDetector");
+  await sendTx(factoryContract.setDisputeManager(disputeManager.address), "Factory: set DisputeManager");
+  await sendTx(factoryContract.setEscalation(escalation.address), "Factory: set PriceEscalation");
+  await sendTx(factoryContract.setCollisionDetector(collisionDetector.address), "Factory: set CollisionDetector");
 
   console.log("\n=== SealTender Deployment Complete ===");
   console.log("BidderRegistry:     ", registry.address);
