@@ -30,7 +30,9 @@ export const TenderFactoryABI = [
 ] as const;
 
 export const EncryptedTenderABI = [
-  "function getConfig() external view returns (string description, uint256 deadline, uint8 maxBidders, address creator)",
+  "function getConfig() external view returns ((string description, uint256 deadline, uint32 weightYears, uint32 weightProjects, uint32 weightBond, uint32 minYears, uint32 minProjects, uint64 minBond, uint256 escrowAmount, uint256 maxBidders, uint256 minReputation))",
+  "function getSpec() external view returns ((string category, uint256 totalAreaM2, uint256 estimatedValueMin, uint256 estimatedValueMax, string boqReference, string standardsReference, uint256 completionDays, uint256 liquidatedDamages))",
+  "function creator() external view returns (address)",
   "function currentState() external view returns (uint8)",
   "function bidderCount() external view returns (uint256)",
   "function hasBid(address bidder) external view returns (bool)",
@@ -40,10 +42,9 @@ export const EncryptedTenderABI = [
   "function winner() external view returns (address)",
   "function revealedPrice() external view returns (uint256)",
   "function getAllBidders() external view returns (address[])",
-  "function creator() external view returns (address)",
   "function description() external view returns (string)",
   "function deadline() external view returns (uint256)",
-  "function maxBidders() external view returns (uint8)",
+  "function maxBidders() external view returns (uint256)",
   "function getBidDeposit(address bidder) external view returns (uint256)",
   "function totalDeposits() external view returns (uint256)",
 ] as const;
@@ -117,8 +118,15 @@ export const CollisionDetectorABI = [
 export interface TenderConfig {
   description: string;
   deadline: bigint;
-  maxBidders: number;
-  creator: `0x${string}`;
+  weightYears: number;
+  weightProjects: number;
+  weightBond: number;
+  minYears: number;
+  minProjects: number;
+  minBond: bigint;
+  escrowAmount: bigint;
+  maxBidders: bigint;
+  minReputation: bigint;
 }
 
 export interface TenderSpecification {

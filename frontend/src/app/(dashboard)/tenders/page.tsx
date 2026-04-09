@@ -8,8 +8,9 @@ import {
   FileText,
   Users,
   Clock,
-  Lock,
   Filter,
+  MapPin,
+  Wallet,
 } from "lucide-react";
 import {
   useAllTenderAddresses,
@@ -18,7 +19,10 @@ import {
   stateColor,
   stateFilterKey,
   formatDeadline,
-  formatUsd,
+  formatUsd6,
+  formatTenderRef,
+  categoryLabel,
+  categoryBadgeColor,
   truncateAddr,
   TenderData,
 } from "@/hooks/useContractData";
@@ -26,26 +30,33 @@ import { TenderState } from "@/lib/contracts";
 
 const filterTabs = [
   { key: "all", label: "All" },
-  { key: "bidding", label: "Bidding" },
-  { key: "created", label: "Created" },
+  { key: "bidding", label: "Open for Bids" },
+  { key: "created", label: "Draft" },
   { key: "closed", label: "Closed" },
-  { key: "evaluating", label: "Evaluating" },
-  { key: "revealed", label: "Revealed" },
+  { key: "evaluating", label: "Under Evaluation" },
+  { key: "revealed", label: "Awarded" },
   { key: "cancelled", label: "Cancelled" },
 ];
 
 function TenderCard({ tender }: { tender: TenderData }) {
+  const ref = formatTenderRef(tender.index, tender.config?.deadline);
+  const category = tender.spec?.category;
+  const hasValue =
+    tender.spec &&
+    (tender.spec.estimatedValueMin > 0n || tender.spec.estimatedValueMax > 0n);
+
   return (
     <Link
       href={`/tenders/${tender.index}`}
-      className="block bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6 card-hover glow-encrypted transition-all hover:translate-y-[-1px]"
+      className="group block bg-[#0D0F14] border border-[#1E2230] rounded-lg overflow-hidden card-hover glow-encrypted transition-all hover:translate-y-[-1px] hover:border-[#00E87B]/30"
     >
-      <div className="flex items-start justify-between mb-3">
-        <span className="font-body text-[12px] text-[#666666] font-mono">
-          Tender #{tender.index}
+      {/* Top strip: ref + status */}
+      <div className="flex items-center justify-between px-5 py-3 border-b border-[#1E2230] bg-[#0A0C11]">
+        <span className="font-body text-[11px] text-[#888888] font-mono tracking-[0.5px]">
+          {ref}
         </span>
         <span
-          className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${stateColor(
+          className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border uppercase tracking-[0.5px] ${stateColor(
             tender.state
           )}`}
         >
@@ -53,60 +64,111 @@ function TenderCard({ tender }: { tender: TenderData }) {
         </span>
       </div>
 
-      <h3 className="font-body text-[14px] font-medium text-[#F0F0F0] mb-4 line-clamp-2">
-        {tender.config?.description || "Unnamed Tender"}
-      </h3>
+      <div className="px-5 py-5 space-y-4">
+        {/* Category badge */}
+        {category && (
+          <span
+            className={`inline-flex px-2 py-0.5 rounded-[4px] text-[10px] font-semibold border uppercase tracking-[0.5px] ${categoryBadgeColor(
+              category
+            )}`}
+          >
+            {categoryLabel(category)}
+          </span>
+        )}
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs">
-          <span className="flex items-center gap-1.5 text-[#666666]">
-            <Users size={12} />
-            Bidders
-          </span>
-          <span className="text-[#888888]">
-            {tender.bidderCount !== undefined
-              ? String(tender.bidderCount)
-              : "0"}
-            /{tender.config?.maxBidders || "--"}
-          </span>
-        </div>
+        {/* Title */}
+        <h3 className="font-heading text-[15px] font-semibold text-[#F0F0F0] leading-[1.35] line-clamp-2 min-h-[42px] group-hover:text-[#00E87B] transition-colors">
+          {tender.config?.description || "Untitled Tender"}
+        </h3>
 
-        <div className="flex items-center justify-between text-xs">
-          <span className="flex items-center gap-1.5 text-[#666666]">
-            <Clock size={12} />
-            Deadline
-          </span>
-          <span className="text-[#888888]">
-            {formatDeadline(tender.config?.deadline)}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between text-xs">
-          <span className="flex items-center gap-1.5 text-[#666666]">
-            <Lock size={12} />
-            Escrow
-          </span>
+        {/* Authority */}
+        <div className="flex items-center gap-1.5 text-[11px] text-[#666666]">
+          <MapPin size={11} />
+          <span className="font-body">Authority</span>
           <span className="text-[#888888] font-mono">
-            {formatUsd(tender.totalDeposits)}
+            {truncateAddr(tender.creator)}
           </span>
         </div>
-      </div>
 
-      {tender.state === TenderState.REVEALED && tender.winner && (
-        <div className="mt-3 pt-3 border-t border-[#1E2230]">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-[#A855F7]">Winner</span>
-            <span className="text-[#F0F0F0] font-mono">
-              {truncateAddr(tender.winner)}
-            </span>
+        {/* Divider */}
+        <div className="h-px bg-[#1E2230]" />
+
+        {/* Estimated Value */}
+        <div>
+          <p className="font-heading text-[9px] font-semibold tracking-[1px] uppercase text-[#666666] mb-1">
+            Estimated Value
+          </p>
+          <p className="font-body text-[13px] text-[#F0F0F0] font-semibold">
+            {hasValue ? (
+              <>
+                {formatUsd6(tender.spec!.estimatedValueMin)}
+                <span className="text-[#666666] font-normal">
+                  {" "}
+                  &ndash;{" "}
+                </span>
+                {formatUsd6(tender.spec!.estimatedValueMax)}
+              </>
+            ) : (
+              <span className="text-[#666666] font-normal italic">
+                Not disclosed
+              </span>
+            )}
+          </p>
+        </div>
+
+        {/* Stats row */}
+        <div className="grid grid-cols-2 gap-3 pt-1">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded bg-[#1A1F2B] flex items-center justify-center shrink-0">
+              <Users size={12} className="text-[#888888]" />
+            </div>
+            <div>
+              <p className="font-heading text-[9px] font-semibold tracking-[0.5px] uppercase text-[#666666]">
+                Bidders
+              </p>
+              <p className="font-body text-[12px] text-[#F0F0F0] font-medium">
+                {tender.bidderCount !== undefined
+                  ? String(tender.bidderCount)
+                  : "0"}
+                <span className="text-[#666666] font-normal">
+                  /
+                  {tender.config?.maxBidders !== undefined
+                    ? String(tender.config.maxBidders)
+                    : "--"}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded bg-[#1A1F2B] flex items-center justify-center shrink-0">
+              <Clock size={12} className="text-[#888888]" />
+            </div>
+            <div>
+              <p className="font-heading text-[9px] font-semibold tracking-[0.5px] uppercase text-[#666666]">
+                Deadline
+              </p>
+              <p className="font-body text-[12px] text-[#F0F0F0] font-medium">
+                {formatDeadline(tender.config?.deadline)}
+              </p>
+            </div>
           </div>
         </div>
-      )}
 
-      <div className="mt-3 pt-3 border-t border-[#1E2230]">
-        <span className="text-[10px] text-[#555555] font-mono">
-          {truncateAddr(tender.address)}
-        </span>
+        {/* Award footer */}
+        {tender.state === TenderState.REVEALED && tender.winner && (
+          <div className="pt-3 mt-1 border-t border-[#1E2230] flex items-center justify-between">
+            <span className="font-heading text-[9px] font-semibold tracking-[1px] uppercase text-[#A855F7]">
+              Awarded
+            </span>
+            <div className="flex items-center gap-1.5">
+              <Wallet size={11} className="text-[#A855F7]" />
+              <span className="font-body text-[11px] text-[#F0F0F0] font-mono">
+                {truncateAddr(tender.winner)}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     </Link>
   );
@@ -139,15 +201,18 @@ export default function TendersPage() {
     let result = tenders;
 
     if (activeFilter !== "all") {
-      result = result.filter(
-        (t) => stateFilterKey(t.state) === activeFilter
-      );
+      result = result.filter((t) => stateFilterKey(t.state) === activeFilter);
     }
 
     if (search.trim()) {
       const q = search.toLowerCase();
-      result = result.filter((t) =>
-        t.config?.description?.toLowerCase().includes(q)
+      result = result.filter(
+        (t) =>
+          t.config?.description?.toLowerCase().includes(q) ||
+          t.spec?.category?.toLowerCase().includes(q) ||
+          formatTenderRef(t.index, t.config?.deadline)
+            .toLowerCase()
+            .includes(q)
       );
     }
 
@@ -157,13 +222,14 @@ export default function TendersPage() {
   return (
     <div className="flex flex-col gap-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="font-heading text-[28px] font-bold text-[#F0F0F0]">
-            Tenders
+            Public Tender Register
           </h1>
           <p className="font-body text-[14px] text-[#666666] mt-1">
-            Browse all procurement tenders
+            Official record of all procurement tenders issued via SealTender
+            Protocol
           </p>
         </div>
         <Link
@@ -171,7 +237,7 @@ export default function TendersPage() {
           className="flex items-center gap-2 px-5 py-[10px] bg-[#00E87B] text-[#08090E] rounded-[6px] font-semibold text-sm hover:bg-[#00E87B]/90 transition-colors"
         >
           <Plus size={16} />
-          New Tender
+          Issue New Tender
         </Link>
       </div>
 
@@ -184,7 +250,7 @@ export default function TendersPage() {
           />
           <input
             type="text"
-            placeholder="Search tenders by description..."
+            placeholder="Search by tender reference, description, or category..."
             aria-label="Search tenders"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -192,8 +258,16 @@ export default function TendersPage() {
           />
         </div>
 
-        <div role="tablist" aria-label="Filter tenders by status" className="flex items-center gap-2 overflow-x-auto pb-1">
-          <Filter size={14} className="text-[#666666] shrink-0" aria-hidden="true" />
+        <div
+          role="tablist"
+          aria-label="Filter tenders by status"
+          className="flex items-center gap-2 overflow-x-auto pb-1"
+        >
+          <Filter
+            size={14}
+            className="text-[#666666] shrink-0"
+            aria-hidden="true"
+          />
           {filterTabs.map((tab) => (
             <button
               key={tab.key}
@@ -224,18 +298,19 @@ export default function TendersPage() {
           {[...Array(6)].map((_, i) => (
             <div
               key={i}
-              className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-6 space-y-3"
+              className="bg-[#0D0F14] border border-[#1E2230] rounded-lg overflow-hidden"
             >
-              <div className="flex justify-between">
-                <div className="h-3 w-16 bg-[#1E2230] rounded animate-pulse" />
-                <div className="h-5 w-16 bg-[#1E2230] rounded-full animate-pulse" />
+              <div className="px-5 py-3 border-b border-[#1E2230] bg-[#0A0C11] flex justify-between">
+                <div className="h-3 w-20 bg-[#1E2230] rounded animate-pulse" />
+                <div className="h-4 w-16 bg-[#1E2230] rounded-full animate-pulse" />
               </div>
-              <div className="h-4 w-full bg-[#1E2230] rounded animate-pulse" />
-              <div className="h-4 w-3/4 bg-[#1E2230] rounded animate-pulse" />
-              <div className="space-y-2 pt-2">
-                <div className="h-3 w-full bg-[#1E2230] rounded animate-pulse" />
-                <div className="h-3 w-full bg-[#1E2230] rounded animate-pulse" />
-                <div className="h-3 w-full bg-[#1E2230] rounded animate-pulse" />
+              <div className="px-5 py-5 space-y-4">
+                <div className="h-4 w-20 bg-[#1E2230] rounded animate-pulse" />
+                <div className="h-4 w-full bg-[#1E2230] rounded animate-pulse" />
+                <div className="h-4 w-3/4 bg-[#1E2230] rounded animate-pulse" />
+                <div className="h-3 w-1/2 bg-[#1E2230] rounded animate-pulse" />
+                <div className="h-px bg-[#1E2230]" />
+                <div className="h-10 w-full bg-[#1E2230] rounded animate-pulse" />
               </div>
             </div>
           ))}
@@ -246,7 +321,7 @@ export default function TendersPage() {
           <p className="font-body text-[14px] text-[#666666]">
             {search || activeFilter !== "all"
               ? "No tenders match your filters"
-              : "No tenders created yet"}
+              : "No tenders have been issued yet"}
           </p>
           {!search && activeFilter === "all" && (
             <Link
@@ -254,7 +329,7 @@ export default function TendersPage() {
               className="inline-flex items-center gap-2 mt-3 font-body text-[14px] text-[#00E87B] hover:text-[#00E87B]/80"
             >
               <Plus size={14} />
-              Create First Tender
+              Issue First Tender
             </Link>
           )}
         </div>

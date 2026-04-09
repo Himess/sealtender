@@ -51,6 +51,16 @@ export function useAllTenderAddresses() {
   });
 }
 
+export function useTenderSpec(tenderId: bigint | undefined) {
+  return useReadContract({
+    address: ADDRESSES.TenderFactory,
+    abi: factoryAbi,
+    functionName: "getTenderSpec",
+    args: tenderId !== undefined ? [tenderId] : undefined,
+    query: { enabled: tenderId !== undefined },
+  });
+}
+
 // ============================================================================
 // Single Tender Hooks
 // ============================================================================
@@ -60,6 +70,24 @@ export function useTenderConfig(addr: `0x${string}` | undefined) {
     address: addr,
     abi: tenderAbi,
     functionName: "getConfig",
+    query: { enabled: !!addr },
+  });
+}
+
+export function useTenderSpecOnChain(addr: `0x${string}` | undefined) {
+  return useReadContract({
+    address: addr,
+    abi: tenderAbi,
+    functionName: "getSpec",
+    query: { enabled: !!addr },
+  });
+}
+
+export function useTenderCreator(addr: `0x${string}` | undefined) {
+  return useReadContract({
+    address: addr,
+    abi: tenderAbi,
+    functionName: "creator",
     query: { enabled: !!addr },
   });
 }
@@ -156,9 +184,27 @@ export interface TenderData {
   config?: {
     description: string;
     deadline: bigint;
-    maxBidders: number;
-    creator: `0x${string}`;
+    weightYears: number;
+    weightProjects: number;
+    weightBond: number;
+    minYears: number;
+    minProjects: number;
+    minBond: bigint;
+    escrowAmount: bigint;
+    maxBidders: bigint;
+    minReputation: bigint;
   };
+  spec?: {
+    category: string;
+    totalAreaM2: bigint;
+    estimatedValueMin: bigint;
+    estimatedValueMax: bigint;
+    boqReference: string;
+    standardsReference: string;
+    completionDays: bigint;
+    liquidatedDamages: bigint;
+  };
+  creator?: `0x${string}`;
   state?: number;
   bidderCount?: bigint;
   winner?: `0x${string}`;
@@ -168,11 +214,21 @@ export interface TenderData {
 
 export function useAllTendersData(addresses: readonly `0x${string}`[] | undefined) {
   const contracts_list = addresses
-    ? addresses.flatMap((addr, i) => [
+    ? addresses.flatMap((addr) => [
         {
           address: addr,
           abi: tenderAbi,
           functionName: "getConfig" as const,
+        },
+        {
+          address: addr,
+          abi: tenderAbi,
+          functionName: "getSpec" as const,
+        },
+        {
+          address: addr,
+          abi: tenderAbi,
+          functionName: "creator" as const,
         },
         {
           address: addr,
@@ -210,24 +266,33 @@ export function useAllTendersData(addresses: readonly `0x${string}`[] | undefine
   const tenders: TenderData[] = [];
 
   if (result.data && addresses) {
-    const fieldsPerTender = 6;
+    const fieldsPerTender = 8;
     for (let i = 0; i < addresses.length; i++) {
       const base = i * fieldsPerTender;
       const configResult = result.data[base];
-      const stateResult = result.data[base + 1];
-      const bidderResult = result.data[base + 2];
-      const winnerResult = result.data[base + 3];
-      const priceResult = result.data[base + 4];
-      const depositsResult = result.data[base + 5];
+      const specResult = result.data[base + 1];
+      const creatorResult = result.data[base + 2];
+      const stateResult = result.data[base + 3];
+      const bidderResult = result.data[base + 4];
+      const winnerResult = result.data[base + 5];
+      const priceResult = result.data[base + 6];
+      const depositsResult = result.data[base + 7];
 
       const tender: TenderData = {
         address: addresses[i],
         index: i,
       };
 
-      if (configResult?.status === "success" && Array.isArray(configResult.result)) {
-        const [description, deadline, maxBidders, creator] = configResult.result as [string, bigint, number, `0x${string}`];
-        tender.config = { description, deadline, maxBidders, creator };
+      if (configResult?.status === "success" && configResult.result) {
+        tender.config = parseConfig(configResult.result);
+      }
+
+      if (specResult?.status === "success" && specResult.result) {
+        tender.spec = parseSpec(specResult.result);
+      }
+
+      if (creatorResult?.status === "success") {
+        tender.creator = creatorResult.result as `0x${string}`;
       }
 
       if (stateResult?.status === "success") {
@@ -257,6 +322,54 @@ export function useAllTendersData(addresses: readonly `0x${string}`[] | undefine
   return {
     ...result,
     tenders,
+  };
+}
+
+// ============================================================================
+// Tuple Parsers
+// ============================================================================
+
+export function parseConfig(raw: unknown): NonNullable<TenderData["config"]> {
+  const r = raw as Record<string, unknown> & readonly unknown[];
+  // Viem returns struct tuples as objects with named keys for named structs
+  // but can also return tuple arrays — handle both shapes.
+  const description = (r.description ?? r[0]) as string;
+  const deadline = (r.deadline ?? r[1]) as bigint;
+  const weightYears = Number(r.weightYears ?? r[2]);
+  const weightProjects = Number(r.weightProjects ?? r[3]);
+  const weightBond = Number(r.weightBond ?? r[4]);
+  const minYears = Number(r.minYears ?? r[5]);
+  const minProjects = Number(r.minProjects ?? r[6]);
+  const minBond = (r.minBond ?? r[7]) as bigint;
+  const escrowAmount = (r.escrowAmount ?? r[8]) as bigint;
+  const maxBidders = (r.maxBidders ?? r[9]) as bigint;
+  const minReputation = (r.minReputation ?? r[10]) as bigint;
+  return {
+    description,
+    deadline,
+    weightYears,
+    weightProjects,
+    weightBond,
+    minYears,
+    minProjects,
+    minBond,
+    escrowAmount,
+    maxBidders,
+    minReputation,
+  };
+}
+
+export function parseSpec(raw: unknown): NonNullable<TenderData["spec"]> {
+  const r = raw as Record<string, unknown> & readonly unknown[];
+  return {
+    category: (r.category ?? r[0]) as string,
+    totalAreaM2: (r.totalAreaM2 ?? r[1]) as bigint,
+    estimatedValueMin: (r.estimatedValueMin ?? r[2]) as bigint,
+    estimatedValueMax: (r.estimatedValueMax ?? r[3]) as bigint,
+    boqReference: (r.boqReference ?? r[4]) as string,
+    standardsReference: (r.standardsReference ?? r[5]) as string,
+    completionDays: (r.completionDays ?? r[6]) as bigint,
+    liquidatedDamages: (r.liquidatedDamages ?? r[7]) as bigint,
   };
 }
 
@@ -350,4 +463,107 @@ export function formatUsd(wei: bigint | undefined): string {
   if (!wei) return "$0.00";
   const eth = Number(wei) / 1e18;
   return `${eth.toFixed(4)} ETH`;
+}
+
+// USD values from the spec are stored as 6-decimal fixed-point (USDC style).
+export function formatUsd6(amount: bigint | undefined): string {
+  if (amount === undefined || amount === null) return "—";
+  const value = Number(amount) / 1_000_000;
+  if (value === 0) return "—";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+export function formatNumber(value: bigint | number | undefined): string {
+  if (value === undefined || value === null) return "—";
+  const n = typeof value === "bigint" ? Number(value) : value;
+  if (Number.isNaN(n)) return "—";
+  return new Intl.NumberFormat("en-US").format(n);
+}
+
+// ST-YYYY-NNN official reference number.
+export function formatTenderRef(
+  index: number,
+  deadline: bigint | undefined
+): string {
+  const year = deadline
+    ? new Date(Number(deadline) * 1000).getFullYear()
+    : new Date().getFullYear();
+  const num = String(index + 1).padStart(3, "0");
+  return `ST-${year}-${num}`;
+}
+
+export function formatIssueDate(deadline: bigint | undefined): string {
+  // We don't have contract creation date exposed; derive a plausible
+  // "issue date" by backing off 30 days from the submission deadline.
+  if (!deadline) return "—";
+  const date = new Date(Number(deadline) * 1000 - 30 * 24 * 60 * 60 * 1000);
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+export function formatDateLong(deadline: bigint | undefined): string {
+  if (!deadline) return "—";
+  return new Date(Number(deadline) * 1000).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+export function categoryLabel(category: string | undefined): string {
+  if (!category) return "General";
+  const normalized = category.toLowerCase();
+  switch (normalized) {
+    case "construction":
+      return "Construction";
+    case "it":
+      return "Information Technology";
+    case "furniture":
+      return "Furniture & Equipment";
+    case "vehicle":
+      return "Vehicles & Transport";
+    default:
+      return category.charAt(0).toUpperCase() + category.slice(1);
+  }
+}
+
+export function categorySector(category: string | undefined): string {
+  if (!category) return "the Sector";
+  const normalized = category.toLowerCase();
+  switch (normalized) {
+    case "construction":
+      return "Construction";
+    case "it":
+      return "IT Integration";
+    case "furniture":
+      return "Furniture Manufacturing";
+    case "vehicle":
+      return "Automotive Supply";
+    default:
+      return category;
+  }
+}
+
+export function categoryBadgeColor(category: string | undefined): string {
+  if (!category) return "text-[#888888] bg-[#888888]/10 border-[#888888]/20";
+  const normalized = category.toLowerCase();
+  switch (normalized) {
+    case "construction":
+      return "text-[#FFB800] bg-[#FFB800]/10 border-[#FFB800]/20";
+    case "it":
+      return "text-[#4A9FFF] bg-[#4A9FFF]/10 border-[#4A9FFF]/20";
+    case "furniture":
+      return "text-[#A855F7] bg-[#A855F7]/10 border-[#A855F7]/20";
+    case "vehicle":
+      return "text-[#00E87B] bg-[#00E87B]/10 border-[#00E87B]/20";
+    default:
+      return "text-[#888888] bg-[#888888]/10 border-[#888888]/20";
+  }
 }

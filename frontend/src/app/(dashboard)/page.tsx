@@ -219,7 +219,7 @@ export default function DashboardPage() {
                       {tender.bidderCount !== undefined
                         ? String(tender.bidderCount)
                         : "0"}
-                      /{tender.config?.maxBidders || "--"}
+                      /{tender.config?.maxBidders !== undefined ? String(tender.config.maxBidders) : "--"}
                     </td>
                     <td className="px-5 py-[14px] font-body text-[14px] text-[#888888] font-mono">
                       {formatUsd(tender.totalDeposits)}

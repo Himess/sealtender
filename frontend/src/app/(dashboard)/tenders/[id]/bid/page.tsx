@@ -19,6 +19,7 @@ import {
   useTenderState,
   formatDeadlineFull,
   stateLabel,
+  parseConfig,
 } from "@/hooks/useContractData";
 import { EncryptedTenderABI, TenderState } from "@/lib/contracts";
 import { encryptBidData } from "@/lib/fhevm";
@@ -72,14 +73,7 @@ export default function BidPage({
     }
   }, [writeError]);
 
-  const config = configData
-    ? {
-        description: (configData as readonly unknown[])[0] as string,
-        deadline: (configData as readonly unknown[])[1] as bigint,
-        maxBidders: Number((configData as readonly unknown[])[2]),
-        creator: (configData as readonly unknown[])[3] as `0x${string}`,
-      }
-    : null;
+  const config = configData ? parseConfig(configData) : null;
 
   const currentState = state !== undefined ? Number(state) : undefined;
 
@@ -291,7 +285,7 @@ export default function BidPage({
                 </div>
                 <div>
                   <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Max Bidders</span>
-                  <p className="font-body text-[12px] text-[#888888] mt-0.5">{config.maxBidders}</p>
+                  <p className="font-body text-[12px] text-[#888888] mt-0.5">{String(config.maxBidders)}</p>
                 </div>
               </div>
             </div>

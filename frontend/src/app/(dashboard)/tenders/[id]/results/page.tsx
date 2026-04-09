@@ -20,6 +20,7 @@ import {
   stateLabel,
   truncateAddr,
   formatUsd,
+  parseConfig,
 } from "@/hooks/useContractData";
 import { EncryptedTenderABI, TenderState } from "@/lib/contracts";
 
@@ -46,14 +47,7 @@ export default function EvaluationResultsPage({
   const currentState = state !== undefined ? Number(state) : undefined;
 
   // Parse config tuple
-  const config = configData
-    ? {
-        description: (configData as readonly unknown[])[0] as string,
-        deadline: (configData as readonly unknown[])[1] as bigint,
-        maxBidders: Number((configData as readonly unknown[])[2]),
-        creator: (configData as readonly unknown[])[3] as `0x${string}`,
-      }
-    : null;
+  const config = configData ? parseConfig(configData) : null;
 
   const bidderCount = bidders !== undefined ? Number(bidders) : 0;
 
