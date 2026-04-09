@@ -240,7 +240,7 @@ Self-audit score: **92/100 (A)**. See [docs/10-full-audit-report.md](docs/10-ful
 | [03-implementation-plan](docs/03-implementation-plan.md) | Contract specs, 367 tests, deployment order |
 | [04-video-script](docs/04-video-script.md) | 3-minute demo video script |
 | [05-lightpaper](docs/05-lightpaper.md) | Technical paper: FHE ops, HCU costs, trust model |
-| [06-security](docs/06-security.md) | 9 attack vectors, information leakage analysis |
+| [06-security](docs/06-security.md) | 12 attack vectors, information leakage analysis |
 | [07-api-reference](docs/07-api-reference.md) | Complete API for all 8 contracts |
 | [08-deployment-guide](docs/08-deployment-guide.md) | Step-by-step Sepolia deployment |
 | [09-comparison](docs/09-comparison.md) | vs EKAP/TED/SAM.gov, vs commit-reveal/MPC/ZK/TEE |

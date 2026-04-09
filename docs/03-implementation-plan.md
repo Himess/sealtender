@@ -295,10 +295,12 @@ Max: 100
 | Function | Signature | Access |
 |----------|-----------|--------|
 | constructor | `(address _escrow, address _municipality, address _registry)` | — |
-| fileCompanyComplaint | `(uint256 tenderId, address accused, string reason) payable → uint256` | anyone (0.01 ETH) |
+| fileCompanyComplaint | `(uint256 tenderId, address accused, string reason) payable → uint256` | anyone (dynamic stake) |
 | fileCitizenComplaint | `(uint256 tenderId, address accused, string reason) → uint256` | anyone |
 | executeCourtOrder | `(uint256 tenderId, address accused, string reason, bool shouldFreeze) → uint256` | courtAuthority |
 | resolveDispute | `(uint256 disputeId, DisputeStatus resolution)` | onlyOwner, nonReentrant |
+| timeoutDispute | `(uint256 disputeId)` | anyone (after 30 days) |
+| getComplaintStake | `(uint256 tenderId) → uint256` | view |
 | setCourtAuthority | `(address _courtAuthority)` | onlyOwner |
 | getDispute | `(uint256 disputeId) → Dispute` | view |
 | getDisputesByTender | `(uint256 tenderId) → uint256[]` | view |
@@ -314,11 +316,18 @@ Slashed:
 Dismissed:
   → Burn stake to municipality (StakeBurned event)
   → No action on accused
+
+Timeout (after 30 days unresolved):
+  → timeoutDispute(disputeId) callable by anyone
+  → Return stake to complainant (prevents indefinite stake lock)
 ```
 
-### Constants
+### Stake Model
 
-- `COMPLAINT_STAKE = 0.01 ether`
+- **Dynamic stake:** 5% of escrow amount, minimum 0.001 ETH (scales with tender size)
+- **Query:** `getComplaintStake(tenderId)` returns the required stake for a given tender
+- **Timeout:** `timeoutDispute(disputeId)` can be called by anyone after 30 days to reclaim stake if unresolved
+- **Legacy constant:** `COMPLAINT_STAKE = 0.01 ether` retained as fallback floor reference
 
 ---
 

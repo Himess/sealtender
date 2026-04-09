@@ -282,8 +282,9 @@ This ensures no active tender can be affected by protocol changes.
 | `NotAuthorized()` on createTender | Factory not authorized in Escrow | `escrow.authorizeCaller(factory.address)` |
 | `CallerNotAuthorized()` on recordBid | Tender not authorized in Registry | Factory should auto-authorize; check `registry.addAuthorizedCaller(factory)` |
 | `NotAuthorized()` on slash | DisputeManager not authorized in Escrow | `escrow.authorizeCaller(disputeManager.address)` |
-| `Stale oracle data` on evaluateEscalation | Chainlink feed not updated in 24h | Check feed address, use testnet feed |
-| `Invalid oracle price` on getLatestPrice | Chainlink feed returns price <= 0 | Verify feed contract is deployed and initialized |
+| `Stale Chainlink data` on evaluateEscalation | Chainlink feed not updated in 24h | Check feed address, use testnet feed |
+| `Invalid Chainlink price` on getLatestPrice | Chainlink feed returns price <= 0 | Verify feed contract is deployed and initialized |
+| `Stale price` on getLatestPrice | Pyth feed older than 1 hour | Update Pyth price via pyth.updatePriceFeeds() before reading |
 | `DepositAlreadyExists()` on deposit | Bidder already deposited for this tender | Each bidder can only deposit once per tender |
 | `MaxBiddersReached()` on submitBid | 10 bidders already submitted | Tender is full; create a new tender |
 | `FaucetCooldown()` on cUSDC faucet | Less than 1 hour since last faucet use | Wait for cooldown to expire |

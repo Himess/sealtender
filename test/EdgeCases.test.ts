@@ -538,4 +538,137 @@ describe("EdgeCases", function () {
       expect(await tender.evaluatedCount()).to.equal(0);
     });
   });
+
+  // --- Coverage Gap Edge Cases ---
+  describe("Coverage Gap Edge Cases", function () {
+    it("should handle concurrent bid attempts gracefully", async function () {
+      // Submit multiple bids in the same block via automine toggle
+      await registry.registerBidder(alice.address);
+      await registry.registerBidder(bob.address);
+      await registry.registerBidder(charlie.address);
+
+      const deadline = (await time.latest()) + 86400;
+      const config = {
+        description: "Concurrent Test", deadline,
+        weightYears: 30, weightProjects: 30, weightBond: 40,
+        minYears: 1, minProjects: 1, minBond: 1000,
+        escrowAmount: 0, maxBidders: 10, minReputation: 0,
+      };
+      const TFactory = await ethers.getContractFactory("EncryptedTender");
+      const tender = await TFactory.deploy(
+        0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress()
+      );
+      await tender.waitForDeployment();
+      await registry.addAuthorizedCaller(await tender.getAddress());
+
+      const tenderAddr = await tender.getAddress();
+
+      // Encrypt three independent bids, then submit them back-to-back in the same block
+      const makeBid = async (signerAddr: string, priceVal: bigint) => ({
+        price: await fhevm.encryptUint(5, priceVal, tenderAddr, signerAddr),
+        years: await fhevm.encryptUint(4, 5n, tenderAddr, signerAddr),
+        projects: await fhevm.encryptUint(4, 10n, tenderAddr, signerAddr),
+        bond: await fhevm.encryptUint(5, 10000n, tenderAddr, signerAddr),
+      });
+
+      const a = await makeBid(alice.address, 50000n);
+      const b = await makeBid(bob.address, 52000n);
+      const c = await makeBid(charlie.address, 48000n);
+
+      // Pause automining so all three transactions pile into the same block
+      await ethers.provider.send("evm_setAutomine", [false]);
+
+      const txA = await tender.connect(alice).submitBid(
+        a.price.externalEuint, a.price.inputProof,
+        a.years.externalEuint, a.years.inputProof,
+        a.projects.externalEuint, a.projects.inputProof,
+        a.bond.externalEuint, a.bond.inputProof
+      );
+      const txB = await tender.connect(bob).submitBid(
+        b.price.externalEuint, b.price.inputProof,
+        b.years.externalEuint, b.years.inputProof,
+        b.projects.externalEuint, b.projects.inputProof,
+        b.bond.externalEuint, b.bond.inputProof
+      );
+      const txC = await tender.connect(charlie).submitBid(
+        c.price.externalEuint, c.price.inputProof,
+        c.years.externalEuint, c.years.inputProof,
+        c.projects.externalEuint, c.projects.inputProof,
+        c.bond.externalEuint, c.bond.inputProof
+      );
+
+      // Mine all three together
+      await ethers.provider.send("evm_mine", []);
+      await ethers.provider.send("evm_setAutomine", [true]);
+
+      const receiptA = await txA.wait();
+      const receiptB = await txB.wait();
+      const receiptC = await txC.wait();
+
+      // All three should land in same block
+      expect(receiptA!.blockNumber).to.equal(receiptB!.blockNumber);
+      expect(receiptB!.blockNumber).to.equal(receiptC!.blockNumber);
+
+      // All three bids should be recorded
+      expect(await tender.hasBid(alice.address)).to.be.true;
+      expect(await tender.hasBid(bob.address)).to.be.true;
+      expect(await tender.hasBid(charlie.address)).to.be.true;
+    });
+
+    it("should not allow cross-tender escrow leakage", async function () {
+      // Tender A deposits should not affect Tender B balances
+      const TENDER_A = 100;
+      const TENDER_B = 200;
+      const DEPOSIT_A = ethers.parseEther("1");
+      const DEPOSIT_B = ethers.parseEther("2");
+
+      await escrow.setRequiredDeposit(TENDER_A, DEPOSIT_A);
+      await escrow.setRequiredDeposit(TENDER_B, DEPOSIT_B);
+
+      await escrow.connect(alice).deposit(TENDER_A, { value: DEPOSIT_A });
+      await escrow.connect(bob).deposit(TENDER_B, { value: DEPOSIT_B });
+
+      expect(await escrow.totalEscrow(TENDER_A)).to.equal(DEPOSIT_A);
+      expect(await escrow.totalEscrow(TENDER_B)).to.equal(DEPOSIT_B);
+
+      // Alice has no deposit in Tender B
+      expect(await escrow.getDepositStatus(TENDER_B, alice.address)).to.equal(0); // None
+      // Bob has no deposit in Tender A
+      expect(await escrow.getDepositStatus(TENDER_A, bob.address)).to.equal(0); // None
+
+      // Release from Tender A should not affect Tender B
+      await escrow.release(TENDER_A, alice.address);
+      expect(await escrow.totalEscrow(TENDER_A)).to.equal(0);
+      expect(await escrow.totalEscrow(TENDER_B)).to.equal(DEPOSIT_B);
+
+      // Slash in Tender B should not affect Tender A
+      await escrow.slash(TENDER_B, bob.address, municipality.address);
+      expect(await escrow.totalEscrow(TENDER_B)).to.equal(0);
+      expect(await escrow.totalEscrow(TENDER_A)).to.equal(0);
+
+      // Releasing alice from Tender B (where she never deposited) should fail
+      await expect(escrow.release(TENDER_B, alice.address))
+        .to.be.revertedWithCustomError(escrow, "DepositNotActive");
+    });
+
+    it("should revert escalation when budget insufficient", async function () {
+      const TENDER_ID = 777;
+      const MAT = ethers.id("STEEL_BUDGET");
+      const BASELINE = 1000n;
+      const PERIOD = 3600n;
+
+      await escalation.setTenderPrice(TENDER_ID, ethers.parseEther("100"));
+      await escalation.setEscalationRule(TENDER_ID, MAT, BASELINE, 500, 3000, PERIOD);
+      await escalation.setTenderWinner(TENDER_ID, charlie.address);
+      // Budget intentionally left at 0
+
+      // Trigger a 10% increase
+      const newPrice = BASELINE + (BASELINE * 1000n / 10000n);
+      await escalation.updateOraclePrice(MAT, newPrice);
+      await time.increase(Number(PERIOD) + 1);
+
+      await expect(escalation.evaluateEscalation(TENDER_ID, MAT))
+        .to.be.revertedWithCustomError(escalation, "InsufficientEscalationBudget");
+    });
+  });
 });

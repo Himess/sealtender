@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
-import { PriceEscalation, MockV3Aggregator } from "../typechain-types";
+import { PriceEscalation, MockV3Aggregator, MockPyth } from "../typechain-types";
 
 describe("PriceEscalation", function () {
   let escalation: PriceEscalation;
@@ -208,7 +208,7 @@ describe("PriceEscalation", function () {
       const staleTimestamp = (await time.latest()) - 2 * 86400;
       await mockAggregator.setUpdatedAt(staleTimestamp);
       await expect(escalation.getLatestPrice(MATERIAL_ID))
-        .to.be.revertedWith("Stale oracle data");
+        .to.be.revertedWith("Stale Chainlink data");
     });
   });
 
@@ -263,6 +263,71 @@ describe("PriceEscalation", function () {
     it("should revert zero price in updateOraclePrice", async function () {
       await expect(escalation.updateOraclePrice(MATERIAL_ID, 0))
         .to.be.revertedWithCustomError(escalation, "PriceZero");
+    });
+  });
+
+  describe("Pyth Oracle Integration", function () {
+    let mockPyth: MockPyth;
+    let mockAggregator: MockV3Aggregator;
+    const PYTH_FEED_ID = ethers.id("STEEL_PYTH");
+
+    beforeEach(async function () {
+      const PythFactory = await ethers.getContractFactory("MockPyth");
+      mockPyth = await PythFactory.deploy();
+      await mockPyth.waitForDeployment();
+      await escalation.setPyth(await mockPyth.getAddress());
+
+      const AggFactory = await ethers.getContractFactory("MockV3Aggregator");
+      mockAggregator = await AggFactory.deploy(8, 1500);
+      await mockAggregator.waitForDeployment();
+    });
+
+    it("should read price from Pyth feed when Chainlink not set", async function () {
+      const now = await time.latest();
+      await mockPyth.setPrice(PYTH_FEED_ID, 2500, 10, -8, now);
+      await escalation.setPythFeed(MATERIAL_ID, PYTH_FEED_ID);
+
+      const price = await escalation.getLatestPrice(MATERIAL_ID);
+      expect(price).to.equal(2500);
+    });
+
+    it("should prefer Chainlink over Pyth if both set", async function () {
+      const now = await time.latest();
+      // Set Pyth price to 2500
+      await mockPyth.setPrice(PYTH_FEED_ID, 2500, 10, -8, now);
+      await escalation.setPythFeed(MATERIAL_ID, PYTH_FEED_ID);
+      // Also set Chainlink feed at 1500
+      await escalation.setPriceFeed(MATERIAL_ID, await mockAggregator.getAddress());
+
+      // Chainlink should take priority
+      const price = await escalation.getLatestPrice(MATERIAL_ID);
+      expect(price).to.equal(1500);
+    });
+
+    it("should fall back to manual when neither oracle set", async function () {
+      // No Pyth feed ID for this material, no Chainlink feed
+      await escalation.updateOraclePrice(MATERIAL_ID, 777);
+      const price = await escalation.getLatestPrice(MATERIAL_ID);
+      expect(price).to.equal(777);
+    });
+
+    it("should reject stale Pyth price", async function () {
+      const now = await time.latest();
+      // Publish time is 2 hours ago, max age is 1 hour
+      await mockPyth.setPrice(PYTH_FEED_ID, 2500, 10, -8, now - 7200);
+      await escalation.setPythFeed(MATERIAL_ID, PYTH_FEED_ID);
+
+      await expect(escalation.getLatestPrice(MATERIAL_ID))
+        .to.be.revertedWith("Stale price");
+    });
+
+    it("should emit PythSet and PythFeedSet events", async function () {
+      await expect(escalation.setPyth(await mockPyth.getAddress()))
+        .to.emit(escalation, "PythSet")
+        .withArgs(await mockPyth.getAddress());
+      await expect(escalation.setPythFeed(MATERIAL_ID, PYTH_FEED_ID))
+        .to.emit(escalation, "PythFeedSet")
+        .withArgs(MATERIAL_ID, PYTH_FEED_ID);
     });
   });
 });

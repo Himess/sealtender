@@ -161,7 +161,7 @@ export class SealTenderClient {
    * @param delay - Base delay between retries in ms (default 1000)
    * @returns Result of the function call
    */
-  private async withRetry<T>(
+  public async withRetry<T>(
     fn: () => Promise<T>,
     retries = 3,
     delay = 1000
@@ -182,7 +182,7 @@ export class SealTenderClient {
   /**
    * Map of contract name to contract instance for event listening.
    */
-  private getContract(contractName: string): ethers.Contract {
+  public getContract(contractName: string): ethers.Contract {
     const map: Record<string, ethers.Contract> = {
       factory: this.factoryContract,
       escrow: this.escrowContract,
@@ -270,7 +270,7 @@ export class SealTenderClient {
    * @param bid - Plain-text bid data to encrypt
    * @returns Encrypted handles and input proof for contract call
    */
-  private async encryptBid(
+  public async encryptBid(
     tenderAddress: string,
     bid: BidInput
   ): Promise<{ handles: Uint8Array[]; inputProof: Uint8Array }> {

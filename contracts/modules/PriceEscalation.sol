@@ -5,6 +5,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {EscalationRule} from "../interfaces/ISealTender.sol";
 import {IAggregatorV3} from "../interfaces/IAggregatorV3.sol";
+import {IPyth} from "../interfaces/IPyth.sol";
 
 /**
  * @title PriceEscalation
@@ -30,6 +31,11 @@ contract PriceEscalation is Ownable2Step {
     // Winner address per tender (set by admin after reveal)
     mapping(uint256 => address) public tenderWinner;
 
+    // Pyth oracle integration
+    IPyth public pyth;
+    mapping(bytes32 => bytes32) public pythFeedIds; // materialId => Pyth feed ID
+    uint256 public constant PYTH_MAX_AGE = 1 hours;
+
     // --- Events ---
     event EscalationRuleSet(uint256 indexed tenderId, bytes32 materialId);
     event EscalationTriggered(uint256 indexed tenderId, bytes32 materialId, uint256 extraPayment);
@@ -37,6 +43,8 @@ contract PriceEscalation is Ownable2Step {
     event PriceFeedSet(bytes32 indexed materialId, address feed);
     event EscalationBudgetDeposited(uint256 indexed tenderId, uint256 amount);
     event EscalationPayment(uint256 indexed tenderId, address indexed winner, uint256 amount);
+    event PythSet(address indexed pyth);
+    event PythFeedSet(bytes32 indexed materialId, bytes32 feedId);
 
     // --- Errors ---
     error EscalationCapExceeded();
@@ -59,6 +67,16 @@ contract PriceEscalation is Ownable2Step {
     function setPriceFeed(bytes32 materialId, address feed) external onlyOwner {
         priceFeeds[materialId] = feed;
         emit PriceFeedSet(materialId, feed);
+    }
+
+    function setPyth(address _pyth) external onlyOwner {
+        pyth = IPyth(_pyth);
+        emit PythSet(_pyth);
+    }
+
+    function setPythFeed(bytes32 materialId, bytes32 feedId) external onlyOwner {
+        pythFeedIds[materialId] = feedId;
+        emit PythFeedSet(materialId, feedId);
     }
 
     function setTenderWinner(uint256 tenderId, address winner) external onlyOwner {
@@ -152,17 +170,28 @@ contract PriceEscalation is Ownable2Step {
     // --- Views ---
 
     /**
-     * @notice Fetch price from Chainlink if feed exists, fallback to manual latestPrices.
+     * @notice Fetch price from Chainlink if feed exists, else Pyth if set, else manual fallback.
+     * @dev Priority order: Chainlink > Pyth > manual latestPrices.
      */
     function getLatestPrice(bytes32 materialId) public view returns (uint256) {
+        // Priority 1: Chainlink feed
         address feed = priceFeeds[materialId];
         if (feed != address(0)) {
             (, int256 price,, uint256 updatedAt,) = IAggregatorV3(feed).latestRoundData();
-            require(price > 0, "Invalid oracle price");
-            require(block.timestamp - updatedAt < 1 days, "Stale oracle data");
+            require(price > 0, "Invalid Chainlink price");
+            require(block.timestamp - updatedAt < 1 days, "Stale Chainlink data");
             return uint256(price);
         }
-        return latestPrices[materialId]; // fallback to manual
+        // Priority 2: Pyth feed
+        bytes32 pythFeedId = pythFeedIds[materialId];
+        if (pythFeedId != bytes32(0) && address(pyth) != address(0)) {
+            IPyth.Price memory p = pyth.getPriceNoOlderThan(pythFeedId, PYTH_MAX_AGE);
+            require(p.price > 0, "Invalid Pyth price");
+            // Normalize to positive uint (assuming expo is negative)
+            return uint256(uint64(p.price));
+        }
+        // Priority 3: Manual fallback
+        return latestPrices[materialId];
     }
 
     function getBaselinePrice(
