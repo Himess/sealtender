@@ -51,7 +51,9 @@ export default function TenderDetailPage({
   const { data: specData } = useTenderSpec(tenderId);
   const { data: creator } = useTenderCreator(addr);
   const { data: state, isLoading: loadingState } = useTenderState(addr);
-  const { data: bidders } = useBidderCount(addr);
+  // V2: useBidderCount returns the address[] from getBidders(0, 50)
+  const { data: biddersArray } = useBidderCount(addr);
+  const bidderCount = (biddersArray as readonly `0x${string}`[] | undefined)?.length ?? 0;
   const { data: winner } = useTenderWinner(addr);
   const { data: price } = useRevealedPrice(addr);
 
@@ -506,8 +508,7 @@ export default function TenderDetailPage({
                   <p className="font-body text-[14px] text-[#111111] mt-1">
                     {config ? String(config.maxBidders) : "—"}{" "}
                     <span className="text-[#666666] text-[12px]">
-                      (currently {bidders !== undefined ? String(bidders) : 0}{" "}
-                      registered)
+                      (currently {bidderCount} registered)
                     </span>
                   </p>
                 </div>

@@ -14,11 +14,15 @@ const registryAbi = parseAbi(BidderRegistryABI);
 
 interface BidderData {
   address: `0x${string}`;
-  name: string;
-  registrationId: string;
+  name: string;          // derived: truncated address (KYC-provided in production)
+  registrationId: string; // derived: address hex (KYC-provided in production)
   registeredAt: bigint;
-  active: boolean;
-  score: bigint;
+  active: boolean;       // mirrors BidderProfile.verified
+  score: bigint;         // BidderRegistry.getReputationScore
+  totalBids: bigint;
+  totalWins: bigint;
+  totalSlashes: bigint;
+  completedOnTime: bigint;
 }
 
 export default function ReputationPage() {
@@ -85,21 +89,33 @@ export default function ReputationPage() {
       const profileResult = profileResults[profileIdx];
       const scoreResult = profileResults[scoreIdx];
 
-      if (profileResult?.status === "success" && Array.isArray(profileResult.result)) {
-        const [name, registrationId, registeredAt, active] =
-          profileResult.result as [string, string, bigint, boolean];
+      if (profileResult?.status === "success" && profileResult.result) {
+        // V2 BidderProfile struct (named fields, not tuple)
+        const p = profileResult.result as {
+          verified: boolean;
+          totalBids: bigint;
+          totalWins: bigint;
+          totalSlashes: bigint;
+          completedOnTime: bigint;
+          registeredAt: bigint;
+        };
         const score =
           scoreResult?.status === "success"
             ? (scoreResult.result as bigint)
             : BigInt(0);
 
+        const addr = bidderAddresses[i];
         result.push({
-          address: bidderAddresses[i],
-          name,
-          registrationId,
-          registeredAt,
-          active,
+          address: addr,
+          name: `Bidder ${addr.slice(0, 6)}…${addr.slice(-4)}`,
+          registrationId: addr,
+          registeredAt: p.registeredAt,
+          active: p.verified,
           score,
+          totalBids: p.totalBids,
+          totalWins: p.totalWins,
+          totalSlashes: p.totalSlashes,
+          completedOnTime: p.completedOnTime,
         });
       }
     }

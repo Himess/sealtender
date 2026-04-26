@@ -98,18 +98,46 @@ export default function AdminPage() {
 
   const bidders = useMemo(() => {
     if (!profileResults || !bidderAddresses.length) return [];
+    // V2 BidderRegistry.getProfile returns the BidderProfile struct:
+    // { verified, totalBids, totalWins, totalSlashes, completedOnTime, registeredAt }
+    // Identity fields (name, registrationId) are no longer on-chain — names are
+    // surfaced from off-chain KYC providers in production. We display the
+    // wallet address as the canonical identifier and fall back to a truncated
+    // display name where the UI previously showed `name`.
     return bidderAddresses.map((addr, i) => {
       const r = profileResults[i];
-      if (r?.status === "success" && Array.isArray(r.result)) {
-        const [name, registrationId, registeredAt, active] = r.result as [
-          string,
-          string,
-          bigint,
-          boolean
-        ];
-        return { address: addr, name, registrationId, registeredAt, active };
+      if (r?.status === "success" && r.result) {
+        const p = r.result as {
+          verified: boolean;
+          totalBids: bigint;
+          totalWins: bigint;
+          totalSlashes: bigint;
+          completedOnTime: bigint;
+          registeredAt: bigint;
+        };
+        return {
+          address: addr,
+          name: `Bidder ${addr.slice(0, 6)}…${addr.slice(-4)}`,
+          registrationId: addr,
+          registeredAt: p.registeredAt,
+          active: p.verified,
+          totalBids: p.totalBids,
+          totalWins: p.totalWins,
+          totalSlashes: p.totalSlashes,
+          completedOnTime: p.completedOnTime,
+        };
       }
-      return { address: addr, name: "", registrationId: "", registeredAt: BigInt(0), active: false };
+      return {
+        address: addr,
+        name: "",
+        registrationId: "",
+        registeredAt: BigInt(0),
+        active: false,
+        totalBids: BigInt(0),
+        totalWins: BigInt(0),
+        totalSlashes: BigInt(0),
+        completedOnTime: BigInt(0),
+      };
     });
   }, [profileResults, bidderAddresses]);
 
@@ -139,12 +167,15 @@ export default function AdminPage() {
   } = useWriteContract();
 
   function handleAddBidder() {
-    if (!newBidderAddr || !newBidderName) return;
+    if (!newBidderAddr) return;
+    // V2: registerBidder takes only the bidder address. Off-chain KYC providers
+    // map address → identity (name, registration id). The newBidderName /
+    // newBidderRegId inputs are kept in the form for the off-chain index.
     writeAdd({
       address: ADDRESSES.BidderRegistry,
       abi: registryAbi,
       functionName: "registerBidder",
-      args: [newBidderAddr as `0x${string}`, newBidderName, newBidderRegId],
+      args: [newBidderAddr as `0x${string}`],
     });
   }
 

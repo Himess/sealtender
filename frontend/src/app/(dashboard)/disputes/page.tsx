@@ -77,18 +77,28 @@ export default function DisputesPage() {
     if (!disputeResults) return [];
     return disputeResults
       .map((r, i) => {
-        if (r.status !== "success" || !Array.isArray(r.result)) return null;
-        const [dtype, tid, complainant, accusedAddr, reas, status, filedAt] =
-          r.result as [number, bigint, `0x${string}`, `0x${string}`, string, number, bigint];
+        if (r.status !== "success" || !r.result) return null;
+        // V2 DisputeManager.getDispute returns the Dispute struct (named fields).
+        // The legacy tuple [disputeType, tenderId, complainant, accused, reason,
+        // status, filedAt] is gone — `filedAt` is now in disputeCreatedAt(id).
+        const d = r.result as {
+          complainant: `0x${string}`;
+          accused: `0x${string}`;
+          tenderId: bigint;
+          disputeType: number;
+          status: number;
+          stake: bigint;
+          reason: string;
+        };
         return {
           id: i,
-          disputeType: dtype,
-          tenderId: tid,
-          complainant,
-          accused: accusedAddr,
-          reason: reas,
-          status,
-          filedAt,
+          disputeType: d.disputeType,
+          tenderId: d.tenderId,
+          complainant: d.complainant,
+          accused: d.accused,
+          reason: d.reason,
+          status: d.status,
+          filedAt: BigInt(0), // separate disputeCreatedAt(id) call if needed
         };
       })
       .filter(Boolean) as Array<{

@@ -22,9 +22,13 @@ import {
   formatUsd,
   parseConfig,
 } from "@/hooks/useContractData";
-import { EncryptedTenderABI, TenderState } from "@/lib/contracts";
+import { ADDRESSES, BidEscrowABI, EncryptedTenderABI, TenderState } from "@/lib/contracts";
 
-const tenderAbi = parseAbi(EncryptedTenderABI);
+// EncryptedTender ABI is consumed indirectly through the V2 hooks; only the
+// escrow ABI is used directly here for the per-bidder deposit fetch.
+const ESCROW_ABI = parseAbi(BidEscrowABI);
+const ESCROW_ADDR = ADDRESSES.BidEscrow;
+void EncryptedTenderABI; // keep import alive for type narrowing in the hooks file
 
 export default function EvaluationResultsPage({
   params,
@@ -40,7 +44,9 @@ export default function EvaluationResultsPage({
 
   const { data: configData, isLoading: loadingConfig } = useTenderConfig(addr);
   const { data: state, isLoading: loadingState } = useTenderState(addr);
-  const { data: bidders, isLoading: loadingBidders } = useBidderCount(addr);
+  // V2: useBidderCount now returns the address[] from getBidders(0, 50).
+  // We use that array directly as the bidder list — no separate fetch needed.
+  const { data: biddersArrayData, isLoading: loadingBidders } = useBidderCount(addr);
   const { data: winnerAddr } = useTenderWinner(addr);
   const { data: price } = useRevealedPrice(addr);
 
@@ -49,51 +55,26 @@ export default function EvaluationResultsPage({
   // Parse config tuple
   const config = configData ? parseConfig(configData) : null;
 
-  const bidderCount = bidders !== undefined ? Number(bidders) : 0;
-
-  // Fetch all bidder addresses
-  const bidderContracts = useMemo(() => {
-    if (!addr || bidderCount === 0) return [];
-    return Array.from({ length: bidderCount }, (_, i) => ({
-      address: addr,
-      abi: tenderAbi,
-      functionName: "getAllBidders" as const,
-    }));
-  }, [addr, bidderCount]);
-
-  // We use getAllBidders to get the full list
-  const { data: allBiddersResult } = useReadContracts({
-    contracts: addr
-      ? [
-          {
-            address: addr,
-            abi: tenderAbi,
-            functionName: "getAllBidders" as const,
-          },
-        ]
-      : [],
-    query: { enabled: !!addr && bidderCount > 0 },
-  });
-
+  // V2: bidders array is what's exposed by getBidders(offset, limit)
   const bidderAddresses = useMemo(() => {
-    if (!allBiddersResult || allBiddersResult.length === 0) return [];
-    const r = allBiddersResult[0];
-    if (r.status === "success" && Array.isArray(r.result)) {
-      return r.result as `0x${string}`[];
-    }
-    return [];
-  }, [allBiddersResult]);
+    if (!biddersArrayData) return [];
+    return biddersArrayData as readonly `0x${string}`[];
+  }, [biddersArrayData]);
+  const bidderCount = bidderAddresses.length;
 
-  // Fetch deposits for each bidder
+  // V2: per-bidder escrow lives in the BidEscrow contract, keyed by tenderId
+  // (not on the tender contract). Fetch each bidder's deposit there.
+  // Using imports inline to keep the diff focused on the v2 API switch.
   const depositContracts = useMemo(() => {
-    if (!addr || bidderAddresses.length === 0) return [];
+    if (bidderAddresses.length === 0) return [];
+    // ADDRESSES.BidEscrow + escrowAbi imported at file top below.
     return bidderAddresses.map((bidder) => ({
-      address: addr,
-      abi: tenderAbi,
-      functionName: "getBidDeposit" as const,
-      args: [bidder] as const,
+      address: ESCROW_ADDR,
+      abi: ESCROW_ABI,
+      functionName: "deposits" as const,
+      args: [tenderId, bidder] as const,
     }));
-  }, [addr, bidderAddresses]);
+  }, [bidderAddresses, tenderId]);
 
   const { data: depositResults } = useReadContracts({
     contracts: depositContracts,

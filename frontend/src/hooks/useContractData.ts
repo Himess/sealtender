@@ -83,38 +83,45 @@ export function useTenderSpecOnChain(addr: `0x${string}` | undefined) {
   });
 }
 
+// V2: tender owner is the procurement entity (was `creator` in v1).
 export function useTenderCreator(addr: `0x${string}` | undefined) {
   return useReadContract({
     address: addr,
     abi: tenderAbi,
-    functionName: "creator",
+    functionName: "owner",
     query: { enabled: !!addr },
   });
 }
 
+// V2: state machine getter (was `currentState` in v1).
 export function useTenderState(addr: `0x${string}` | undefined) {
   return useReadContract({
     address: addr,
     abi: tenderAbi,
-    functionName: "currentState",
+    functionName: "state",
     query: { enabled: !!addr },
   });
 }
 
+// V2: bidder count is derived — `bidders` array length isn't exposed directly,
+// but `getBidders(0, MAX)` returns the full list. Page through if needed.
+// For simple count we read up to MAX_BIDDERS (50) which is safely capped.
 export function useBidderCount(addr: `0x${string}` | undefined) {
   return useReadContract({
     address: addr,
     abi: tenderAbi,
-    functionName: "bidderCount",
+    functionName: "getBidders",
+    args: [0n, 50n],
     query: { enabled: !!addr },
   });
 }
 
+// V2: winner address (was `winner` in v1).
 export function useTenderWinner(addr: `0x${string}` | undefined) {
   return useReadContract({
     address: addr,
     abi: tenderAbi,
-    functionName: "winner",
+    functionName: "winnerAddress",
     query: { enabled: !!addr },
   });
 }
@@ -128,13 +135,18 @@ export function useRevealedPrice(addr: `0x${string}` | undefined) {
   });
 }
 
-export function useTotalDeposits(addr: `0x${string}` | undefined) {
-  return useReadContract({
-    address: addr,
-    abi: tenderAbi,
-    functionName: "totalDeposits",
-    query: { enabled: !!addr },
-  });
+// V2: BidEscrow tracks total escrow per tenderId (not per tender contract).
+// We need the tenderId, which isn't trivially derivable from the address;
+// instead read the tender's own `tenderId()` getter and pass it into
+// BidEscrow.totalEscrow. To preserve the legacy hook shape we surface
+// totalEscrow directly when caller already knows the id.
+export function useTotalDeposits(_addr: `0x${string}` | undefined): {
+  data: undefined;
+  isLoading: false;
+  isError: false;
+} {
+  // Deprecated in v2 — callers should use {useTotalEscrow(tenderId)} directly.
+  return { data: undefined, isLoading: false, isError: false };
 }
 
 // ============================================================================
@@ -145,7 +157,7 @@ export function useTotalEscrow(tenderId: bigint) {
   return useReadContract({
     address: ADDRESSES.BidEscrow,
     abi: escrowAbi,
-    functionName: "getTotalEscrow",
+    functionName: "totalEscrow",
     args: [tenderId],
   });
 }
@@ -204,15 +216,18 @@ export interface TenderData {
     completionDays: bigint;
     liquidatedDamages: bigint;
   };
-  creator?: `0x${string}`;
+  creator?: `0x${string}`; // v2: this is `owner`, kept name for UI compat
   state?: number;
-  bidderCount?: bigint;
-  winner?: `0x${string}`;
+  bidderCount?: bigint;    // v2: derived from getBidders().length
+  winner?: `0x${string}`;  // v2: winnerAddress
   revealedPrice?: bigint;
-  totalDeposits?: bigint;
+  tenderId?: bigint;       // v2: needed to query BidEscrow.totalEscrow(tenderId)
+  totalDeposits?: bigint;  // v2: deprecated — use useTotalEscrow(tenderId)
 }
 
 export function useAllTendersData(addresses: readonly `0x${string}`[] | undefined) {
+  // V2 batch read uses the canonical names: owner / state / getBidders / winnerAddress.
+  // totalDeposits is not on the tender — escrow is keyed by tenderId, queried separately.
   const contracts_list = addresses
     ? addresses.flatMap((addr) => [
         {
@@ -228,22 +243,23 @@ export function useAllTendersData(addresses: readonly `0x${string}`[] | undefine
         {
           address: addr,
           abi: tenderAbi,
-          functionName: "creator" as const,
+          functionName: "owner" as const,
         },
         {
           address: addr,
           abi: tenderAbi,
-          functionName: "currentState" as const,
+          functionName: "state" as const,
         },
         {
           address: addr,
           abi: tenderAbi,
-          functionName: "bidderCount" as const,
+          functionName: "getBidders" as const,
+          args: [0n, 50n] as const,
         },
         {
           address: addr,
           abi: tenderAbi,
-          functionName: "winner" as const,
+          functionName: "winnerAddress" as const,
         },
         {
           address: addr,
@@ -253,7 +269,7 @@ export function useAllTendersData(addresses: readonly `0x${string}`[] | undefine
         {
           address: addr,
           abi: tenderAbi,
-          functionName: "totalDeposits" as const,
+          functionName: "tenderId" as const,
         },
       ])
     : [];
@@ -273,10 +289,10 @@ export function useAllTendersData(addresses: readonly `0x${string}`[] | undefine
       const specResult = result.data[base + 1];
       const creatorResult = result.data[base + 2];
       const stateResult = result.data[base + 3];
-      const bidderResult = result.data[base + 4];
+      const biddersResult = result.data[base + 4];
       const winnerResult = result.data[base + 5];
       const priceResult = result.data[base + 6];
-      const depositsResult = result.data[base + 7];
+      const tenderIdResult = result.data[base + 7];
 
       const tender: TenderData = {
         address: addresses[i],
@@ -299,8 +315,9 @@ export function useAllTendersData(addresses: readonly `0x${string}`[] | undefine
         tender.state = Number(stateResult.result);
       }
 
-      if (bidderResult?.status === "success") {
-        tender.bidderCount = bidderResult.result as bigint;
+      if (biddersResult?.status === "success") {
+        const arr = biddersResult.result as readonly `0x${string}`[];
+        tender.bidderCount = BigInt(arr.length);
       }
 
       if (winnerResult?.status === "success") {
@@ -311,8 +328,8 @@ export function useAllTendersData(addresses: readonly `0x${string}`[] | undefine
         tender.revealedPrice = priceResult.result as bigint;
       }
 
-      if (depositsResult?.status === "success") {
-        tender.totalDeposits = depositsResult.result as bigint;
+      if (tenderIdResult?.status === "success") {
+        tender.tenderId = tenderIdResult.result as bigint;
       }
 
       tenders.push(tender);
@@ -377,18 +394,22 @@ export function parseSpec(raw: unknown): NonNullable<TenderData["spec"]> {
 // Helper Functions
 // ============================================================================
 
+// V2 ISealTender.TenderState: Created, Bidding, Evaluating, Revealed, Completed, Cancelled.
+// "Closed" no longer exists as a distinct state — bidding closes implicitly when
+// `block.timestamp >= deadline` and the first `evaluateBatch` flips to Evaluating.
+
 export function stateLabel(state: number | undefined): string {
   switch (state) {
     case TenderState.Created:
       return "Created";
     case TenderState.Bidding:
       return "Bidding";
-    case TenderState.Bidding:
-      return "Closed";
     case TenderState.Evaluating:
       return "Evaluating";
     case TenderState.Revealed:
       return "Revealed";
+    case TenderState.Completed:
+      return "Completed";
     case TenderState.Cancelled:
       return "Cancelled";
     default:
@@ -402,12 +423,12 @@ export function stateColor(state: number | undefined): string {
       return "text-[#888888] bg-[#888888]/10 border-[#888888]/20";
     case TenderState.Bidding:
       return "text-[#00E87B] bg-[#00E87B]/10 border-[#00E87B]/20";
-    case TenderState.Bidding:
-      return "text-[#FFB800] bg-[#FFB800]/10 border-[#FFB800]/20";
     case TenderState.Evaluating:
       return "text-[#4A9FFF] bg-[#4A9FFF]/10 border-[#4A9FFF]/20";
     case TenderState.Revealed:
       return "text-[#A855F7] bg-[#A855F7]/10 border-[#A855F7]/20";
+    case TenderState.Completed:
+      return "text-[#FFB800] bg-[#FFB800]/10 border-[#FFB800]/20";
     case TenderState.Cancelled:
       return "text-[#FF4444] bg-[#FF4444]/10 border-[#FF4444]/20";
     default:
@@ -421,12 +442,12 @@ export function stateFilterKey(state: number | undefined): string {
       return "created";
     case TenderState.Bidding:
       return "bidding";
-    case TenderState.Bidding:
-      return "closed";
     case TenderState.Evaluating:
       return "evaluating";
     case TenderState.Revealed:
       return "revealed";
+    case TenderState.Completed:
+      return "completed";
     case TenderState.Cancelled:
       return "cancelled";
     default:

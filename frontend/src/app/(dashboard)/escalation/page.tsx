@@ -6,14 +6,13 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
-import { parseAbi } from "viem";
+import { parseAbi, keccak256, toHex } from "viem";
 import {
   TrendingUp,
   Plus,
   X,
   Loader2,
   CheckCircle,
-  AlertTriangle,
   BarChart3,
   DollarSign,
 } from "lucide-react";
@@ -22,17 +21,36 @@ import { useTenderCount, formatUsd } from "@/hooks/useContractData";
 
 const escalationAbi = parseAbi(PriceEscalationABI);
 
+// V2 PriceEscalation keys materials by `bytes32 materialId` rather than free-form
+// strings. The convention used throughout the docs is keccak256(materialName),
+// so the UI continues to take a human-readable name and hashes it for the call.
+function materialIdFor(name: string): `0x${string}` {
+  return keccak256(toHex(name.trim().toUpperCase()));
+}
+
 export default function EscalationPage() {
   const [selectedTender, setSelectedTender] = useState("0");
   const [showTrackModal, setShowTrackModal] = useState(false);
+
+  // Form fields for adding a new escalation rule.
+  // V2 setEscalationRule takes: (tenderId, materialId, baselinePrice,
+  // thresholdPercent, capPercent, periodSeconds). We surface the new
+  // parameters with sensible defaults so the UI stays single-form.
   const [materialName, setMaterialName] = useState("");
   const [baselinePrice, setBaselinePrice] = useState("");
+  const [thresholdBps, setThresholdBps] = useState("500"); // 5%
+  const [capBps, setCapBps] = useState("3000");            // 30%
+  const [periodSeconds, setPeriodSeconds] = useState("604800"); // 7 days
+
   const [checkMaterial, setCheckMaterial] = useState("");
 
   const { data: tenderCount } = useTenderCount();
   const count = tenderCount ? Number(tenderCount) : 0;
 
   const tenderId = BigInt(selectedTender || "0");
+  const checkMaterialId = checkMaterial
+    ? materialIdFor(checkMaterial)
+    : ("0x" + "00".repeat(32) as `0x${string}`);
 
   // Read escalation data for selected tender
   const { data: totalPaid, isLoading: loadingPaid } = useReadContract({
@@ -49,10 +67,14 @@ export default function EscalationPage() {
     args: [tenderId],
   });
 
-  const { data: threshold } = useReadContract({
+  // V2 doesn't expose a single global "escalationThreshold". The per-rule
+  // thresholdPercent is set at {setEscalationRule} time. We surface the
+  // contract-wide MAX_PRICE_CHANGE_BPS (the oracle sanity cap, 5000 = 50%)
+  // as the user-facing "max threshold" for new rules.
+  const { data: maxChangeBps } = useReadContract({
     address: ADDRESSES.PriceEscalation,
     abi: escalationAbi,
-    functionName: "escalationThreshold",
+    functionName: "MAX_PRICE_CHANGE_BPS",
   });
 
   // Material price check
@@ -60,19 +82,21 @@ export default function EscalationPage() {
     address: ADDRESSES.PriceEscalation,
     abi: escalationAbi,
     functionName: "getBaselinePrice",
-    args: [tenderId, checkMaterial],
+    args: [tenderId, checkMaterialId],
     query: { enabled: !!checkMaterial },
   });
 
+  // V2 getLatestPrice takes only the materialId (oracle is per-material, not
+  // per-tender). The legacy 2-arg call is gone.
   const { data: latestPrice } = useReadContract({
     address: ADDRESSES.PriceEscalation,
     abi: escalationAbi,
     functionName: "getLatestPrice",
-    args: [tenderId, checkMaterial],
+    args: [checkMaterialId],
     query: { enabled: !!checkMaterial },
   });
 
-  // Track material
+  // Set escalation rule (was trackMaterial in v1)
   const {
     writeContract: writeTrack,
     data: trackHash,
@@ -98,17 +122,25 @@ export default function EscalationPage() {
     writeTrack({
       address: ADDRESSES.PriceEscalation,
       abi: escalationAbi,
-      functionName: "trackMaterial",
-      args: [tenderId, materialName, BigInt(baselinePrice)],
+      functionName: "setEscalationRule",
+      args: [
+        tenderId,
+        materialIdFor(materialName),
+        BigInt(baselinePrice),
+        BigInt(thresholdBps || "500"),
+        BigInt(capBps || "3000"),
+        BigInt(periodSeconds || "604800"),
+      ],
     });
   }
 
   function handleEvaluate() {
+    if (!checkMaterial) return;
     writeEvaluate({
       address: ADDRESSES.PriceEscalation,
       abi: escalationAbi,
       functionName: "evaluateEscalation",
-      args: [tenderId],
+      args: [tenderId, materialIdFor(checkMaterial)],
     });
   }
 
@@ -121,7 +153,7 @@ export default function EscalationPage() {
             Price Escalation
           </h1>
           <p className="font-body text-[14px] text-[#666666] mt-1">
-            Track material price changes and evaluate escalation claims
+            Track material price changes and evaluate escalation claims (V2: Chainlink + Pyth dual oracle)
           </p>
         </div>
         <button
@@ -129,7 +161,7 @@ export default function EscalationPage() {
           className="flex items-center gap-2 px-5 py-[10px] bg-[#FFB800] text-[#08090E] rounded-[6px] font-semibold text-sm hover:bg-[#FFB800]/90 transition-colors"
         >
           <Plus size={16} />
-          Track Material
+          Add Escalation Rule
         </button>
       </div>
 
@@ -189,11 +221,11 @@ export default function EscalationPage() {
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp size={14} className="text-[#666666]" />
             <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
-              Threshold
+              Max Oracle Change
             </span>
           </div>
           <p className="font-heading text-[36px] font-bold text-[#888888]">
-            {threshold !== undefined ? `${String(threshold)}%` : "--"}
+            {maxChangeBps !== undefined ? `${Number(maxChangeBps) / 100}%` : "--"}
           </p>
         </div>
       </div>
@@ -213,9 +245,14 @@ export default function EscalationPage() {
               type="text"
               value={checkMaterial}
               onChange={(e) => setCheckMaterial(e.target.value)}
-              placeholder="e.g. Steel, Cement, Lumber"
+              placeholder="e.g. STEEL, CEMENT, LUMBER"
               className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
             />
+            {checkMaterial && (
+              <p className="text-[10px] text-[#555555] mt-1 font-mono">
+                materialId = {checkMaterialId}
+              </p>
+            )}
           </div>
         </div>
 
@@ -228,11 +265,11 @@ export default function EscalationPage() {
               </p>
             </div>
             <div className="bg-[#0C0D14] rounded-lg p-4">
-              <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Latest Price</span>
+              <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">Latest Price (Oracle)</span>
               <p className="font-heading text-[20px] font-bold text-[#F0F0F0] font-mono mt-1">
                 {latestPrice !== undefined ? String(latestPrice) : "0"}
               </p>
-              {basePrice && latestPrice && Number(basePrice) > 0 && (
+              {basePrice !== undefined && latestPrice !== undefined && Number(basePrice) > 0 && (
                 <p
                   className={`font-body text-[12px] mt-1 ${
                     Number(latestPrice) > Number(basePrice)
@@ -259,8 +296,10 @@ export default function EscalationPage() {
           Evaluate Escalation
         </h2>
         <p className="font-body text-[12px] text-[#666666]">
-          Trigger escalation evaluation for Tender #{selectedTender}. This will check all
-          tracked materials against the threshold and process payments if applicable.
+          Trigger escalation evaluation for the selected material on Tender #{selectedTender}.
+          The contract reads the latest oracle price (Chainlink → Pyth → manual fallback),
+          compares against the rule baseline, and routes the extra payment to the tender winner
+          if the budget allows.
         </p>
 
         {evalSuccess && (
@@ -274,7 +313,7 @@ export default function EscalationPage() {
 
         <button
           onClick={handleEvaluate}
-          disabled={isEvaluating || evalConfirming}
+          disabled={isEvaluating || evalConfirming || !checkMaterial}
           className="flex items-center gap-2 px-5 py-[10px] bg-[#4A9FFF] text-white rounded-[6px] font-semibold text-sm hover:bg-[#4A9FFF]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isEvaluating || evalConfirming ? (
@@ -297,7 +336,7 @@ export default function EscalationPage() {
           <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg w-full max-w-md p-6 space-y-5">
             <div className="flex items-center justify-between">
               <h3 className="font-heading text-[20px] font-bold text-[#F0F0F0]">
-                Track Material
+                Add Escalation Rule
               </h3>
               <button
                 onClick={() => setShowTrackModal(false)}
@@ -312,7 +351,7 @@ export default function EscalationPage() {
               <div className="text-center space-y-3 py-4">
                 <CheckCircle size={32} className="text-[#00E87B] mx-auto" />
                 <p className="font-body text-[14px] text-[#F0F0F0]">
-                  Material tracked successfully
+                  Escalation rule added successfully
                 </p>
                 <button
                   onClick={() => {
@@ -336,26 +375,64 @@ export default function EscalationPage() {
                     type="text"
                     value={materialName}
                     onChange={(e) => setMaterialName(e.target.value)}
-                    placeholder="e.g. Steel Rebar"
+                    placeholder="e.g. STEEL, REBAR, CEMENT"
                     className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
                   />
                 </div>
                 <div>
                   <label htmlFor="trackBaselinePrice" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
-                    Baseline Price (wei)
+                    Baseline Price (1e8 scale)
                   </label>
                   <input
                     id="trackBaselinePrice"
                     type="number"
                     value={baselinePrice}
                     onChange={(e) => setBaselinePrice(e.target.value)}
-                    placeholder="e.g. 1000000000000000000"
+                    placeholder="e.g. 100000000 ($1.00)"
                     className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors font-mono"
                   />
                 </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label htmlFor="thresholdBps" className="block font-heading text-[10px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                      Trigger (bps)
+                    </label>
+                    <input
+                      id="thresholdBps"
+                      type="number"
+                      value={thresholdBps}
+                      onChange={(e) => setThresholdBps(e.target.value)}
+                      className="w-full px-2 py-2 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[12px] text-[#F0F0F0] focus:outline-none focus:border-[#00E87B]/30 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="capBps" className="block font-heading text-[10px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                      Cap (bps)
+                    </label>
+                    <input
+                      id="capBps"
+                      type="number"
+                      value={capBps}
+                      onChange={(e) => setCapBps(e.target.value)}
+                      className="w-full px-2 py-2 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[12px] text-[#F0F0F0] focus:outline-none focus:border-[#00E87B]/30 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="periodSeconds" className="block font-heading text-[10px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
+                      Period (s)
+                    </label>
+                    <input
+                      id="periodSeconds"
+                      type="number"
+                      value={periodSeconds}
+                      onChange={(e) => setPeriodSeconds(e.target.value)}
+                      className="w-full px-2 py-2 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[12px] text-[#F0F0F0] focus:outline-none focus:border-[#00E87B]/30 font-mono"
+                    />
+                  </div>
+                </div>
 
                 <p className="font-body text-[12px] text-[#666666]">
-                  Tender #{selectedTender} will be tracked
+                  Tender #{selectedTender} — rule is keyed by keccak256(name)
                 </p>
 
                 {trackError && (
@@ -372,12 +449,12 @@ export default function EscalationPage() {
                   {isTracking || trackConfirming ? (
                     <>
                       <Loader2 size={16} className="animate-spin" />
-                      {isTracking ? "Confirm..." : "Tracking..."}
+                      {isTracking ? "Confirm..." : "Adding..."}
                     </>
                   ) : (
                     <>
                       <Plus size={16} />
-                      Track Material
+                      Add Rule
                     </>
                   )}
                 </button>

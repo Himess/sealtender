@@ -3,7 +3,7 @@
 import { use, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { parseAbi, parseEther } from "viem";
+import { parseAbi } from "viem";
 import {
   ArrowLeft,
   Lock,
@@ -135,38 +135,55 @@ export default function BidPage({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const enc = encrypted as any;
 
-      const handleStrs = Array.isArray(enc.handles)
-        ? enc.handles.map((h: string | Uint8Array) =>
-            typeof h === "string" ? h.slice(0, 18) + "..." : String(h).slice(0, 18) + "..."
-          )
-        : [];
+      // V2 EncryptedTender.submitBid signature:
+      //   submitBid(
+      //     externalEuint64 _encPrice,    bytes _priceProof,
+      //     externalEuint32 _encYears,    bytes _yearsProof,
+      //     externalEuint32 _encProjects, bytes _projectsProof,
+      //     externalEuint64 _encBond,     bytes _bondProof
+      //   )
+      // fhevmjs's createEncryptedInput().encrypt() returns ONE inputProof that
+      // covers ALL four handles in the bundle. We pass that same proof four
+      // times — FHE.fromExternal verifies each handle against the proof's
+      // manifest and accepts any handle included in the bundle.
+      const toBytes32 = (h: string | Uint8Array): `0x${string}` =>
+        typeof h === "string"
+          ? (h as `0x${string}`)
+          : (`0x${Buffer.from(h).toString("hex")}` as `0x${string}`);
 
-      const proofStr = typeof enc.inputProof === "string"
-        ? (enc.inputProof as string).slice(0, 24) + "..."
-        : "0x...";
+      const toBytes = (b: string | Uint8Array): `0x${string}` =>
+        typeof b === "string"
+          ? (b as `0x${string}`)
+          : (`0x${Buffer.from(b).toString("hex")}` as `0x${string}`);
 
+      const handles = (enc.handles as (string | Uint8Array)[]).map(toBytes32);
+      const inputProof = toBytes(enc.inputProof);
+
+      const handleStrs = handles.map((h) => h.slice(0, 18) + "...");
       setEncryptedPreview(
-        JSON.stringify({ handles: handleStrs, inputProof: proofStr }, null, 2)
+        JSON.stringify(
+          { handles: handleStrs, inputProof: inputProof.slice(0, 24) + "..." },
+          null,
+          2
+        )
       );
 
       setBidStatus("submitting");
 
-      const inputProof: `0x${string}` =
-        typeof enc.inputProof === "string"
-          ? (enc.inputProof as `0x${string}`)
-          : (`0x${Buffer.from(enc.inputProof as Uint8Array).toString("hex")}` as `0x${string}`);
-
-      const encryptedData: `0x${string}` =
-        typeof enc.handles[0] === "string"
-          ? (enc.handles[0] as `0x${string}`)
-          : (`0x${Buffer.from(enc.handles[0] as Uint8Array).toString("hex")}` as `0x${string}`);
-
+      // EncryptedTender.submitBid is NOT payable in V2 — escrow goes through
+      // BidEscrow.deposit(tenderId) {value: ...} as a separate prior tx, not
+      // bundled with the bid. The page should ensure escrow is deposited
+      // before reaching here (see /tenders/[id] for the deposit flow).
       writeContract({
         address: addr,
         abi: tenderAbi,
         functionName: "submitBid",
-        args: [inputProof, encryptedData],
-        value: parseEther(bondAmount),
+        args: [
+          handles[0], inputProof, // encPrice + proof
+          handles[1], inputProof, // encYears + proof
+          handles[2], inputProof, // encProjects + proof
+          handles[3], inputProof, // encBond + proof
+        ],
       });
 
       setBidStatus("confirming");
