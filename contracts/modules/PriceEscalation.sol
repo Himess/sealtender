@@ -147,18 +147,19 @@ contract PriceEscalation is Ownable2Step {
         if (increaseBps > rule.capPercent) revert EscalationCapExceeded();
 
         extraPayment = (tenderPrice[tenderId] * increaseBps) / BPS_DENOMINATOR;
-        totalEscalationPaid[tenderId] += extraPayment;
         rule.lastEvaluated = block.timestamp;
 
         emit EscalationTriggered(tenderId, materialId, extraPayment);
 
-        // Auto-pay winner if budget available
+        // Auto-pay winner if budget available. `totalEscalationPaid` only updates
+        // after the actual payment lands so the counter never leads the balance.
         address winner = tenderWinner[tenderId];
         if (winner != address(0) && extraPayment > 0) {
             if (escalationBudget[tenderId] < extraPayment) {
                 revert InsufficientEscalationBudget(tenderId, extraPayment, escalationBudget[tenderId]);
             }
             escalationBudget[tenderId] -= extraPayment;
+            totalEscalationPaid[tenderId] += extraPayment;
             (bool ok,) = payable(winner).call{value: extraPayment}("");
             if (!ok) revert PaymentFailed();
             emit EscalationPayment(tenderId, winner, extraPayment);
@@ -169,29 +170,75 @@ contract PriceEscalation is Ownable2Step {
 
     // --- Views ---
 
+    /// @notice Target precision for normalized prices (1e8 — matches typical
+    ///         Chainlink USD-pair feeds so on-chain math is unit-consistent).
+    uint256 public constant ORACLE_PRECISION = 1e8;
+
     /**
-     * @notice Fetch price from Chainlink if feed exists, else Pyth if set, else manual fallback.
-     * @dev Priority order: Chainlink > Pyth > manual latestPrices.
+     * @notice Fetch price for `materialId`, normalized to ORACLE_PRECISION (1e8).
+     * @dev Priority: Chainlink → Pyth → manual fallback.
+     *
+     *      Chainlink:
+     *        - Validates `answeredInRound >= roundId` (catches stalled rounds the
+     *          legacy `updatedAt` check would silently pass)
+     *        - Validates `updatedAt > 0` and `< 1 day` heartbeat
+     *        - Normalizes from feed.decimals() to ORACLE_PRECISION
+     *
+     *      Pyth:
+     *        - Uses `getPriceNoOlderThan(maxAge)` for staleness
+     *        - Applies the (signed) `expo` field properly: if expo == -8, price is
+     *          already at 1e8 scale; otherwise rescale to ORACLE_PRECISION
+     *
+     *      Manual: returned as-is (admin's responsibility to set in 1e8 scale).
      */
     function getLatestPrice(bytes32 materialId) public view returns (uint256) {
         // Priority 1: Chainlink feed
         address feed = priceFeeds[materialId];
         if (feed != address(0)) {
-            (, int256 price,, uint256 updatedAt,) = IAggregatorV3(feed).latestRoundData();
+            (uint80 roundId, int256 price, , uint256 updatedAt, uint80 answeredInRound) =
+                IAggregatorV3(feed).latestRoundData();
             require(price > 0, "Invalid Chainlink price");
+            require(updatedAt > 0, "Round not complete");
+            require(answeredInRound >= roundId, "Stale Chainlink round");
             require(block.timestamp - updatedAt < 1 days, "Stale Chainlink data");
-            return uint256(price);
+            uint8 feedDecimals = IAggregatorV3(feed).decimals();
+            return _scaleTo1e8(uint256(price), feedDecimals);
         }
         // Priority 2: Pyth feed
         bytes32 pythFeedId = pythFeedIds[materialId];
         if (pythFeedId != bytes32(0) && address(pyth) != address(0)) {
             IPyth.Price memory p = pyth.getPriceNoOlderThan(pythFeedId, PYTH_MAX_AGE);
             require(p.price > 0, "Invalid Pyth price");
-            // Normalize to positive uint (assuming expo is negative)
-            return uint256(uint64(p.price));
+            // Pyth: actualPrice = p.price * 10^p.expo. Normalize to 1e8 scale.
+            // Most majors publish expo = -8 → already at 1e8.
+            uint256 raw = uint256(uint64(p.price));
+            if (p.expo == -8) {
+                return raw;
+            } else if (p.expo < -8) {
+                // expo more negative → divide by 10^(-expo - 8)
+                uint256 div = 10 ** uint256(int256(-int256(p.expo)) - 8);
+                return raw / div;
+            } else if (p.expo < 0) {
+                // expo between -7 and -1 → multiply by 10^(8 + expo)
+                uint256 mult = 10 ** uint256(int256(8) + int256(p.expo));
+                return raw * mult;
+            } else {
+                // expo >= 0 → multiply by 10^(8 + expo)
+                uint256 mult = 10 ** (8 + uint256(int256(p.expo)));
+                return raw * mult;
+            }
         }
-        // Priority 3: Manual fallback
+        // Priority 3: Manual fallback (admin sets in 1e8 scale)
         return latestPrices[materialId];
+    }
+
+    /// @dev Linear rescale of `value` from `srcDecimals` to ORACLE_PRECISION (1e8).
+    function _scaleTo1e8(uint256 value, uint8 srcDecimals) internal pure returns (uint256) {
+        if (srcDecimals == 8) return value;
+        if (srcDecimals < 8) {
+            return value * (10 ** (8 - srcDecimals));
+        }
+        return value / (10 ** (srcDecimals - 8));
     }
 
     function getBaselinePrice(

@@ -47,7 +47,18 @@ contract TenderFactory is Ownable2Step {
         require(_config.maxBidders > 0, "Must allow at least 1 bidder");
 
         tenderId = tenderCount++;
-        EncryptedTender tender = new EncryptedTender(tenderId, _config, _spec, registry, escrow);
+        // Pass `escalation` as winnerSink so revealWinner auto-routes to
+        // PriceEscalation.setTenderWinner(...) without an additional admin tx.
+        // Owner of the new tender is the caller (typically the procurement entity).
+        EncryptedTender tender = new EncryptedTender(
+            tenderId,
+            _config,
+            _spec,
+            registry,
+            escrow,
+            escalation,
+            msg.sender
+        );
         tenderAddress = address(tender);
 
         tenders[tenderId] = tenderAddress;
@@ -59,7 +70,8 @@ contract TenderFactory is Ownable2Step {
             BidEscrow(escrow).setRequiredDeposit(tenderId, _config.escrowAmount);
         }
 
-        // Auto-authorize the tender contract in registry
+        // Auto-authorize the tender contract in registry. The factory must be set
+        // as the registry's `tenderManager` (post-deploy step) for this to succeed.
         BidderRegistry(registry).addAuthorizedCaller(tenderAddress);
 
         emit TenderCreated(tenderId, tenderAddress, _config.description);

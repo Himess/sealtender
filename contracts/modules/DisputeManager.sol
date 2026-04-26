@@ -20,9 +20,12 @@ contract DisputeManager is Ownable2Step, ReentrancyGuard {
     BidderRegistry public registry;
 
     uint256 public disputeCount;
-    uint256 public constant COMPLAINT_STAKE_BPS = 500; // 5% of escrow
+    uint256 public constant COMPLAINT_STAKE_BPS = 500; // 5% of escrow (company filings)
     uint256 public constant BPS_BASE = 10000;
     uint256 public constant DISPUTE_TIMEOUT = 30 days;
+    /// @notice Anti-spam stake for citizen complaints — refunded on legitimate
+    ///         resolution, burned to municipality on dismissal.
+    uint256 public constant CITIZEN_STAKE = 0.0005 ether;
 
     mapping(uint256 => Dispute) public disputes;
     mapping(uint256 => uint256[]) public tenderDisputes;
@@ -94,8 +97,12 @@ contract DisputeManager is Ownable2Step, ReentrancyGuard {
         uint256 tenderId,
         address accused,
         string calldata reason
-    ) external returns (uint256) {
-        return _fileDispute(tenderId, accused, DisputeType.Citizen, 0, reason);
+    ) external payable returns (uint256) {
+        // Small anti-spam stake — refunded on Slashed/Frozen, burned on Dismissed.
+        // Without it, citizen complaints are free to spam and exhaust the owner's
+        // resolution capacity.
+        if (msg.value < CITIZEN_STAKE) revert InsufficientStake(CITIZEN_STAKE, msg.value);
+        return _fileDispute(tenderId, accused, DisputeType.Citizen, msg.value, reason);
     }
 
     function executeCourtOrder(

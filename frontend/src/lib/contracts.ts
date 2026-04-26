@@ -2,18 +2,22 @@
 // SealTender Contract Addresses, ABIs, Types
 // ============================================================================
 
+// Sepolia v2 deployment (audit-fixed, April 2026). Sourcify-verified at
+// https://repo.sourcify.dev/contracts/full_match/11155111/<address>/
 export const ADDRESSES = {
-  BidderRegistry: "0x32F74a5C2D10e2C24f0E1fDB4C458403678CCc7b" as const,
-  BidEscrow: "0xC080244d26B0Ffd2CFBeB3e166ABe1186DDC5447" as const,
-  ConfidentialUSDC:
-    "0xAC1f3F9Ee7dC53B542ddAc8b2383722bBC3647b9" as const,
-  TenderFactory: "0x694b12efB7c4E5cdCE41B6273Fce1E80137c6d52" as const,
-  DisputeManager:
-    "0xaf58c1a9A2e9d90F41d63A465262Fc5e8BDBd022" as const,
-  PriceEscalation:
-    "0xDE895b7d178d4869376DcF32B1db691A9C6425Bf" as const,
-  CollisionDetector:
-    "0xb7BDBeb8Cd424925579dAa8c7919F2C2ad2e2ae1" as const,
+  BidderRegistry: "0x2E8037626102ca3393ab9EfE7a3A254b30B236CA" as const,
+  BidEscrow: "0x1635eb515c80eEf52CD88d34109C83D8b5321647" as const,
+  ConfidentialUSDC: "0xCe493fFaBf3763df8057E58c22a6dC6a65806553" as const,
+  PriceEscalation: "0x75ea85aaB4d130cFE2Bf0C7121a6535Fc3a1fa9a" as const,
+  CollisionDetector: "0x3e8c0eDC536bce66ba8ef161eC40E7fA39d38Aee" as const,
+  TenderFactory: "0x5e2A776D44D63200285fAc230922aFd45A2EEb5C" as const,
+  DisputeManager: "0x2424AE8B6d41F813bca1Bf669f23f355fDb5979B" as const,
+} as const;
+
+/// External integrations bound at deploy time
+export const EXTERNAL_ADDRESSES = {
+  USDC: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238" as const, // Circle USDC on Sepolia
+  Pyth: "0xDd24F84d36BF92C65F92307595335bdFab5Bbd21" as const, // Pyth oracle on Sepolia
 } as const;
 
 // ============================================================================
@@ -21,94 +25,241 @@ export const ADDRESSES = {
 // ============================================================================
 
 export const TenderFactoryABI = [
-  "function createTender((string description, uint256 deadline, uint32 weightYears, uint32 weightProjects, uint32 weightBond, uint32 minYears, uint32 minProjects, uint64 minBond, uint256 escrowAmount, uint256 maxBidders, uint256 minReputation) config, (string category, uint256 totalAreaM2, uint256 estimatedValueMin, uint256 estimatedValueMax, string boqReference, string standardsReference, uint256 completionDays, uint256 liquidatedDamages) spec) external returns (uint256 tenderId, address tenderAddress)",
-  "function getTender(uint256 index) external view returns (address)",
+  // --- Read ---
   "function tenderCount() external view returns (uint256)",
+  "function tenders(uint256 id) external view returns (address)",
+  "function getTender(uint256 id) external view returns (address)",
   "function getAllTenders() external view returns (address[])",
+  "function getTenders(uint256 offset, uint256 limit) external view returns (address[])",
+  "function getTenderConfig(uint256 id) external view returns ((string description, uint256 deadline, uint32 weightYears, uint32 weightProjects, uint32 weightBond, uint32 minYears, uint32 minProjects, uint64 minBond, uint256 escrowAmount, uint256 maxBidders, uint256 minReputation))",
   "function getTenderSpec(uint256 id) external view returns ((string category, uint256 totalAreaM2, uint256 estimatedValueMin, uint256 estimatedValueMax, string boqReference, string standardsReference, uint256 completionDays, uint256 liquidatedDamages))",
+  "function registry() external view returns (address)",
+  "function escrow() external view returns (address)",
+  "function disputeManager() external view returns (address)",
+  "function escalation() external view returns (address)",
+  "function collisionDetector() external view returns (address)",
   "function owner() external view returns (address)",
+  // --- Owner write ---
+  "function createTender((string description, uint256 deadline, uint32 weightYears, uint32 weightProjects, uint32 weightBond, uint32 minYears, uint32 minProjects, uint64 minBond, uint256 escrowAmount, uint256 maxBidders, uint256 minReputation) config, (string category, uint256 totalAreaM2, uint256 estimatedValueMin, uint256 estimatedValueMax, string boqReference, string standardsReference, uint256 completionDays, uint256 liquidatedDamages) spec) external returns (uint256 tenderId, address tenderAddress)",
+  "function setDisputeManager(address _dm) external",
+  "function setEscalation(address _esc) external",
+  "function setCollisionDetector(address _cd) external",
+  // --- Events ---
+  "event TenderCreated(uint256 indexed tenderId, address tenderContract, string description)",
 ] as const;
 
 export const EncryptedTenderABI = [
+  // --- Read ---
+  "function tenderId() external view returns (uint256)",
+  "function state() external view returns (uint8)",
   "function getConfig() external view returns ((string description, uint256 deadline, uint32 weightYears, uint32 weightProjects, uint32 weightBond, uint32 minYears, uint32 minProjects, uint64 minBond, uint256 escrowAmount, uint256 maxBidders, uint256 minReputation))",
   "function getSpec() external view returns ((string category, uint256 totalAreaM2, uint256 estimatedValueMin, uint256 estimatedValueMax, string boqReference, string standardsReference, uint256 completionDays, uint256 liquidatedDamages))",
-  "function creator() external view returns (address)",
-  "function currentState() external view returns (uint8)",
-  "function bidderCount() external view returns (uint256)",
+  "function bidders(uint256 idx) external view returns (address)",
+  "function getBidders(uint256 offset, uint256 limit) external view returns (address[])",
   "function hasBid(address bidder) external view returns (bool)",
-  "function submitBid(bytes32 inputProof, bytes calldata encryptedData) external payable",
-  "function closeBidding() external",
-  "function revealWinner() external",
-  "function winner() external view returns (address)",
+  "function evaluatedCount() external view returns (uint256)",
+  "function evaluationComplete() external view returns (bool)",
+  "function winnerAddress() external view returns (address)",
   "function revealedPrice() external view returns (uint256)",
-  "function getAllBidders() external view returns (address[])",
-  "function description() external view returns (string)",
-  "function deadline() external view returns (uint256)",
-  "function maxBidders() external view returns (uint256)",
-  "function getBidDeposit(address bidder) external view returns (uint256)",
-  "function totalDeposits() external view returns (uint256)",
+  "function revealed() external view returns (bool)",
+  "function winnerIdxHandle() external view returns (bytes32)",
+  "function winnerPriceHandle() external view returns (bytes32)",
+  "function winnerSink() external view returns (address)",
+  "function revealRequestedAt() external view returns (uint256)",
+  "function revealTimeout() external view returns (uint256)",
+  "function MAX_BIDDERS() external view returns (uint256)",
+  "function MAX_BATCH_SIZE() external view returns (uint256)",
+  "function paused() external view returns (bool)",
+  "function owner() external view returns (address)",
+  // --- User-facing write ---
+  "function submitBid(bytes32 _encPrice, bytes _priceProof, bytes32 _encYears, bytes _yearsProof, bytes32 _encProjects, bytes _projectsProof, bytes32 _encBond, bytes _bondProof) external",
+  // --- Owner write ---
+  "function evaluateBatch(uint256 startIdx, uint256 endIdx) external",
+  "function requestReveal() external",
+  "function revealWinner(uint256 winnerIdx, uint256 price, bytes decryptionProof) external",
+  "function setWinnerSink(address _sink) external",
+  "function setRevealTimeout(uint256 _seconds) external",
+  "function cancelTender() external",
+  "function pause() external",
+  "function unpause() external",
+  // --- Permissionless liveness escape hatch ---
+  "function forceCancelStuckReveal() external",
+  // --- Events ---
+  "event BidSubmitted(address indexed bidder, uint256 timestamp)",
+  "event BidUpdated(address indexed bidder, uint256 version)",
+  "event EvaluationBatchCompleted(uint256 startIdx, uint256 endIdx)",
+  "event EvaluationCompleted(uint256 totalBidders)",
+  "event RevealRequested(bytes32 idxHandle, bytes32 priceHandle)",
+  "event WinnerRevealed(address winner, uint256 price)",
+  "event TenderCancelled(uint256 timestamp)",
+  "event StuckRevealForceCancelled(address indexed by, uint256 elapsed)",
 ] as const;
 
 export const BidEscrowABI = [
-  "function deposit(uint256 tenderId) external payable",
-  "function withdraw(uint256 tenderId) external",
+  // --- Read ---
+  "function requiredDeposit(uint256 tenderId) external view returns (uint256)",
+  "function deposits(uint256 tenderId, address bidder) external view returns (uint256)",
+  "function totalEscrow(uint256 tenderId) external view returns (uint256)",
+  "function depositStatus(uint256 tenderId, address bidder) external view returns (uint8)",
   "function getDeposit(uint256 tenderId, address bidder) external view returns (uint256)",
-  "function getTotalEscrow(uint256 tenderId) external view returns (uint256)",
   "function getDepositStatus(uint256 tenderId, address bidder) external view returns (uint8)",
+  "function authorizedCallers(address) external view returns (bool)",
   "function owner() external view returns (address)",
+  // --- User write ---
+  "function deposit(uint256 tenderId) external payable",
+  // --- Authorized write (Vault / DisputeManager / Factory) ---
+  "function release(uint256 tenderId, address bidder) external",
+  "function refund(uint256 tenderId, address bidder) external",
+  "function freeze(uint256 tenderId, address bidder) external",
+  "function unfreeze(uint256 tenderId, address bidder) external",
+  "function slash(uint256 tenderId, address bidder, address recipient) external",
+  "function setRequiredDeposit(uint256 tenderId, uint256 amount) external",
+  // --- Owner write ---
+  "function authorizeCaller(address caller) external",
+  "function deauthorizeCaller(address caller) external",
+  // --- Events ---
+  "event EscrowDeposited(uint256 indexed tenderId, address indexed bidder, uint256 amount)",
+  "event EscrowReleased(uint256 indexed tenderId, address indexed bidder, uint256 amount)",
+  "event EscrowRefunded(uint256 indexed tenderId, address indexed bidder, uint256 amount)",
+  "event EscrowSlashed(uint256 indexed tenderId, address indexed bidder, address recipient, uint256 amount)",
 ] as const;
 
 export const BidderRegistryABI = [
-  "function registerBidder(address bidder, string calldata name, string calldata registrationId) external",
-  "function removeBidder(address bidder) external",
-  "function isRegistered(address bidder) external view returns (bool)",
-  "function getProfile(address bidder) external view returns (string name, string registrationId, uint256 registeredAt, bool active)",
+  // --- Read ---
+  "function profiles(address bidder) external view returns (bool verified, uint256 totalBids, uint256 totalWins, uint256 totalSlashes, uint256 completedOnTime, uint256 registeredAt)",
+  "function isVerified(address bidder) external view returns (bool)",
+  "function getProfile(address bidder) external view returns ((bool verified, uint256 totalBids, uint256 totalWins, uint256 totalSlashes, uint256 completedOnTime, uint256 registeredAt))",
   "function getReputationScore(address bidder) external view returns (uint256)",
-  "function updateReputation(address bidder, uint256 score) external",
   "function bidderCount() external view returns (uint256)",
   "function allBidders(uint256 index) external view returns (address)",
+  "function authorizedCallers(address) external view returns (bool)",
+  "function tenderManager() external view returns (address)",
   "function owner() external view returns (address)",
+  // --- Owner write ---
+  "function registerBidder(address bidder) external",
+  "function removeBidder(address bidder) external",
+  "function setTenderManager(address _tenderManager) external",
+  "function removeAuthorizedCaller(address caller) external",
+  // --- Owner OR tenderManager write ---
+  "function addAuthorizedCaller(address caller) external",
+  // --- Events ---
+  "event BidderRegistered(address indexed bidder)",
+  "event BidderRemoved(address indexed bidder)",
+  "event TenderManagerSet(address indexed manager)",
 ] as const;
 
 export const DisputeManagerABI = [
-  "function fileCompanyComplaint(uint256 tenderId, address accused, string calldata reason) external payable",
-  "function fileCitizenComplaint(uint256 tenderId, address accused, string calldata reason) external",
-  "function resolveDispute(uint256 disputeId, bool upheld) external",
-  "function getDispute(uint256 disputeId) external view returns (uint8 disputeType, uint256 tenderId, address complainant, address accused, string reason, uint8 status, uint256 filedAt)",
+  // --- Read ---
   "function disputeCount() external view returns (uint256)",
+  "function disputes(uint256 disputeId) external view returns (address complainant, address accused, uint256 tenderId, uint8 disputeType, uint8 status, uint256 stake, string reason)",
+  "function disputeCreatedAt(uint256 disputeId) external view returns (uint256)",
+  "function getDispute(uint256 disputeId) external view returns ((address complainant, address accused, uint256 tenderId, uint8 disputeType, uint8 status, uint256 stake, string reason))",
+  "function getDisputesByTender(uint256 tenderId) external view returns (uint256[])",
   "function getComplaintStake(uint256 tenderId) external view returns (uint256)",
+  "function CITIZEN_STAKE() external view returns (uint256)",
+  "function COMPLAINT_STAKE_BPS() external view returns (uint256)",
+  "function DISPUTE_TIMEOUT() external view returns (uint256)",
   "function owner() external view returns (address)",
+  "function courtAuthority() external view returns (address)",
+  // --- User write (payable, requires stake) ---
+  "function fileCompanyComplaint(uint256 tenderId, address accused, string reason) external payable returns (uint256)",
+  "function fileCitizenComplaint(uint256 tenderId, address accused, string reason) external payable returns (uint256)",
+  // --- Court write ---
+  "function executeCourtOrder(uint256 tenderId, address accused, string reason, bool shouldFreeze) external returns (uint256)",
+  // --- Permissionless ---
+  "function timeoutDispute(uint256 disputeId) external",
+  // --- Owner write ---
+  "function resolveDispute(uint256 disputeId, uint8 resolution) external",
+  "function setCourtAuthority(address _courtAuthority) external",
+  // --- Events ---
+  "event DisputeFiled(uint256 indexed disputeId, uint256 indexed tenderId, address complainant, address accused)",
+  "event DisputeResolved(uint256 indexed disputeId, uint8 resolution)",
+  "event StakeBurned(uint256 indexed disputeId, address complainant, address recipient, uint256 amount)",
 ] as const;
 
 export const PriceEscalationABI = [
-  "function trackMaterial(uint256 tenderId, string calldata materialName, uint256 baselinePrice) external",
-  "function updatePrice(uint256 tenderId, string calldata materialName, uint256 newPrice) external",
-  "function evaluateEscalation(uint256 tenderId) external",
-  "function getBaselinePrice(uint256 tenderId, string calldata materialName) external view returns (uint256)",
-  "function getLatestPrice(uint256 tenderId, string calldata materialName) external view returns (uint256)",
+  // --- Read ---
+  "function rules(uint256 tenderId, bytes32 materialId) external view returns (bytes32 materialId_, uint256 baselinePrice, uint256 thresholdPercent, uint256 capPercent, uint256 periodSeconds, uint256 lastEvaluated)",
   "function totalEscalationPaid(uint256 tenderId) external view returns (uint256)",
   "function tenderPrice(uint256 tenderId) external view returns (uint256)",
-  "function setTenderPrice(uint256 tenderId, uint256 price) external",
-  "function escalationThreshold() external view returns (uint256)",
+  "function tenderWinner(uint256 tenderId) external view returns (address)",
+  "function escalationBudget(uint256 tenderId) external view returns (uint256)",
+  "function priceFeeds(bytes32 materialId) external view returns (address)",
+  "function pythFeedIds(bytes32 materialId) external view returns (bytes32)",
+  "function pyth() external view returns (address)",
+  "function getLatestPrice(bytes32 materialId) external view returns (uint256)",
+  "function getBaselinePrice(uint256 tenderId, bytes32 materialId) external view returns (uint256)",
+  "function getTotalEscalation(uint256 tenderId) external view returns (uint256)",
+  "function MAX_PRICE_CHANGE_BPS() external view returns (uint256)",
+  "function ORACLE_PRECISION() external view returns (uint256)",
+  "function PYTH_MAX_AGE() external view returns (uint256)",
   "function owner() external view returns (address)",
+  // --- Public write (budget deposit) ---
+  "function depositEscalationBudget(uint256 tenderId) external payable",
+  // --- Owner write ---
+  "function setTenderPrice(uint256 tenderId, uint256 price) external",
+  "function setTenderWinner(uint256 tenderId, address winner) external",
+  "function setPriceFeed(bytes32 materialId, address feed) external",
+  "function setPyth(address _pyth) external",
+  "function setPythFeed(bytes32 materialId, bytes32 feedId) external",
+  "function setEscalationRule(uint256 tenderId, bytes32 materialId, uint256 baselinePrice, uint256 thresholdPercent, uint256 capPercent, uint256 periodSeconds) external",
+  "function updateOraclePrice(bytes32 materialId, uint256 newPrice) external",
+  "function evaluateEscalation(uint256 tenderId, bytes32 materialId) external returns (uint256)",
+  // --- Events ---
+  "event EscalationRuleSet(uint256 indexed tenderId, bytes32 materialId)",
+  "event EscalationTriggered(uint256 indexed tenderId, bytes32 materialId, uint256 extraPayment)",
+  "event EscalationPayment(uint256 indexed tenderId, address indexed winner, uint256 amount)",
 ] as const;
 
+// ConfidentialUSDC inherits OZ ERC7984ERC20Wrapper. Balances are encrypted
+// (euint64 handles); use the Zama Relayer / fhevmjs to decrypt your own balance.
+// The plaintext-amount entry points are wrap and finalizeUnwrap; unwrap takes
+// an encrypted amount and queues a request that's settled by KMS-signed proof.
 export const ConfidentialUSDCABI = [
-  "function balanceOf(address account) external view returns (uint256)",
-  "function approve(address spender, uint256 amount) external returns (bool)",
-  "function transfer(address to, uint256 amount) external returns (bool)",
-  "function mint(address to, uint256 amount) external",
+  // --- Read ---
   "function name() external view returns (string)",
   "function symbol() external view returns (string)",
   "function decimals() external view returns (uint8)",
-  "function totalSupply() external view returns (uint256)",
+  "function rate() external view returns (uint256)",
+  "function underlying() external view returns (address)",
+  "function inferredTotalSupply() external view returns (uint256)",
+  "function maxTotalSupply() external view returns (uint256)",
+  "function paused() external view returns (bool)",
+  "function owner() external view returns (address)",
+  "function unwrapRequester(bytes32 unwrapRequestId) external view returns (address)",
+  "function isOperator(address holder, address spender) external view returns (bool)",
+  "function balanceOf(address account) external view returns (bytes32)", // returns euint64 handle
+  // --- User write ---
+  "function wrap(address to, uint256 amount) external returns (bytes32)",
+  "function unwrap(address from, address to, bytes32 amount) external returns (bytes32)",
+  "function unwrap(address from, address to, bytes32 encryptedAmount, bytes inputProof) external returns (bytes32)",
+  "function finalizeUnwrap(bytes32 unwrapRequestId, uint64 unwrapAmountCleartext, bytes decryptionProof) external",
+  "function setOperator(address spender, uint48 until) external",
+  "function transfer(address to, bytes32 amount) external returns (bytes32)",
+  "function transferFrom(address from, address to, bytes32 amount) external returns (bytes32)",
+  // --- Owner write ---
+  "function pause() external",
+  "function unpause() external",
+  // --- Events ---
+  "event UnwrapRequested(address indexed to, bytes32 indexed unwrapRequestId, bytes32 amount)",
+  "event UnwrapFinalized(address indexed to, bytes32 indexed unwrapRequestId, bytes32 amount, uint64 amountCleartext)",
 ] as const;
 
+// CollisionDetector uses FHE pairwise equality (O(n^2)) over up to 10 bids and
+// produces a single ebool whose decryption is gated by KMS signatures.
 export const CollisionDetectorABI = [
-  "function checkCollision(uint256 tenderId, bytes32 bidHash) external view returns (bool)",
-  "function registerBidHash(uint256 tenderId, bytes32 bidHash) external",
-  "function getCollisionCount(uint256 tenderId) external view returns (uint256)",
+  // --- Read ---
+  "function collisionChecked(uint256 tenderId) external view returns (bool)",
+  "function collisionDetected(uint256 tenderId) external view returns (bool)",
+  "function collisionHandle(uint256 tenderId) external view returns (bytes32)",
+  "function isCollisionDetected(uint256 tenderId) external view returns (bool checked, bool detected)",
   "function owner() external view returns (address)",
+  // --- Owner write ---
+  "function checkCollision(uint256 tenderId, bytes32[] encPrices, bytes[] proofs) external",
+  "function setCollisionResult(uint256 tenderId, bool result, bytes decryptionProof) external",
+  // --- Events ---
+  "event CollisionCheckStarted(uint256 indexed tenderId, uint256 bidCount)",
+  "event CollisionCheckCompleted(uint256 indexed tenderId, bool hasCollision)",
 ] as const;
 
 // ============================================================================
@@ -141,58 +292,68 @@ export interface TenderSpecification {
 }
 
 export interface BidderProfile {
-  name: string;
-  registrationId: string;
+  verified: boolean;
+  totalBids: bigint;
+  totalWins: bigint;
+  totalSlashes: bigint;
+  completedOnTime: bigint;
   registeredAt: bigint;
-  active: boolean;
 }
 
 export interface Dispute {
-  disputeType: DisputeType;
-  tenderId: bigint;
   complainant: `0x${string}`;
   accused: `0x${string}`;
-  reason: string;
+  tenderId: bigint;
+  disputeType: DisputeType;
   status: DisputeStatus;
-  filedAt: bigint;
+  stake: bigint;
+  reason: string;
 }
 
 export interface EscalationRule {
-  tenderId: bigint;
-  materialName: string;
+  materialId: `0x${string}`;
   baselinePrice: bigint;
-  latestPrice: bigint;
+  thresholdPercent: bigint;
+  capPercent: bigint;
+  periodSeconds: bigint;
+  lastEvaluated: bigint;
 }
 
 // ============================================================================
 // Enums
 // ============================================================================
 
+// Mirrors `enum TenderState` in contracts/interfaces/ISealTender.sol
 export enum TenderState {
-  CREATED = 0,
-  BIDDING = 1,
-  CLOSED = 2,
-  EVALUATING = 3,
-  REVEALED = 4,
-  CANCELLED = 5,
+  Created = 0,
+  Bidding = 1,
+  Evaluating = 2,
+  Revealed = 3,
+  Completed = 4,
+  Cancelled = 5,
 }
 
 export enum DisputeType {
-  COMPANY = 0,
-  CITIZEN = 1,
+  Company = 0,
+  Citizen = 1,
+  CourtOrder = 2,
 }
 
 export enum DisputeStatus {
-  PENDING = 0,
-  RESOLVED = 1,
-  REJECTED = 2,
+  Open = 0,
+  Investigating = 1,
+  Slashed = 2,
+  Frozen = 3,
+  Dismissed = 4,
 }
 
 export enum DepositStatus {
-  NONE = 0,
-  DEPOSITED = 1,
-  WITHDRAWN = 2,
-  FORFEITED = 3,
+  None = 0,
+  Active = 1,
+  Frozen = 2,
+  Released = 3,
+  Refunded = 4,
+  Slashed = 5,
 }
 
 // ============================================================================

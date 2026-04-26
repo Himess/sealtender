@@ -60,12 +60,28 @@ contract CollisionDetector is ZamaEthereumConfig, Ownable2Step {
     }
 
     /**
-     * @notice Set the collision result after decryption callback.
+     * @notice Set the collision result after KMS-signed decryption.
+     * @dev The KMS proof is verified via FHE.checkSignatures, so the owner
+     *      cannot fabricate or override the actual decrypted value of the
+     *      `anyCollision` ciphertext. The result parameter is bound to the
+     *      stored handle through `cleartexts = abi.encode(result)`.
      * @param tenderId The tender ID
-     * @param result Whether a collision was detected
+     * @param result Whether a collision was detected (must match KMS-decrypted value)
+     * @param decryptionProof KMS-signed decryption proof from the relayer
      */
-    function setCollisionResult(uint256 tenderId, bool result) external onlyOwner {
+    function setCollisionResult(
+        uint256 tenderId,
+        bool result,
+        bytes calldata decryptionProof
+    ) external onlyOwner {
         require(collisionChecked[tenderId], "Not checked yet");
+        require(collisionHandle[tenderId] != bytes32(0), "No handle stored");
+
+        bytes32[] memory handlesList = new bytes32[](1);
+        handlesList[0] = collisionHandle[tenderId];
+        bytes memory cleartexts = abi.encode(result);
+        FHE.checkSignatures(handlesList, cleartexts, decryptionProof);
+
         collisionDetected[tenderId] = result;
         emit CollisionCheckCompleted(tenderId, result);
     }

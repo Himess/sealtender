@@ -137,12 +137,21 @@ describe("DisputeManager", function () {
   });
 
   describe("fileCitizenComplaint", function () {
-    it("should file citizen complaint without stake", async function () {
+    it("should file citizen complaint with anti-spam stake", async function () {
+      const stake = await disputeManager.CITIZEN_STAKE();
       await expect(
         disputeManager.connect(complainant).fileCitizenComplaint(
-          TENDER_ID, accused.address, "Environmental concern"
+          TENDER_ID, accused.address, "Environmental concern", { value: stake }
         )
       ).to.emit(disputeManager, "DisputeFiled");
+    });
+
+    it("should revert citizen complaint without stake", async function () {
+      await expect(
+        disputeManager.connect(complainant).fileCitizenComplaint(
+          TENDER_ID, accused.address, "Reason"
+        )
+      ).to.be.revertedWithCustomError(disputeManager, "InsufficientStake");
     });
   });
 
@@ -217,8 +226,9 @@ describe("DisputeManager", function () {
     });
 
     it("should revert if already resolved", async function () {
+      const _citizenStake = await disputeManager.CITIZEN_STAKE();
       await disputeManager.connect(complainant).fileCitizenComplaint(
-        TENDER_ID, accused.address, "Reason"
+        TENDER_ID, accused.address, "Reason", { value: _citizenStake }
       );
       await disputeManager.resolveDispute(0, 4); // Dismissed
       await expect(disputeManager.resolveDispute(0, 2))
@@ -228,8 +238,9 @@ describe("DisputeManager", function () {
 
   describe("getDispute", function () {
     it("should return dispute details", async function () {
+      const _citizenStake = await disputeManager.CITIZEN_STAKE();
       await disputeManager.connect(complainant).fileCitizenComplaint(
-        TENDER_ID, accused.address, "Reason"
+        TENDER_ID, accused.address, "Reason", { value: _citizenStake }
       );
       const dispute = await disputeManager.getDispute(0);
       expect(dispute.complainant).to.equal(complainant.address);
@@ -245,11 +256,12 @@ describe("DisputeManager", function () {
 
   describe("getDisputesByTender", function () {
     it("should return dispute IDs for a tender", async function () {
+      const stake = await disputeManager.CITIZEN_STAKE();
       await disputeManager.connect(complainant).fileCitizenComplaint(
-        TENDER_ID, accused.address, "Reason1"
+        TENDER_ID, accused.address, "Reason1", { value: stake }
       );
       await disputeManager.connect(complainant).fileCitizenComplaint(
-        TENDER_ID, accused.address, "Reason2"
+        TENDER_ID, accused.address, "Reason2", { value: stake }
       );
       const disputes = await disputeManager.getDisputesByTender(TENDER_ID);
       expect(disputes.length).to.equal(2);

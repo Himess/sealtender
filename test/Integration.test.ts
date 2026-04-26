@@ -71,13 +71,13 @@ describe("Integration", function () {
     mockUsdc = await MockFactory.deploy();
     await mockUsdc.waitForDeployment();
 
+    // ERC7984ERC20Wrapper takes underlying at construction (immutable)
     const CUSDCFactory = await ethers.getContractFactory("ConfidentialUSDC");
-    cusdc = await CUSDCFactory.deploy(owner.address);
+    cusdc = await CUSDCFactory.deploy(owner.address, await mockUsdc.getAddress());
     await cusdc.waitForDeployment();
-    await cusdc.setUnderlyingUSDC(await mockUsdc.getAddress());
 
     // Setup authorizations
-    await registry.addAuthorizedCaller(await factory.getAddress());
+    await registry.setTenderManager(await factory.getAddress());
     await escrow.authorizeCaller(await factory.getAddress());
     await escrow.authorizeCaller(await disputeManager.getAddress());
     await disputeManager.setCourtAuthority(courtAuthority.address);
@@ -117,7 +117,7 @@ describe("Integration", function () {
       // Create tender directly (owner = deployer, can call evaluateBatch)
       const TF = await ethers.getContractFactory("EncryptedTender");
       const tender = await TF.deploy(
-        0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress()
+        0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress(), ethers.ZeroAddress, owner.address
       );
       await tender.waitForDeployment();
       const tenderAddr = await tender.getAddress();
@@ -166,7 +166,7 @@ describe("Integration", function () {
 
       const TF = await ethers.getContractFactory("EncryptedTender");
       const tender = await TF.deploy(
-        0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress()
+        0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress(), ethers.ZeroAddress, owner.address
       );
       await tender.waitForDeployment();
       const tenderAddr = await tender.getAddress();
@@ -349,30 +349,32 @@ describe("Integration", function () {
   });
 
   describe("Collision detection flow", function () {
-    it("should detect and set collision result", async function () {
+    it("should run checkCollision (KMS-signed setCollisionResult tested on Zama testnet)", async function () {
       const addr = await detector.getAddress();
       const enc1 = await fhevm.encryptUint(5, 100n, addr, owner.address);
       const enc2 = await fhevm.encryptUint(5, 100n, addr, owner.address);
 
-      await detector.checkCollision(
-        0, [enc1.externalEuint, enc2.externalEuint], [enc1.inputProof, enc2.inputProof]
-      );
-      await detector.setCollisionResult(0, true);
-      expect(await detector.collisionDetected(0)).to.be.true;
+      await expect(
+        detector.checkCollision(
+          0, [enc1.externalEuint, enc2.externalEuint], [enc1.inputProof, enc2.inputProof]
+        )
+      ).to.emit(detector, "CollisionCheckStarted");
+      // The decrypt + setCollisionResult path requires a real KMS signature
+      // and is exercised on the Zama testnet via the dedicated fhevm-testnet job.
     });
   });
 
-  describe("ConfidentialUSDC wrap/unwrap flow", function () {
-    it("should wrap and unwrap USDC", async function () {
+  describe("ConfidentialUSDC wrap flow", function () {
+    it("should wrap USDC via ERC7984ERC20Wrapper.wrap(to, amount)", async function () {
       const AMOUNT = 1000n * 10n ** 6n;
       await mockUsdc.mint(alice.address, AMOUNT);
       await mockUsdc.connect(alice).approve(await cusdc.getAddress(), AMOUNT);
 
-      await cusdc.connect(alice).wrap(AMOUNT);
+      await cusdc.connect(alice).wrap(alice.address, AMOUNT);
       expect(await mockUsdc.balanceOf(await cusdc.getAddress())).to.equal(AMOUNT);
-
-      await cusdc.connect(alice).unwrap(AMOUNT);
-      expect(await mockUsdc.balanceOf(alice.address)).to.equal(AMOUNT);
+      expect(await cusdc.inferredTotalSupply()).to.equal(AMOUNT);
+      // unwrap()'s 2-step KMS-mediated finalize is exercised on Zama testnet
+      // because the in-process FHEVM mock cannot synthesize threshold proofs.
     });
   });
 
@@ -388,7 +390,13 @@ describe("Integration", function () {
 
       const TenderFactory = await ethers.getContractFactory("EncryptedTender");
       const tender = await TenderFactory.deploy(
-        0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress()
+        0,
+        config,
+        defaultSpec(),
+        await registry.getAddress(),
+        await escrow.getAddress(),
+        ethers.ZeroAddress,   // no winnerSink for this isolated test
+        owner.address         // owner of the new tender
       );
       await tender.waitForDeployment();
       await registry.addAuthorizedCaller(await tender.getAddress());

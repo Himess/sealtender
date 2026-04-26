@@ -237,7 +237,7 @@ export default function BidPage({
       {/* Status / Error Banner */}
       <div aria-live="assertive" role="status">
         {/* State Check */}
-        {currentState !== undefined && currentState !== TenderState.BIDDING && (
+        {currentState !== undefined && currentState !== TenderState.Bidding && (
           <div className="bg-[#FFB800]/10 border border-[#FFB800]/20 rounded-lg p-4 flex items-start gap-3">
             <AlertTriangle
               size={18}

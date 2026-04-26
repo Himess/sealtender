@@ -44,7 +44,13 @@ describe("EncryptedTender", function () {
     const config = { ...defaultConfig(), ...configOverrides };
     const Factory = await ethers.getContractFactory("EncryptedTender");
     tender = await Factory.deploy(
-      0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress()
+      0,
+      config,
+      defaultSpec(),
+      await registry.getAddress(),
+      await escrow.getAddress(),
+      ethers.ZeroAddress,  // winnerSink (none in unit-test scope)
+      owner.address        // initialOwner — test deployer
     );
     await tender.waitForDeployment();
     // Authorize tender on registry
@@ -92,7 +98,7 @@ describe("EncryptedTender", function () {
       const Factory = await ethers.getContractFactory("EncryptedTender");
       const pastConfig = { ...defaultConfig(), deadline: (await time.latest()) - 1 };
       await expect(
-        Factory.deploy(0, pastConfig, defaultSpec(), await registry.getAddress(), await escrow.getAddress())
+        Factory.deploy(0, pastConfig, defaultSpec(), await registry.getAddress(), await escrow.getAddress(), ethers.ZeroAddress, owner.address)
       ).to.be.revertedWith("Deadline must be future");
     });
 
@@ -100,16 +106,16 @@ describe("EncryptedTender", function () {
       const Factory = await ethers.getContractFactory("EncryptedTender");
       const config = { ...defaultConfig(), maxBidders: 0 };
       await expect(
-        Factory.deploy(0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress())
+        Factory.deploy(0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress(), ethers.ZeroAddress, owner.address)
       ).to.be.revertedWith("Must allow at least 1 bidder");
     });
 
-    it("should revert with maxBidders > 10", async function () {
+    it("should revert when maxBidders exceeds MAX_BIDDERS (50)", async function () {
       const Factory = await ethers.getContractFactory("EncryptedTender");
-      const config = { ...defaultConfig(), maxBidders: 11 };
+      const config = { ...defaultConfig(), maxBidders: 51 };
       await expect(
-        Factory.deploy(0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress())
-      ).to.be.revertedWith("Max 10 bidders");
+        Factory.deploy(0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress(), ethers.ZeroAddress, owner.address)
+      ).to.be.revertedWith("Exceeds max bidders");
     });
   });
 
@@ -364,27 +370,27 @@ describe("EncryptedTender", function () {
     });
 
     it("should revert evaluateBatch with batch too large", async function () {
-      // Deploy tender with maxBidders=10 and register enough bidders
+      // Deploy tender with maxBidders=15 and register enough bidders
       const signers = await ethers.getSigners();
-      for (let i = 4; i <= 9; i++) {
+      for (let i = 4; i < 15; i++) {
         await registry.registerBidder(signers[i].address);
       }
-      await deployTender({ maxBidders: 10 });
+      await deployTender({ maxBidders: 15 });
 
-      // Submit 6 bids (> MAX_BATCH_SIZE of 5)
-      await submitBidForSigner(alice, 50000n);
-      await submitBidForSigner(bob, 40000n);
-      await submitBidForSigner(charlie, 45000n);
-      await submitBidForSigner(signers[4], 35000n);
-      await submitBidForSigner(signers[5], 55000n);
-      await submitBidForSigner(signers[6], 42000n);
+      // Submit 11 bids (> MAX_BATCH_SIZE of 10 after H-1 fix)
+      const submitters = [alice, bob, charlie, ...signers.slice(4, 12)];
+      let basePrice = 30000n;
+      for (const s of submitters) {
+        await submitBidForSigner(s, basePrice);
+        basePrice += 1000n;
+      }
 
       await time.increase(86401);
 
-      // Try to evaluate batch of 6 (exceeds MAX_BATCH_SIZE=5)
-      await expect(tender.evaluateBatch(0, 6))
+      // Try to evaluate batch of 11 (exceeds MAX_BATCH_SIZE=10)
+      await expect(tender.evaluateBatch(0, 11))
         .to.be.revertedWithCustomError(tender, "BatchTooLarge")
-        .withArgs(6, 5);
+        .withArgs(11, 10);
     });
   });
 

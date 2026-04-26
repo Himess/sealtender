@@ -34,11 +34,11 @@ const disputeAbi = parseAbi(DisputeManagerABI);
 
 function statusBadge(status: number) {
   switch (status) {
-    case DisputeStatus.PENDING:
+    case DisputeStatus.Open:
       return { label: "Pending", icon: Clock, color: "text-[#FFB800] bg-[#FFB800]/10 border-[#FFB800]/20" };
-    case DisputeStatus.RESOLVED:
+    case DisputeStatus.Slashed:
       return { label: "Resolved", icon: CheckCircle, color: "text-[#00E87B] bg-[#00E87B]/10 border-[#00E87B]/20" };
-    case DisputeStatus.REJECTED:
+    case DisputeStatus.Dismissed:
       return { label: "Rejected", icon: XCircle, color: "text-[#FF4444] bg-[#FF4444]/10 border-[#FF4444]/20" };
     default:
       return { label: "Unknown", icon: Clock, color: "text-[#666666] bg-[#666666]/10 border-[#666666]/20" };
@@ -104,9 +104,9 @@ export default function DisputesPage() {
   }, [disputeResults]);
 
   // Stats
-  const pending = disputes.filter((d) => d.status === DisputeStatus.PENDING).length;
-  const resolved = disputes.filter((d) => d.status === DisputeStatus.RESOLVED).length;
-  const rejected = disputes.filter((d) => d.status === DisputeStatus.REJECTED).length;
+  const pending = disputes.filter((d) => d.status === DisputeStatus.Open).length;
+  const resolved = disputes.filter((d) => d.status === DisputeStatus.Slashed).length;
+  const rejected = disputes.filter((d) => d.status === DisputeStatus.Dismissed).length;
 
   // File complaint
   const {
@@ -271,12 +271,12 @@ export default function DisputesPage() {
                       </td>
                       <td className="px-5 py-[14px]">
                         <span className="flex items-center gap-1 text-xs text-[#888888]">
-                          {d.disputeType === DisputeType.COMPANY ? (
+                          {d.disputeType === DisputeType.Company ? (
                             <Building2 size={12} />
                           ) : (
                             <User size={12} />
                           )}
-                          {d.disputeType === DisputeType.COMPANY
+                          {d.disputeType === DisputeType.Company
                             ? "Company"
                             : "Citizen"}
                         </span>

@@ -153,10 +153,26 @@ describe("PriceEscalation", function () {
         .to.be.revertedWithCustomError(escalation, "NoRuleSet");
     });
 
-    it("should accumulate total escalation paid", async function () {
+    it("should accumulate total escalation paid only after payment lands", async function () {
       const newPrice = BASELINE_PRICE + (BASELINE_PRICE * 1000n / 10000n); // 10%
       await escalation.updateOraclePrice(MATERIAL_ID, newPrice);
       await time.increase(Number(PERIOD) + 1);
+
+      // Without winner/budget configured, counter must stay 0 (post L-1 fix:
+      // totalEscalationPaid only advances when an actual payment lands).
+      await escalation.evaluateEscalation(TENDER_ID, MATERIAL_ID);
+      expect(await escalation.getTotalEscalation(TENDER_ID)).to.equal(0);
+
+      // Configure winner + budget, advance another period, evaluate again.
+      const [, winner] = await ethers.getSigners();
+      await escalation.setTenderWinner(TENDER_ID, winner.address);
+      await escalation.depositEscalationBudget(TENDER_ID, { value: ethers.parseEther("100") });
+
+      // Bump price past prior baseline so increase > threshold once more
+      const evenNewerPrice = BASELINE_PRICE + (BASELINE_PRICE * 1500n / 10000n);
+      await escalation.updateOraclePrice(MATERIAL_ID, evenNewerPrice);
+      await time.increase(Number(PERIOD) + 1);
+
       await escalation.evaluateEscalation(TENDER_ID, MATERIAL_ID);
       expect(await escalation.getTotalEscalation(TENDER_ID)).to.be.gt(0);
     });

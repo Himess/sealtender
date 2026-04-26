@@ -155,7 +155,7 @@ export default function TenderDetailPage({
             <Download size={13} />
             Export PDF
           </button>
-          {currentState === TenderState.BIDDING && (
+          {currentState === TenderState.Bidding && (
             <Link
               href={`/tenders/${id}/bid`}
               className="flex items-center gap-2 px-4 py-[8px] bg-[#00E87B] text-[#08090E] rounded-[6px] font-semibold text-xs hover:bg-[#00E87B]/90 transition-colors"
@@ -165,7 +165,7 @@ export default function TenderDetailPage({
             </Link>
           )}
           {currentState !== undefined &&
-            currentState >= TenderState.EVALUATING && (
+            currentState >= TenderState.Evaluating && (
               <Link
                 href={`/tenders/${id}/results`}
                 className="flex items-center gap-2 px-3 py-[8px] bg-[#0D0F14] border border-[#1E2230] text-[#888888] rounded-[6px] text-xs hover:border-[#00E87B]/30 transition-colors"
@@ -598,7 +598,7 @@ export default function TenderDetailPage({
 
           {/* Winner reveal (only when REVEALED) */}
           {currentState !== undefined &&
-            currentState >= TenderState.REVEALED &&
+            currentState >= TenderState.Revealed &&
             winner &&
             winner !== "0x0000000000000000000000000000000000000000" && (
               <section className="mt-10 border-t-2 border-[#111111] pt-8">

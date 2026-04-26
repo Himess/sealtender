@@ -94,9 +94,9 @@ export default function BidsPage() {
   // Stats
   const activeBids = myBids.filter(
     (b) =>
-      b.tender.state === TenderState.BIDDING ||
-      b.tender.state === TenderState.CLOSED ||
-      b.tender.state === TenderState.EVALUATING
+      b.tender.state === TenderState.Bidding ||
+      b.tender.state === TenderState.Bidding ||
+      b.tender.state === TenderState.Evaluating
   ).length;
 
   const totalDeposited = myBids.reduce(
@@ -106,7 +106,7 @@ export default function BidsPage() {
 
   const wins = myBids.filter(
     (b) =>
-      b.tender.state === TenderState.REVEALED &&
+      b.tender.state === TenderState.Revealed &&
       b.tender.winner?.toLowerCase() === userAddress?.toLowerCase()
   ).length;
 
@@ -250,7 +250,7 @@ export default function BidsPage() {
               <tbody>
                 {myBids.map(({ tender, deposit }) => {
                   const isWinner =
-                    tender.state === TenderState.REVEALED &&
+                    tender.state === TenderState.Revealed &&
                     tender.winner?.toLowerCase() ===
                       userAddress?.toLowerCase();
                   return (
@@ -280,7 +280,7 @@ export default function BidsPage() {
                         </span>
                       </td>
                       <td className="px-5 py-[14px]">
-                        {tender.state === TenderState.REVEALED ? (
+                        {tender.state === TenderState.Revealed ? (
                           isWinner ? (
                             <span className="flex items-center gap-1 text-xs text-[#00E87B]">
                               <Trophy size={12} />

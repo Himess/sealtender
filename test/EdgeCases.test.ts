@@ -61,7 +61,7 @@ describe("EdgeCases", function () {
     await mockUsdc.waitForDeployment();
 
     const CUSDCFactory = await ethers.getContractFactory("ConfidentialUSDC");
-    cusdc = await CUSDCFactory.deploy(owner.address);
+    cusdc = await CUSDCFactory.deploy(owner.address, await mockUsdc.getAddress());
     await cusdc.waitForDeployment();
 
     const FactoryFactory = await ethers.getContractFactory("TenderFactory");
@@ -71,7 +71,7 @@ describe("EdgeCases", function () {
     );
     await factory.waitForDeployment();
 
-    await registry.addAuthorizedCaller(await factory.getAddress());
+    await registry.setTenderManager(await factory.getAddress());
     await escrow.authorizeCaller(await factory.getAddress());
     await escrow.authorizeCaller(await disputeManager.getAddress());
   });
@@ -158,10 +158,11 @@ describe("EdgeCases", function () {
     const TENDER_ID = 0;
     const DEPOSIT = ethers.parseEther("1");
 
-    it("should not allow deposit with zero required", async function () {
-      // required deposit defaults to 0, so any deposit works
-      await escrow.connect(alice).deposit(TENDER_ID, { value: 0 });
-      expect(await escrow.getDepositStatus(TENDER_ID, alice.address)).to.equal(1);
+    it("should reject deposit when tender not configured (required=0)", async function () {
+      // Post L-5 fix: tenders with no required deposit set are rejected at the
+      // escrow boundary rather than silently locking funds under an unknown id.
+      await expect(escrow.connect(alice).deposit(TENDER_ID, { value: 0 }))
+        .to.be.revertedWithCustomError(escrow, "TenderNotConfigured");
     });
 
     it("should not allow release of frozen deposit", async function () {
@@ -239,14 +240,14 @@ describe("EdgeCases", function () {
     });
 
     it("should store correct reason string", async function () {
-      await disputeManager.connect(alice).fileCitizenComplaint(0, bob.address, "Corruption evidence");
+      await disputeManager.connect(alice).fileCitizenComplaint(0, bob.address, "Corruption evidence", { value: ethers.parseEther("0.001") });
       const dispute = await disputeManager.getDispute(0);
       expect(dispute.reason).to.equal("Corruption evidence");
     });
 
     it("should handle multiple disputes for same tender", async function () {
-      await disputeManager.connect(alice).fileCitizenComplaint(0, bob.address, "R1");
-      await disputeManager.connect(alice).fileCitizenComplaint(0, charlie.address, "R2");
+      await disputeManager.connect(alice).fileCitizenComplaint(0, bob.address, "R1", { value: ethers.parseEther("0.001") });
+      await disputeManager.connect(alice).fileCitizenComplaint(0, charlie.address, "R2", { value: ethers.parseEther("0.001") });
       expect(await disputeManager.disputeCount()).to.equal(2);
     });
 
@@ -265,13 +266,13 @@ describe("EdgeCases", function () {
     });
 
     it("should prevent non-owner from resolving dispute", async function () {
-      await disputeManager.connect(alice).fileCitizenComplaint(0, bob.address, "R");
+      await disputeManager.connect(alice).fileCitizenComplaint(0, bob.address, "R", { value: ethers.parseEther("0.001") });
       await expect(disputeManager.connect(alice).resolveDispute(0, 4))
         .to.be.revertedWithCustomError(disputeManager, "OwnableUnauthorizedAccount");
     });
 
     it("should prevent resolving already dismissed dispute", async function () {
-      await disputeManager.connect(alice).fileCitizenComplaint(0, bob.address, "R");
+      await disputeManager.connect(alice).fileCitizenComplaint(0, bob.address, "R", { value: ethers.parseEther("0.001") });
       await disputeManager.resolveDispute(0, 4); // Dismissed
       await expect(disputeManager.resolveDispute(0, 2)) // Slashed
         .to.be.revertedWithCustomError(disputeManager, "DisputeAlreadyResolved");
@@ -355,7 +356,7 @@ describe("EdgeCases", function () {
     });
 
     it("should not allow setCollisionResult for unchecked tender", async function () {
-      await expect(detector.setCollisionResult(0, true))
+      await expect(detector.setCollisionResult(0, true, "0x"))
         .to.be.revertedWith("Not checked yet");
     });
 
@@ -364,7 +365,7 @@ describe("EdgeCases", function () {
       const enc1 = await fhevm.encryptUint(5, 100n, addr, owner.address);
       const enc2 = await fhevm.encryptUint(5, 200n, addr, owner.address);
       await detector.checkCollision(1, [enc1.externalEuint, enc2.externalEuint], [enc1.inputProof, enc2.inputProof]);
-      await expect(detector.connect(alice).setCollisionResult(1, true))
+      await expect(detector.connect(alice).setCollisionResult(1, true, "0x"))
         .to.be.revertedWithCustomError(detector, "OwnableUnauthorizedAccount");
     });
 
@@ -382,55 +383,44 @@ describe("EdgeCases", function () {
         .withArgs(2, 10);
     });
 
-    it("should handle setting false collision result", async function () {
-      const addr = await detector.getAddress();
-      const enc1 = await fhevm.encryptUint(5, 100n, addr, owner.address);
-      const enc2 = await fhevm.encryptUint(5, 200n, addr, owner.address);
-      await detector.checkCollision(3, [enc1.externalEuint, enc2.externalEuint], [enc1.inputProof, enc2.inputProof]);
-      await detector.setCollisionResult(3, false);
-      expect(await detector.collisionDetected(3)).to.be.false;
+    it.skip("should handle setting false collision result", async function () {
+      // Requires KMS-signed proof — exercised on Zama testnet only.
     });
   });
 
   // --- ConfidentialUSDC Edge Cases ---
-  describe("ConfidentialUSDC Edge Cases", function () {
-    it("should not allow wrap when underlying is zero address", async function () {
+  describe("ConfidentialUSDC Edge Cases (ERC-7984 wrapper)", function () {
+    it("should reject construction with zero-address underlying via wrap", async function () {
+      // The OpenZeppelin parent wrapper allows a zero underlying at construction
+      // (it only fetches decimals via try-call), but the first wrap will revert
+      // because the underlying.transferFrom call goes to address(0).
       const CUSDCFactory = await ethers.getContractFactory("ConfidentialUSDC");
-      const cusdc2 = await CUSDCFactory.deploy(owner.address);
-      await cusdc2.waitForDeployment();
-      await expect(cusdc2.connect(alice).wrap(100))
-        .to.be.revertedWithCustomError(cusdc2, "WrapDisabled");
+      const cusdcZero = await CUSDCFactory.deploy(owner.address, ethers.ZeroAddress);
+      await cusdcZero.waitForDeployment();
+      // Calling wrap on a wrapper with zero underlying reverts deep in the
+      // SafeERC20.safeTransferFrom path — the exact custom error depends on
+      // how the call to address(0) decodes. Just assert it reverts.
+      await expect(cusdcZero.connect(alice).wrap(alice.address, 100)).to.be.reverted;
     });
 
-    it("should not allow unwrap when underlying is zero address", async function () {
-      const CUSDCFactory = await ethers.getContractFactory("ConfidentialUSDC");
-      const cusdc2 = await CUSDCFactory.deploy(owner.address);
-      await cusdc2.waitForDeployment();
-      await expect(cusdc2.connect(alice).unwrap(100))
-        .to.be.revertedWithCustomError(cusdc2, "WrapDisabled");
+    it("should expose constant rate equal to 1 for 6-decimal underlying", async function () {
+      expect(await cusdc.rate()).to.equal(1);
     });
 
-    it("should allow different users to use faucet", async function () {
-      await cusdc.setUnderlyingUSDC(await mockUsdc.getAddress());
-      await cusdc.connect(alice).faucet(1000);
-      await cusdc.connect(bob).faucet(1000);
-      // Both should succeed
+    it("should expose underlying as the bound MockUSDC", async function () {
+      expect(await cusdc.underlying()).to.equal(await mockUsdc.getAddress());
     });
 
-    it("should not allow non-owner to mint", async function () {
-      await expect(cusdc.connect(alice).mint(alice.address, 1000))
+    it("should pause and unpause via owner", async function () {
+      await cusdc.pause();
+      expect(await cusdc.paused()).to.be.true;
+      await cusdc.unpause();
+      expect(await cusdc.paused()).to.be.false;
+    });
+
+    it("should reject pause from non-owner", async function () {
+      await expect(cusdc.connect(alice).pause())
         .to.be.revertedWithCustomError(cusdc, "OwnableUnauthorizedAccount");
-    });
-
-    it("should not allow non-owner to burn", async function () {
-      await expect(cusdc.connect(alice).burn(alice.address, 1000))
-        .to.be.revertedWithCustomError(cusdc, "OwnableUnauthorizedAccount");
-    });
-
-    it("should enforce FAUCET_MAX", async function () {
-      const max = await cusdc.FAUCET_MAX();
-      await expect(cusdc.connect(alice).faucet(max + 1n))
-        .to.be.revertedWithCustomError(cusdc, "FaucetAmountExceedsMax");
     });
   });
 
@@ -487,7 +477,7 @@ describe("EdgeCases", function () {
       };
       const TenderFactory = await ethers.getContractFactory("EncryptedTender");
       tender = await TenderFactory.deploy(
-        0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress()
+        0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress(), ethers.ZeroAddress, owner.address
       );
       await tender.waitForDeployment();
       await registry.addAuthorizedCaller(await tender.getAddress());
@@ -556,7 +546,7 @@ describe("EdgeCases", function () {
       };
       const TFactory = await ethers.getContractFactory("EncryptedTender");
       const tender = await TFactory.deploy(
-        0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress()
+        0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress(), ethers.ZeroAddress, owner.address
       );
       await tender.waitForDeployment();
       await registry.addAuthorizedCaller(await tender.getAddress());

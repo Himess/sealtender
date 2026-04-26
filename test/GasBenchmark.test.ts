@@ -58,7 +58,7 @@ describe("GasBenchmark", function () {
     );
     await disputeManager.waitForDeployment();
 
-    await registry.addAuthorizedCaller(await factory.getAddress());
+    await registry.setTenderManager(await factory.getAddress());
     await escrow.authorizeCaller(await factory.getAddress());
   });
 
@@ -105,7 +105,7 @@ describe("GasBenchmark", function () {
     };
     const TenderFactory = await ethers.getContractFactory("EncryptedTender");
     const tender = await TenderFactory.deploy(
-      0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress()
+      0, config, defaultSpec(), await registry.getAddress(), await escrow.getAddress(), ethers.ZeroAddress, owner.address
     );
     await tender.waitForDeployment();
     await registry.addAuthorizedCaller(await tender.getAddress());

@@ -379,17 +379,17 @@ export function parseSpec(raw: unknown): NonNullable<TenderData["spec"]> {
 
 export function stateLabel(state: number | undefined): string {
   switch (state) {
-    case TenderState.CREATED:
+    case TenderState.Created:
       return "Created";
-    case TenderState.BIDDING:
+    case TenderState.Bidding:
       return "Bidding";
-    case TenderState.CLOSED:
+    case TenderState.Bidding:
       return "Closed";
-    case TenderState.EVALUATING:
+    case TenderState.Evaluating:
       return "Evaluating";
-    case TenderState.REVEALED:
+    case TenderState.Revealed:
       return "Revealed";
-    case TenderState.CANCELLED:
+    case TenderState.Cancelled:
       return "Cancelled";
     default:
       return "Unknown";
@@ -398,17 +398,17 @@ export function stateLabel(state: number | undefined): string {
 
 export function stateColor(state: number | undefined): string {
   switch (state) {
-    case TenderState.CREATED:
+    case TenderState.Created:
       return "text-[#888888] bg-[#888888]/10 border-[#888888]/20";
-    case TenderState.BIDDING:
+    case TenderState.Bidding:
       return "text-[#00E87B] bg-[#00E87B]/10 border-[#00E87B]/20";
-    case TenderState.CLOSED:
+    case TenderState.Bidding:
       return "text-[#FFB800] bg-[#FFB800]/10 border-[#FFB800]/20";
-    case TenderState.EVALUATING:
+    case TenderState.Evaluating:
       return "text-[#4A9FFF] bg-[#4A9FFF]/10 border-[#4A9FFF]/20";
-    case TenderState.REVEALED:
+    case TenderState.Revealed:
       return "text-[#A855F7] bg-[#A855F7]/10 border-[#A855F7]/20";
-    case TenderState.CANCELLED:
+    case TenderState.Cancelled:
       return "text-[#FF4444] bg-[#FF4444]/10 border-[#FF4444]/20";
     default:
       return "text-[#666666] bg-[#666666]/10 border-[#666666]/20";
@@ -417,17 +417,17 @@ export function stateColor(state: number | undefined): string {
 
 export function stateFilterKey(state: number | undefined): string {
   switch (state) {
-    case TenderState.CREATED:
+    case TenderState.Created:
       return "created";
-    case TenderState.BIDDING:
+    case TenderState.Bidding:
       return "bidding";
-    case TenderState.CLOSED:
+    case TenderState.Bidding:
       return "closed";
-    case TenderState.EVALUATING:
+    case TenderState.Evaluating:
       return "evaluating";
-    case TenderState.REVEALED:
+    case TenderState.Revealed:
       return "revealed";
-    case TenderState.CANCELLED:
+    case TenderState.Cancelled:
       return "cancelled";
     default:
       return "unknown";

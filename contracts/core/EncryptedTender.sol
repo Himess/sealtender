@@ -6,6 +6,7 @@ import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {TenderConfig, TenderState, TenderSpecification} from "../interfaces/ISealTender.sol";
 import {BidderRegistry} from "../identity/BidderRegistry.sol";
 import {BidEscrow} from "./BidEscrow.sol";
@@ -14,7 +15,7 @@ import {BidEscrow} from "./BidEscrow.sol";
  * @title EncryptedTender
  * @notice FHE-encrypted sealed-bid tender with on-chain evaluation.
  */
-contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable {
+contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable, ReentrancyGuard {
     // --- Structs ---
     struct BidData {
         euint64 encPrice;
@@ -32,6 +33,19 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable {
     TenderState public state;
     BidderRegistry public registry;
     BidEscrow public escrow;
+
+    /// @notice Optional sink for the revealed winner (e.g. PriceEscalation). If set,
+    ///         {revealWinner} forwards the winner via low-level call so escalation
+    ///         payouts are wired automatically without a separate admin step.
+    address public winnerSink;
+    bytes4 public constant WINNER_SINK_SELECTOR = bytes4(keccak256("setTenderWinner(uint256,address)"));
+
+    /// @notice After {requestReveal}, if the owner fails to deliver the KMS-signed
+    ///         decryption proof within `revealTimeout`, *anyone* may call
+    ///         {forceCancelStuckReveal} to cancel the tender and unlock escrows.
+    ///         Removes the single-point-of-liveness on the tender owner.
+    uint256 public revealRequestedAt;
+    uint256 public revealTimeout = 7 days;
 
     address[] public bidders;
     mapping(address => BidData) internal bids;
@@ -57,6 +71,10 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable {
     event RevealRequested(bytes32 idxHandle, bytes32 priceHandle);
     event WinnerRevealed(address winner, uint256 price);
     event TenderCancelled(uint256 timestamp);
+    event WinnerSinkSet(address indexed sink);
+    event WinnerSinkForwardFailed(address indexed sink, bytes returnData);
+    event RevealTimeoutSet(uint256 secondsValue);
+    event StuckRevealForceCancelled(address indexed by, uint256 elapsed);
 
     // --- Errors ---
     error NotVerifiedBidder();
@@ -73,8 +91,16 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable {
     error EndExceedsBidders();
     error MustEvaluateInOrder();
     error BatchTooLarge(uint256 size, uint256 max);
+    error RevealNotRequested();
+    error RevealTimeoutNotElapsed();
+    error InvalidTimeout();
 
-    uint256 public constant MAX_BATCH_SIZE = 5;
+    /// @notice Hard cap on bidders per tender. Above this gas costs per evaluation
+    ///         batch exceed practical block limits even with optimal batching.
+    uint256 public constant MAX_BIDDERS = 50;
+    /// @notice Maximum bidders processed per evaluateBatch call. Tuned for ~30M gas
+    ///         per batch including FHE.lt + FHE.select + FHE.allowThis.
+    uint256 public constant MAX_BATCH_SIZE = 10;
 
     // --- Modifiers ---
     modifier onlyVerified() {
@@ -103,17 +129,22 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable {
         TenderConfig memory _config,
         TenderSpecification memory _spec,
         address _registry,
-        address _escrow
-    ) Ownable(msg.sender) {
+        address _escrow,
+        address _winnerSink,
+        address _initialOwner
+    ) Ownable(_initialOwner) {
         require(_config.deadline > block.timestamp, "Deadline must be future");
         require(_config.maxBidders > 0, "Must allow at least 1 bidder");
-        require(_config.maxBidders <= 10, "Max 10 bidders");
+        require(_config.maxBidders <= MAX_BIDDERS, "Exceeds max bidders");
+        require(_registry != address(0), "registry zero");
+        require(_escrow != address(0), "escrow zero");
 
         tenderId = _tenderId;
         config = _config;
         spec = _spec;
         registry = BidderRegistry(_registry);
         escrow = BidEscrow(_escrow);
+        winnerSink = _winnerSink; // optional — may be address(0)
         state = TenderState.Bidding;
     }
 
@@ -128,7 +159,7 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable {
         bytes calldata _projectsProof,
         externalEuint64 _encBond,
         bytes calldata _bondProof
-    ) external onlyVerified beforeDeadline inState(TenderState.Bidding) whenNotPaused {
+    ) external onlyVerified beforeDeadline inState(TenderState.Bidding) whenNotPaused nonReentrant {
         if (bidders.length >= config.maxBidders) revert MaxBiddersReached();
 
         // Check escrow deposit
@@ -240,6 +271,13 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable {
 
         evaluatedCount = endIdx;
 
+        // CRITICAL: Persist contract-side ACL on the running min/winner ciphertexts so
+        // the next batch (or requestReveal) can operate on them. Without these calls,
+        // each new handle produced by FHE.select would only carry transient ACL valid
+        // within the current transaction — breaking multi-batch evaluation in production.
+        FHE.allowThis(currentMinPrice);
+        FHE.allowThis(currentWinnerIdx);
+
         emit EvaluationBatchCompleted(startIdx, endIdx);
 
         if (evaluatedCount == bidders.length) {
@@ -259,6 +297,7 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable {
 
         winnerIdxHandle = FHE.toBytes32(currentWinnerIdx);
         winnerPriceHandle = FHE.toBytes32(currentMinPrice);
+        revealRequestedAt = block.timestamp;
 
         emit RevealRequested(winnerIdxHandle, winnerPriceHandle);
     }
@@ -289,7 +328,50 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable {
             registry.recordWin(winnerAddress);
         }
 
+        // Auto-forward to escalation/escrow sink if configured. Failures are tolerated
+        // because they must not block reveal — the winner is still surfaced on-chain
+        // and the sink can be re-attempted manually via the sink contract directly.
+        if (winnerSink != address(0)) {
+            (bool ok, bytes memory ret) = winnerSink.call(
+                abi.encodeWithSelector(WINNER_SINK_SELECTOR, tenderId, winnerAddress)
+            );
+            if (!ok) {
+                emit WinnerSinkForwardFailed(winnerSink, ret);
+            }
+        }
+
         emit WinnerRevealed(winnerAddress, price);
+    }
+
+    /// @notice Owner-set destination contract for winner propagation. Must implement
+    ///         `setTenderWinner(uint256, address)` (e.g. PriceEscalation). Pass
+    ///         `address(0)` to disable forwarding.
+    function setWinnerSink(address _sink) external onlyOwner {
+        winnerSink = _sink;
+        emit WinnerSinkSet(_sink);
+    }
+
+    /// @notice Owner can adjust the reveal timeout within sane bounds. Reducing it
+    ///         too aggressively risks racing the KMS roundtrip; raising it too high
+    ///         defeats the liveness guarantee.
+    function setRevealTimeout(uint256 _seconds) external onlyOwner {
+        if (_seconds < 1 days || _seconds > 30 days) revert InvalidTimeout();
+        revealTimeout = _seconds;
+        emit RevealTimeoutSet(_seconds);
+    }
+
+    /// @notice Permissionless escape hatch: if the owner has called {requestReveal}
+    ///         but failed to deliver the KMS-signed `revealWinner` proof within
+    ///         `revealTimeout`, anyone may call this to mark the tender Cancelled
+    ///         so bidders can recover their escrows via the BidEscrow refund path.
+    /// @dev Removes single-point-of-liveness from the tender owner.
+    function forceCancelStuckReveal() external {
+        if (revealRequestedAt == 0) revert RevealNotRequested();
+        if (revealed) revert AlreadyRevealed();
+        if (block.timestamp < revealRequestedAt + revealTimeout) revert RevealTimeoutNotElapsed();
+        state = TenderState.Cancelled;
+        emit StuckRevealForceCancelled(msg.sender, block.timestamp - revealRequestedAt);
+        emit TenderCancelled(block.timestamp);
     }
 
     // --- Views ---

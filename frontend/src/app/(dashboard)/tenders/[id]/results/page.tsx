@@ -167,7 +167,7 @@ export default function EvaluationResultsPage({
       </div>
 
       {/* Winner Announcement */}
-      {winner && currentState !== undefined && currentState >= TenderState.REVEALED && (
+      {winner && currentState !== undefined && currentState >= TenderState.Revealed && (
         <div className="bg-[#00E87B]/5 border border-[#00E87B]/30 rounded-lg p-6">
           <div className="flex items-center gap-3 mb-4">
             <Trophy size={24} className="text-[#00E87B]" />
@@ -277,7 +277,7 @@ export default function EvaluationResultsPage({
                       </td>
                       <td className="px-5 py-[14px]">
                         {currentState !== undefined &&
-                        currentState >= TenderState.REVEALED ? (
+                        currentState >= TenderState.Revealed ? (
                           isWinner ? (
                             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-[4px] font-heading text-[11px] font-bold bg-[#00E87B] text-[#08090E] tracking-[1px]">
                               WINNER

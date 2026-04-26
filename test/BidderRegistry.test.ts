@@ -94,8 +94,16 @@ describe("BidderRegistry", function () {
         .to.be.revertedWithCustomError(registry, "ZeroAddress");
     });
 
-    it("should allow authorized caller to add another authorized caller", async function () {
+    it("should NOT allow authorized caller to add another authorized caller (privilege escalation closed)", async function () {
       await registry.addAuthorizedCaller(alice.address);
+      // Alice is now an authorized caller but NOT the tenderManager.
+      // Under the new privilege model, only owner / tenderManager can add callers.
+      await expect(registry.connect(alice).addAuthorizedCaller(bob.address))
+        .to.be.revertedWithCustomError(registry, "CallerNotAuthorized");
+    });
+
+    it("should allow tenderManager to add authorized caller", async function () {
+      await registry.setTenderManager(alice.address);
       await expect(registry.connect(alice).addAuthorizedCaller(bob.address))
         .to.emit(registry, "AuthorizedCallerAdded")
         .withArgs(bob.address);
@@ -104,6 +112,26 @@ describe("BidderRegistry", function () {
     it("should revert if unauthorized tries to add caller", async function () {
       await expect(registry.connect(alice).addAuthorizedCaller(bob.address))
         .to.be.revertedWithCustomError(registry, "CallerNotAuthorized");
+    });
+  });
+
+  describe("setTenderManager", function () {
+    it("should let owner set tenderManager", async function () {
+      await expect(registry.setTenderManager(alice.address))
+        .to.emit(registry, "TenderManagerSet")
+        .withArgs(alice.address);
+      expect(await registry.tenderManager()).to.equal(alice.address);
+    });
+
+    it("should let owner clear tenderManager", async function () {
+      await registry.setTenderManager(alice.address);
+      await registry.setTenderManager(ethers.ZeroAddress);
+      expect(await registry.tenderManager()).to.equal(ethers.ZeroAddress);
+    });
+
+    it("should revert when called by non-owner", async function () {
+      await expect(registry.connect(alice).setTenderManager(bob.address))
+        .to.be.revertedWithCustomError(registry, "OwnableUnauthorizedAccount");
     });
   });
 

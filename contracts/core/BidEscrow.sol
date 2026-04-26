@@ -43,6 +43,7 @@ contract BidEscrow is Ownable2Step, ReentrancyGuard {
     error TransferFailed();
     error ZeroAddress();
     error NoDeposit();
+    error TenderNotConfigured();
 
     // --- Modifiers ---
     modifier onlyAuthorized() {
@@ -79,6 +80,10 @@ contract BidEscrow is Ownable2Step, ReentrancyGuard {
             revert DepositAlreadyExists();
         }
         uint256 required = requiredDeposit[tenderId];
+        // Reject deposits to tenders that were never configured by the factory.
+        // Without this, ETH could be locked under arbitrary tenderIds with no
+        // contract able to release/refund/slash it.
+        if (required == 0) revert TenderNotConfigured();
         if (msg.value < required) revert InsufficientDeposit();
 
         deposits[tenderId][msg.sender] = msg.value;

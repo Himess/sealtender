@@ -56,8 +56,11 @@ describe("TenderFactory", function () {
     );
     await factory.waitForDeployment();
 
-    // Authorize factory in registry and escrow
-    await registry.addAuthorizedCaller(await factory.getAddress());
+    // New privilege model: factory is the registry's tenderManager (sole
+    // contract permitted to addAuthorizedCaller). Replaces the prior pattern
+    // where factory was just an authorized caller — which allowed any
+    // compromised authorized contract to escalate.
+    await registry.setTenderManager(await factory.getAddress());
     await escrow.authorizeCaller(await factory.getAddress());
   });
 

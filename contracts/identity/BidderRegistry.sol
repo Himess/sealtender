@@ -25,11 +25,20 @@ contract BidderRegistry is Ownable2Step {
     mapping(address => uint256) internal _bidderIndex;
     mapping(address => bool) public authorizedCallers;
 
+    /// @notice Single contract permitted to authorize new tender callers (typically
+    ///         the TenderFactory). Owner-set, can be cleared by setting to zero.
+    /// @dev Replaces the prior `onlyOwnerOrAuthorized` design which allowed *any*
+    ///      authorized caller to escalate by adding more callers — a privilege-
+    ///      escalation surface that would let a compromised tender contract
+    ///      contaminate the entire registry.
+    address public tenderManager;
+
     // --- Events ---
     event BidderRegistered(address indexed bidder);
     event BidderRemoved(address indexed bidder);
     event AuthorizedCallerAdded(address indexed caller);
     event AuthorizedCallerRemoved(address indexed caller);
+    event TenderManagerSet(address indexed manager);
     event BidRecorded(address indexed bidder);
     event WinRecorded(address indexed bidder);
     event SlashRecorded(address indexed bidder);
@@ -47,8 +56,8 @@ contract BidderRegistry is Ownable2Step {
         _;
     }
 
-    modifier onlyOwnerOrAuthorized() {
-        if (msg.sender != owner() && !authorizedCallers[msg.sender]) {
+    modifier onlyOwnerOrTenderManager() {
+        if (msg.sender != owner() && msg.sender != tenderManager) {
             revert CallerNotAuthorized();
         }
         _;
@@ -98,10 +107,24 @@ contract BidderRegistry is Ownable2Step {
         emit BidderRemoved(bidder);
     }
 
-    function addAuthorizedCaller(address caller) external onlyOwnerOrAuthorized {
+    /// @notice Authorize a contract to record bids/wins/slashes/completions.
+    /// @dev Restricted to {owner} or {tenderManager} (typically the factory). Other
+    ///      authorized callers cannot themselves add more callers — closing the
+    ///      privilege-escalation path that existed under the prior
+    ///      `onlyOwnerOrAuthorized` design.
+    function addAuthorizedCaller(address caller) external onlyOwnerOrTenderManager {
         if (caller == address(0)) revert ZeroAddress();
         authorizedCallers[caller] = true;
         emit AuthorizedCallerAdded(caller);
+    }
+
+    /// @notice Owner-only: nominate the TenderFactory (or equivalent) as the sole
+    ///         contract permitted to call {addAuthorizedCaller}. Pass `address(0)`
+    ///         to revoke the role and require all future authorizations to flow
+    ///         directly through the owner.
+    function setTenderManager(address _tenderManager) external onlyOwner {
+        tenderManager = _tenderManager;
+        emit TenderManagerSet(_tenderManager);
     }
 
     function removeAuthorizedCaller(address caller) external onlyOwner {

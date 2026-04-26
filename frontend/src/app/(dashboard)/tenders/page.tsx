@@ -156,7 +156,7 @@ function TenderCard({ tender }: { tender: TenderData }) {
         </div>
 
         {/* Award footer */}
-        {tender.state === TenderState.REVEALED && tender.winner && (
+        {tender.state === TenderState.Revealed && tender.winner && (
           <div className="pt-3 mt-1 border-t border-[#1E2230] flex items-center justify-between">
             <span className="font-heading text-[9px] font-semibold tracking-[1px] uppercase text-[#A855F7]">
               Awarded
