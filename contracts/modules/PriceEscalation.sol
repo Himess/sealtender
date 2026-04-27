@@ -23,6 +23,17 @@ contract PriceEscalation is Ownable2Step {
     mapping(uint256 => uint256) public tenderPrice;
     mapping(bytes32 => uint256) public latestPrices;
 
+    /// @notice Single contract permitted to call setTenderWinner from a tender
+    ///         contract's `revealWinner` flow (typically the TenderFactory or
+    ///         its delegate). Owner-set; pass `address(0)` to revoke.
+    /// @dev    Without this, EncryptedTender.winnerSink would call
+    ///         setTenderWinner and revert under `onlyOwner`, silently failing
+    ///         the auto-forward (M-5). With it, the tenderManager allow-lists
+    ///         winner writes from any tender it created.
+    address public tenderManager;
+    /// @dev tender_address → true once authorized to forward winner writes
+    mapping(address => bool) public authorizedTenders;
+
     // Chainlink price feed mapping: materialId -> feed address
     mapping(bytes32 => address) public priceFeeds;
 
@@ -45,6 +56,8 @@ contract PriceEscalation is Ownable2Step {
     event EscalationPayment(uint256 indexed tenderId, address indexed winner, uint256 amount);
     event PythSet(address indexed pyth);
     event PythFeedSet(bytes32 indexed materialId, bytes32 feedId);
+    event TenderManagerSet(address indexed manager);
+    event TenderAuthorized(address indexed tender);
 
     // --- Errors ---
     error EscalationCapExceeded();
@@ -79,8 +92,40 @@ contract PriceEscalation is Ownable2Step {
         emit PythFeedSet(materialId, feedId);
     }
 
-    function setTenderWinner(uint256 tenderId, address winner) external onlyOwner {
+    /// @notice Record the revealed winner for a tender. Callable by:
+    ///         1. The contract owner (manual admin path), or
+    ///         2. The configured tenderManager (typically the TenderFactory), or
+    ///         3. An authorized tender contract whose creation was tracked by
+    ///            the tenderManager — this is the auto-forward path triggered
+    ///            from `EncryptedTender.revealWinner` via `winnerSink`.
+    /// @dev    Closes the M-5 silent-fail bug where the prior `onlyOwner` gate
+    ///         caused `winnerSink.call(setTenderWinner)` to revert without
+    ///         updating state.
+    function setTenderWinner(uint256 tenderId, address winner) external {
+        if (
+            msg.sender != owner() &&
+            msg.sender != tenderManager &&
+            !authorizedTenders[msg.sender]
+        ) revert("PriceEscalation: not authorized");
         tenderWinner[tenderId] = winner;
+    }
+
+    /// @notice Owner-only: pin a single contract (typically the TenderFactory)
+    ///         as the gatekeeper for adding new authorized tender writers.
+    function setTenderManager(address _tm) external onlyOwner {
+        tenderManager = _tm;
+        emit TenderManagerSet(_tm);
+    }
+
+    /// @notice Allow a freshly created tender contract to write its own winner.
+    ///         Callable by owner or tenderManager (factory).
+    function authorizeTender(address tender) external {
+        if (msg.sender != owner() && msg.sender != tenderManager) {
+            revert("PriceEscalation: not authorized");
+        }
+        require(tender != address(0), "zero tender");
+        authorizedTenders[tender] = true;
+        emit TenderAuthorized(tender);
     }
 
     function setEscalationRule(

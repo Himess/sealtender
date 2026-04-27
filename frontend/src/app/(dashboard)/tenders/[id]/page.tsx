@@ -34,6 +34,7 @@ import {
   parseSpec,
 } from "@/hooks/useContractData";
 import { TenderState } from "@/lib/contracts";
+import { formatEther } from "viem";
 
 export default function TenderDetailPage({
   params,
@@ -497,7 +498,7 @@ export default function TenderDetailPage({
                   </p>
                   <p className="font-body text-[14px] text-[#111111] mt-1">
                     {config?.escrowAmount && config.escrowAmount > 0n
-                      ? formatUsd6(config.escrowAmount)
+                      ? `${formatEther(config.escrowAmount)} ETH`
                       : "Waived for this tender"}
                   </p>
                 </div>

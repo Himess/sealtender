@@ -2,16 +2,23 @@
 // SealTender Contract Addresses, ABIs, Types
 // ============================================================================
 
-// Sepolia v2 deployment (audit-fixed, April 2026). Sourcify-verified at
-// https://repo.sourcify.dev/contracts/full_match/11155111/<address>/
+// Sepolia v3 deployment (B-L6 + B-M5 + frontend audit fix-up, April 2026).
+// Sourcify-verified at https://repo.sourcify.dev/contracts/full_match/11155111/<address>/
+//
+// What changed vs v2:
+//   • BidEscrow — adds claimRefund(tenderId), tenderOf mapping, setTenderAddress
+//   • PriceEscalation — adds tenderManager + authorizedTenders, broader
+//     setTenderWinner auth so winnerSink auto-forwards from EncryptedTender
+//   • TenderFactory — wires new BidEscrow.setTenderAddress + escalation auth
+//   • DisputeManager — redeployed against new BidEscrow address
 export const ADDRESSES = {
   BidderRegistry: "0x2E8037626102ca3393ab9EfE7a3A254b30B236CA" as const,
-  BidEscrow: "0x1635eb515c80eEf52CD88d34109C83D8b5321647" as const,
+  BidEscrow: "0x76FBC67992459E972b80A88e11a5c15B0CFDBD11" as const,
   ConfidentialUSDC: "0xCe493fFaBf3763df8057E58c22a6dC6a65806553" as const,
-  PriceEscalation: "0x75ea85aaB4d130cFE2Bf0C7121a6535Fc3a1fa9a" as const,
+  PriceEscalation: "0x1CE25ee2D44aDCa3127AD3b3B9e0B6CBd598C012" as const,
   CollisionDetector: "0x3e8c0eDC536bce66ba8ef161eC40E7fA39d38Aee" as const,
-  TenderFactory: "0x5e2A776D44D63200285fAc230922aFd45A2EEb5C" as const,
-  DisputeManager: "0x2424AE8B6d41F813bca1Bf669f23f355fDb5979B" as const,
+  TenderFactory: "0x617C5414f0b9e2a2c7850d81068FC50138b5c96f" as const,
+  DisputeManager: "0xEae392E045518CF78FF279Bf4129b9073eB3A5bb" as const,
 } as const;
 
 /// External integrations bound at deploy time
@@ -105,8 +112,10 @@ export const BidEscrowABI = [
   "function getDepositStatus(uint256 tenderId, address bidder) external view returns (uint8)",
   "function authorizedCallers(address) external view returns (bool)",
   "function owner() external view returns (address)",
+  "function tenderOf(uint256 tenderId) external view returns (address)",
   // --- User write ---
   "function deposit(uint256 tenderId) external payable",
+  "function claimRefund(uint256 tenderId) external",
   // --- Authorized write (Vault / DisputeManager / Factory) ---
   "function release(uint256 tenderId, address bidder) external",
   "function refund(uint256 tenderId, address bidder) external",
@@ -153,6 +162,8 @@ export const DisputeManagerABI = [
   "function disputeCount() external view returns (uint256)",
   "function disputes(uint256 disputeId) external view returns (address complainant, address accused, uint256 tenderId, uint8 disputeType, uint8 status, uint256 stake, string reason)",
   "function disputeCreatedAt(uint256 disputeId) external view returns (uint256)",
+  "function CITIZEN_STAKE() external view returns (uint256)",
+  "function COMPLAINT_STAKE_BPS() external view returns (uint256)",
   "function getDispute(uint256 disputeId) external view returns ((address complainant, address accused, uint256 tenderId, uint8 disputeType, uint8 status, uint256 stake, string reason))",
   "function getDisputesByTender(uint256 tenderId) external view returns (uint256[])",
   "function getComplaintStake(uint256 tenderId) external view returns (uint256)",

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { parseAbi } from "viem";
+import { parseAbi, parseEther } from "viem";
 import { ADDRESSES, TenderFactoryABI } from "@/lib/contracts";
 import {
   ArrowLeft,
@@ -485,7 +485,9 @@ export default function CreateTenderPage() {
       minYears: parseInt(minYears) || 0,
       minProjects: parseInt(minProjects) || 0,
       minBond: BigInt(minBond || "0"),
-      escrowAmount: BigInt(escrowAmount || "0") * USD_DECIMALS,
+      // BidEscrow.deposit() compares msg.value (wei) against requiredDeposit,
+      // so this MUST be ETH wei — not USD * 1e6.
+      escrowAmount: parseEther(escrowAmount && escrowAmount.trim() !== "" ? escrowAmount : "0"),
       maxBidders: BigInt(parseInt(maxBidders) || 1),
       minReputation: BigInt(minReputation || "0"),
     };
@@ -940,12 +942,13 @@ export default function CreateTenderPage() {
             />
           </div>
           <div>
-            <FieldLabel htmlFor="escrowAmount" hint="USD, 0 to waive">
+            <FieldLabel htmlFor="escrowAmount" hint="ETH, 0 to waive">
               Escrow Deposit
             </FieldLabel>
             <Input
               id="escrowAmount"
               type="number"
+              step="0.001"
               min={0}
               value={escrowAmount}
               onChange={(e) => setEscrowAmount(e.target.value)}

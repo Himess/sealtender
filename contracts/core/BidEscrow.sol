@@ -10,13 +10,26 @@ import {DepositStatus} from "../interfaces/ISealTender.sol";
  * @title BidEscrow
  * @notice Holds ETH escrow deposits for tender bidders.
  */
+/// @dev Minimal interface for the permissionless refund check — keeps BidEscrow
+///      decoupled from the full EncryptedTender ABI.
+interface ITenderStateReader {
+    function state() external view returns (uint8);
+}
+
 contract BidEscrow is Ownable2Step, ReentrancyGuard {
+    /// @notice TenderState.Cancelled enum value (matches ISealTender.sol).
+    uint8 public constant TENDER_STATE_CANCELLED = 5;
+
     // --- State ---
     mapping(uint256 => uint256) public requiredDeposit;
     mapping(uint256 => mapping(address => uint256)) public deposits;
     mapping(uint256 => mapping(address => DepositStatus)) public depositStatus;
     mapping(uint256 => uint256) public totalEscrow;
     mapping(address => bool) public authorizedCallers;
+    /// @notice Per-tender mapping of tenderId → tender contract address. Set by
+    ///         authorized callers (factory) so {claimRefund} can verify the
+    ///         tender is in {TenderState.Cancelled} before releasing funds.
+    mapping(uint256 => address) public tenderOf;
 
     // --- Events ---
     event EscrowDeposited(uint256 indexed tenderId, address indexed bidder, uint256 amount);
@@ -33,6 +46,8 @@ contract BidEscrow is Ownable2Step, ReentrancyGuard {
     event RequiredDepositSet(uint256 indexed tenderId, uint256 amount);
     event CallerAuthorized(address indexed caller);
     event CallerDeauthorized(address indexed caller);
+    event TenderRecorded(uint256 indexed tenderId, address indexed tender);
+    event RefundClaimed(uint256 indexed tenderId, address indexed bidder, uint256 amount);
 
     // --- Errors ---
     error InsufficientDeposit();
@@ -44,6 +59,8 @@ contract BidEscrow is Ownable2Step, ReentrancyGuard {
     error ZeroAddress();
     error NoDeposit();
     error TenderNotConfigured();
+    error TenderNotCancelled();
+    error TenderUnknown();
 
     // --- Modifiers ---
     modifier onlyAuthorized() {
@@ -71,6 +88,16 @@ contract BidEscrow is Ownable2Step, ReentrancyGuard {
     function setRequiredDeposit(uint256 tenderId, uint256 amount) external onlyAuthorized {
         requiredDeposit[tenderId] = amount;
         emit RequiredDepositSet(tenderId, amount);
+    }
+
+    /// @notice Records the tender contract address for `tenderId`. Required so
+    ///         {claimRefund} can verify the tender is in {TenderState.Cancelled}
+    ///         before releasing funds permissionlessly. Called by the factory
+    ///         immediately after deploying a new tender.
+    function setTenderAddress(uint256 tenderId, address tender) external onlyAuthorized {
+        if (tender == address(0)) revert ZeroAddress();
+        tenderOf[tenderId] = tender;
+        emit TenderRecorded(tenderId, tender);
     }
 
     // --- Core ---
@@ -121,6 +148,33 @@ contract BidEscrow is Ownable2Step, ReentrancyGuard {
         if (!success) revert TransferFailed();
 
         emit EscrowRefunded(tenderId, bidder, amount);
+    }
+
+    /// @notice Permissionless refund path: any depositor can pull back their
+    ///         escrow once the tender has entered {TenderState.Cancelled}.
+    ///         Protects bidders if the tender contract goes silent and never
+    ///         calls {refund} for them. Frozen deposits are intentionally
+    ///         excluded (they are subject to dispute / slashing).
+    function claimRefund(uint256 tenderId) external nonReentrant {
+        address tender = tenderOf[tenderId];
+        if (tender == address(0)) revert TenderUnknown();
+        if (ITenderStateReader(tender).state() != TENDER_STATE_CANCELLED) {
+            revert TenderNotCancelled();
+        }
+        _requireActive(tenderId, msg.sender);
+
+        uint256 amount = deposits[tenderId][msg.sender];
+        if (amount == 0) revert NoDeposit();
+
+        depositStatus[tenderId][msg.sender] = DepositStatus.Refunded;
+        deposits[tenderId][msg.sender] = 0;
+        totalEscrow[tenderId] -= amount;
+
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        if (!success) revert TransferFailed();
+
+        emit EscrowRefunded(tenderId, msg.sender, amount);
+        emit RefundClaimed(tenderId, msg.sender, amount);
     }
 
     function freeze(uint256 tenderId, address bidder) external onlyAuthorized {

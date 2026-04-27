@@ -126,6 +126,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await sendTx(factoryContract.setEscalation(escalation.address), "Factory: setEscalation");
   await sendTx(factoryContract.setCollisionDetector(collisionDetector.address), "Factory: setCollisionDetector");
 
+  // B-M5: factory is the escalation's tenderManager so it can authorize
+  // newly-deployed tenders to call setTenderWinner without an extra admin tx.
+  // The factory's createTender already best-effort calls
+  // PriceEscalation.authorizeTender(tenderAddress) — that requires this wiring.
+  await sendTx(
+    escalationContract.setTenderManager(factory.address),
+    "PriceEscalation: tenderManager → TenderFactory"
+  );
+
   // External integrations — only on public networks (skip on hardhat/localhost)
   if (ext) {
     await sendTx(escalationContract.setPyth(ext.pyth), `PriceEscalation: Pyth → ${ext.pyth}`);

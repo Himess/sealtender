@@ -1,27 +1,52 @@
 "use client";
 
-import { initFhevm, createInstance, type FhevmInstance } from "fhevmjs";
-
-const KMS_CONTRACT_ADDRESS = "0x9D6891A6240D6130c54ae243d8005063D05fE14b";
-const ACL_CONTRACT_ADDRESS = "0xFee8407e2f5e3Ee68ad77cAE98c434e637f516e0";
-const GATEWAY_URL = "https://gateway.sepolia.zama.ai/";
+import {
+  initSDK,
+  createInstance,
+  SepoliaConfig,
+  type FhevmInstance,
+} from "@zama-fhe/relayer-sdk/bundle";
 
 let instance: FhevmInstance | null = null;
+let initPromise: Promise<FhevmInstance> | null = null;
 
+/**
+ * Returns a singleton FhevmInstance configured for Zama on Sepolia.
+ *
+ * Uses the canonical {@link SepoliaConfig} from `@zama-fhe/relayer-sdk`, which
+ * auto-resolves the current Zama protocol addresses (ACL, KMS, InputVerifier,
+ * Relayer URL, gateway chain id) for chainId 11155111. This avoids the
+ * stale-address footgun that plagued the legacy `fhevmjs` setup.
+ *
+ * The wallet provider (window.ethereum) is preferred when available so the
+ * relayer can EIP-712-sign requests; otherwise we fall back to a public RPC.
+ */
 export async function getFhevmInstance(): Promise<FhevmInstance> {
   if (instance) return instance;
+  if (initPromise) return initPromise;
 
-  await initFhevm();
+  initPromise = (async () => {
+    await initSDK();
 
-  instance = await createInstance({
-    kmsContractAddress: KMS_CONTRACT_ADDRESS,
-    aclContractAddress: ACL_CONTRACT_ADDRESS,
-    networkUrl: process.env.NEXT_PUBLIC_RPC_URL || "https://rpc.sepolia.org",
-    gatewayUrl: GATEWAY_URL,
-  });
+    const network: string | unknown =
+      typeof window !== "undefined" &&
+      (window as unknown as { ethereum?: unknown }).ethereum
+        ? (window as unknown as { ethereum: unknown }).ethereum
+        : process.env.NEXT_PUBLIC_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com";
 
-  return instance;
+    const created = await createInstance({
+      ...SepoliaConfig,
+      network: network as SepoliaConfigNetwork,
+    });
+
+    instance = created;
+    return created;
+  })();
+
+  return initPromise;
 }
+
+type SepoliaConfigNetwork = Parameters<typeof createInstance>[0]["network"];
 
 export interface BidData {
   price: bigint;
@@ -30,6 +55,12 @@ export interface BidData {
   bondAmount: bigint;
 }
 
+/**
+ * Encrypts the four bid components into a single ZK proof bundle bound to
+ * `(contractAddress, userAddress)`. The order MUST match the on-chain
+ * verifying call: price (euint64) → deliveryYears (euint32) →
+ * pastProjects (euint32) → bondAmount (euint64).
+ */
 export async function encryptBidData(
   bidData: BidData,
   contractAddress: `0x${string}`,
@@ -47,11 +78,10 @@ export async function encryptBidData(
   input.add32(bidData.pastProjects);
   input.add64(bidData.bondAmount);
 
-  const encrypted = await input.encrypt();
-
-  return encrypted;
+  return input.encrypt();
 }
 
 export function resetFhevmInstance() {
   instance = null;
+  initPromise = null;
 }

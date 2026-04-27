@@ -22,13 +22,12 @@ import {
   formatUsd,
   parseConfig,
 } from "@/hooks/useContractData";
-import { ADDRESSES, BidEscrowABI, EncryptedTenderABI, TenderState } from "@/lib/contracts";
+import { ADDRESSES, BidEscrowABI, TenderState } from "@/lib/contracts";
 
-// EncryptedTender ABI is consumed indirectly through the V2 hooks; only the
-// escrow ABI is used directly here for the per-bidder deposit fetch.
+// EncryptedTender ABI is consumed through the V2 hooks; only the escrow ABI
+// is used directly here for the per-bidder deposit fetch.
 const ESCROW_ABI = parseAbi(BidEscrowABI);
 const ESCROW_ADDR = ADDRESSES.BidEscrow;
-void EncryptedTenderABI; // keep import alive for type narrowing in the hooks file
 
 export default function EvaluationResultsPage({
   params,

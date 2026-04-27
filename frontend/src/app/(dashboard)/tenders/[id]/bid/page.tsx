@@ -2,7 +2,12 @@
 
 import { use, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import {
+  useAccount,
+  useReadContract,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+} from "wagmi";
 import { parseAbi } from "viem";
 import {
   ArrowLeft,
@@ -21,13 +26,29 @@ import {
   stateLabel,
   parseConfig,
 } from "@/hooks/useContractData";
-import { EncryptedTenderABI, TenderState } from "@/lib/contracts";
+import {
+  ADDRESSES,
+  BidEscrowABI,
+  BidderRegistryABI,
+  EncryptedTenderABI,
+  TenderState,
+} from "@/lib/contracts";
 import { encryptBidData } from "@/lib/fhevm";
 import { Toast } from "@/components/Toast";
 
 const tenderAbi = parseAbi(EncryptedTenderABI);
+const escrowAbi = parseAbi(BidEscrowABI);
+const registryAbi = parseAbi(BidderRegistryABI);
 
-type BidStatus = "idle" | "encrypting" | "submitting" | "confirming" | "success" | "error";
+type BidStatus =
+  | "idle"
+  | "depositing"
+  | "depositConfirming"
+  | "encrypting"
+  | "submitting"
+  | "confirming"
+  | "success"
+  | "error";
 
 export default function BidPage({
   params,
@@ -43,6 +64,47 @@ export default function BidPage({
   const { data: configData } = useTenderConfig(addr);
   const { data: state } = useTenderState(addr);
 
+  // Escrow gating: read required deposit + caller's current deposit status so
+  // the page knows whether a separate BidEscrow.deposit{value: required}(tenderId)
+  // tx is needed before submitBid.
+  const { data: requiredDepositData, refetch: refetchRequired } = useReadContract({
+    address: ADDRESSES.BidEscrow as `0x${string}`,
+    abi: escrowAbi,
+    functionName: "requiredDeposit",
+    args: [tenderId],
+  });
+  const { data: depositStatusData, refetch: refetchDepositStatus } = useReadContract({
+    address: ADDRESSES.BidEscrow as `0x${string}`,
+    abi: escrowAbi,
+    functionName: "depositStatus",
+    args: userAddress ? [tenderId, userAddress] : undefined,
+    query: { enabled: Boolean(userAddress) },
+  });
+
+  const requiredDeposit = (requiredDepositData ?? 0n) as bigint;
+  const depositStatus = (depositStatusData ?? 0) as number; // 0 = None, 1 = Active
+  const escrowSatisfied = requiredDeposit === 0n || depositStatus !== 0;
+
+  // Pre-flight reputation + verification check. EncryptedTender.submitBid will
+  // revert with NotVerifiedBidder() or InsufficientReputation() — we surface
+  // those conditions in the UI before the user signs an FHE-encryption tx.
+  const { data: isVerifiedData } = useReadContract({
+    address: ADDRESSES.BidderRegistry as `0x${string}`,
+    abi: registryAbi,
+    functionName: "isVerified",
+    args: userAddress ? [userAddress] : undefined,
+    query: { enabled: Boolean(userAddress) },
+  });
+  const { data: reputationData } = useReadContract({
+    address: ADDRESSES.BidderRegistry as `0x${string}`,
+    abi: registryAbi,
+    functionName: "getReputationScore",
+    args: userAddress ? [userAddress] : undefined,
+    query: { enabled: Boolean(userAddress) },
+  });
+  const isVerified = Boolean(isVerifiedData);
+  const reputation = (reputationData ?? 0n) as bigint;
+
   const [price, setPrice] = useState("");
   const [deliveryYears, setDeliveryYears] = useState("");
   const [pastProjects, setPastProjects] = useState("");
@@ -53,6 +115,18 @@ export default function BidPage({
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const dismissToast = useCallback(() => setToast(null), []);
 
+  // Deposit tx state
+  const {
+    writeContract: writeDeposit,
+    data: depositHash,
+    error: depositError,
+    reset: resetDeposit,
+  } = useWriteContract();
+  const { isSuccess: depositConfirmed } = useWaitForTransactionReceipt({
+    hash: depositHash,
+  });
+
+  // Bid submission tx state
   const {
     writeContract,
     data: hash,
@@ -69,9 +143,34 @@ export default function BidPage({
 
   useEffect(() => {
     if (writeError) {
-      setToast({ message: writeError.message.slice(0, 100), type: "error" });
+      setToast({
+        message: (writeError as Error).message.slice(0, 140),
+        type: "error",
+      });
+      setBidStatus("error");
     }
   }, [writeError]);
+
+  useEffect(() => {
+    if (depositError) {
+      setToast({
+        message: (depositError as Error).message.slice(0, 140),
+        type: "error",
+      });
+      setBidStatus("error");
+    }
+  }, [depositError]);
+
+  // Once the deposit tx confirms, refresh on-chain status and continue with
+  // the encrypt → submitBid leg without forcing the user to click again.
+  useEffect(() => {
+    if (depositConfirmed) {
+      void Promise.all([refetchRequired(), refetchDepositStatus()]).then(() => {
+        void runEncryptAndSubmit();
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [depositConfirmed]);
 
   const config = configData ? parseConfig(configData) : null;
 
@@ -110,6 +209,18 @@ export default function BidPage({
       setErrorMsg("Tender address not found");
       return false;
     }
+    if (!isVerified) {
+      setErrorMsg(
+        "Your wallet is not on the bidder whitelist. Ask the procurement entity to register you in the BidderRegistry before bidding."
+      );
+      return false;
+    }
+    if (config && config.minReputation > 0n && reputation < config.minReputation) {
+      setErrorMsg(
+        `This tender requires a reputation score of at least ${String(config.minReputation)}; your current score is ${String(reputation)}.`
+      );
+      return false;
+    }
     setErrorMsg("");
     return true;
   }
@@ -117,23 +228,67 @@ export default function BidPage({
   async function handleSubmit() {
     if (!validate()) return;
     if (!addr || !userAddress) return;
+    setErrorMsg("");
+    resetDeposit();
+
+    // EncryptedTender.submitBid is NOT payable in V2 — escrow is a prior tx
+    // through BidEscrow.deposit{value: required}(tenderId). If the tender
+    // requires a deposit and the user hasn't deposited yet, fire that tx now;
+    // the depositConfirmed effect will continue with encrypt + submitBid.
+    if (!escrowSatisfied) {
+      try {
+        setBidStatus("depositing");
+        writeDeposit({
+          address: ADDRESSES.BidEscrow as `0x${string}`,
+          abi: escrowAbi,
+          functionName: "deposit",
+          args: [tenderId],
+          value: requiredDeposit,
+        });
+        setBidStatus("depositConfirming");
+      } catch (err) {
+        setBidStatus("error");
+        setErrorMsg(err instanceof Error ? err.message : "Escrow deposit failed");
+      }
+      return;
+    }
+
+    await runEncryptAndSubmit();
+  }
+
+  async function runEncryptAndSubmit() {
+    if (!addr || !userAddress) return;
 
     try {
       setBidStatus("encrypting");
 
-      const encrypted = await encryptBidData(
-        {
-          price: BigInt(Math.floor(Number(price) * 1e6)),
-          deliveryYears: Number(deliveryYears),
-          pastProjects: Number(pastProjects),
-          bondAmount: BigInt(Math.floor(Number(bondAmount) * 1e6)),
-        },
-        addr,
-        userAddress
-      );
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const enc = encrypted as any;
+      // 30-second timeout guard: if the relayer is slow / unreachable, surface
+      // a concrete error instead of leaving the spinner forever.
+      const encrypted = await Promise.race([
+        encryptBidData(
+          {
+            // Price is encoded in USDC's 6-decimal convention (so 50,000 USD →
+            // 50_000_000_000). Bond is a whole-USD integer so it lines up with
+            // the on-chain `minBond` (uint64) set at tender creation, which the
+            // create-tender form stores as a raw integer USD value.
+            price: BigInt(Math.floor(Number(price) * 1e6)),
+            deliveryYears: Number(deliveryYears),
+            pastProjects: Number(pastProjects),
+            bondAmount: BigInt(Math.floor(Number(bondAmount))),
+          },
+          addr,
+          userAddress
+        ),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () =>
+              reject(
+                new Error("Encryption timed out after 30s — try again or check your network.")
+              ),
+            30_000
+          )
+        ),
+      ]);
 
       // V2 EncryptedTender.submitBid signature:
       //   submitBid(
@@ -142,22 +297,28 @@ export default function BidPage({
       //     externalEuint32 _encProjects, bytes _projectsProof,
       //     externalEuint64 _encBond,     bytes _bondProof
       //   )
-      // fhevmjs's createEncryptedInput().encrypt() returns ONE inputProof that
-      // covers ALL four handles in the bundle. We pass that same proof four
-      // times — FHE.fromExternal verifies each handle against the proof's
-      // manifest and accepts any handle included in the bundle.
+      // The Relayer SDK's createEncryptedInput().encrypt() returns ONE
+      // inputProof that covers ALL four handles in the bundle. We pass that
+      // same proof four times — FHE.fromExternal verifies each handle against
+      // the proof's manifest and accepts any handle included in the bundle.
       const toBytes32 = (h: string | Uint8Array): `0x${string}` =>
         typeof h === "string"
           ? (h as `0x${string}`)
-          : (`0x${Buffer.from(h).toString("hex")}` as `0x${string}`);
+          : (`0x${Array.from(h)
+              .map((b) => b.toString(16).padStart(2, "0"))
+              .join("")}` as `0x${string}`);
 
       const toBytes = (b: string | Uint8Array): `0x${string}` =>
         typeof b === "string"
           ? (b as `0x${string}`)
-          : (`0x${Buffer.from(b).toString("hex")}` as `0x${string}`);
+          : (`0x${Array.from(b)
+              .map((x) => x.toString(16).padStart(2, "0"))
+              .join("")}` as `0x${string}`);
 
-      const handles = (enc.handles as (string | Uint8Array)[]).map(toBytes32);
-      const inputProof = toBytes(enc.inputProof);
+      const handles = (encrypted.handles as (string | Uint8Array)[]).map(
+        toBytes32
+      );
+      const inputProof = toBytes(encrypted.inputProof);
 
       const handleStrs = handles.map((h) => h.slice(0, 18) + "...");
       setEncryptedPreview(
@@ -170,28 +331,22 @@ export default function BidPage({
 
       setBidStatus("submitting");
 
-      // EncryptedTender.submitBid is NOT payable in V2 — escrow goes through
-      // BidEscrow.deposit(tenderId) {value: ...} as a separate prior tx, not
-      // bundled with the bid. The page should ensure escrow is deposited
-      // before reaching here (see /tenders/[id] for the deposit flow).
       writeContract({
         address: addr,
         abi: tenderAbi,
         functionName: "submitBid",
         args: [
-          handles[0], inputProof, // encPrice + proof
-          handles[1], inputProof, // encYears + proof
-          handles[2], inputProof, // encProjects + proof
-          handles[3], inputProof, // encBond + proof
+          handles[0], inputProof,
+          handles[1], inputProof,
+          handles[2], inputProof,
+          handles[3], inputProof,
         ],
       });
 
       setBidStatus("confirming");
     } catch (err) {
       setBidStatus("error");
-      setErrorMsg(
-        err instanceof Error ? err.message : "Encryption failed"
-      );
+      setErrorMsg(err instanceof Error ? err.message : "Encryption failed");
     }
   }
 
@@ -363,15 +518,16 @@ export default function BidPage({
 
               <div>
                 <label htmlFor="bondAmount" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
-                  Bond Amount (ETH)
+                  Bond Amount (USD, whole number)
                 </label>
                 <input
                   id="bondAmount"
                   type="number"
-                  step="0.001"
+                  min="0"
+                  step="1"
                   value={bondAmount}
                   onChange={(e) => setBondAmount(e.target.value)}
-                  placeholder="e.g. 0.1"
+                  placeholder="e.g. 10000"
                   className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
                 />
               </div>
@@ -381,17 +537,33 @@ export default function BidPage({
               onClick={handleSubmit}
               disabled={bidStatus !== "idle" && bidStatus !== "error"}
               aria-label={
-                bidStatus === "encrypting"
+                bidStatus === "depositing"
+                  ? "Submitting escrow deposit"
+                  : bidStatus === "depositConfirming"
+                  ? "Waiting for escrow confirmation"
+                  : bidStatus === "encrypting"
                   ? "Encrypting bid with FHE"
                   : bidStatus === "submitting"
                   ? "Waiting for wallet confirmation"
                   : bidStatus === "confirming"
                   ? "Confirming transaction on-chain"
+                  : !escrowSatisfied
+                  ? "Deposit escrow then submit bid"
                   : "Encrypt and submit bid"
               }
               className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#00E87B] text-[#08090E] rounded-[6px] font-semibold text-sm hover:bg-[#00E87B]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {bidStatus === "encrypting" ? (
+              {bidStatus === "depositing" ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Confirm Escrow in Wallet...
+                </>
+              ) : bidStatus === "depositConfirming" ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Confirming Escrow on-chain...
+                </>
+              ) : bidStatus === "encrypting" ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
                   Encrypting with FHE...
@@ -409,7 +581,9 @@ export default function BidPage({
               ) : (
                 <>
                   <Shield size={16} />
-                  Encrypt & Submit Bid
+                  {escrowSatisfied
+                    ? "Encrypt & Submit Bid"
+                    : "Deposit Escrow & Submit Bid"}
                 </>
               )}
             </button>

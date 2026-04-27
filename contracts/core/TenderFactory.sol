@@ -6,6 +6,7 @@ import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {EncryptedTender} from "./EncryptedTender.sol";
 import {BidderRegistry} from "../identity/BidderRegistry.sol";
 import {BidEscrow} from "./BidEscrow.sol";
+import {PriceEscalation} from "../modules/PriceEscalation.sol";
 import {TenderConfig, TenderSpecification} from "../interfaces/ISealTender.sol";
 
 /**
@@ -65,14 +66,30 @@ contract TenderFactory is Ownable2Step {
         tenderConfigs[tenderId] = _config;
         tenderSpecs[tenderId] = _spec;
 
-        // Set required deposit in escrow
+        // Set required deposit in escrow + record tender address so that
+        // BidEscrow.claimRefund can verify TenderState.Cancelled if the tender
+        // contract ever goes silent on a cancellation.
         if (_config.escrowAmount > 0) {
             BidEscrow(escrow).setRequiredDeposit(tenderId, _config.escrowAmount);
+            BidEscrow(escrow).setTenderAddress(tenderId, tenderAddress);
         }
 
         // Auto-authorize the tender contract in registry. The factory must be set
         // as the registry's `tenderManager` (post-deploy step) for this to succeed.
         BidderRegistry(registry).addAuthorizedCaller(tenderAddress);
+
+        // M-5 fix: also allow the new tender to call PriceEscalation.setTenderWinner
+        // through its `winnerSink` auto-forward. The factory must be set as
+        // `escalation.tenderManager` (post-deploy step) for this to succeed.
+        // Authorize is best-effort — older deployments where `escalation` isn't
+        // set or doesn't yet expose authorizeTender continue to work, just
+        // without the auto-forward.
+        if (escalation != address(0)) {
+            (bool ok, ) = escalation.call(
+                abi.encodeWithSignature("authorizeTender(address)", tenderAddress)
+            );
+            ok; // ignore — escalation may not have been upgraded yet
+        }
 
         emit TenderCreated(tenderId, tenderAddress, _config.description);
     }

@@ -23,6 +23,8 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useBidderRegistryCount, truncateAddr } from "@/hooks/useContractData";
+import { useTxToast } from "@/hooks/useTxToast";
+import { Toast } from "@/components/Toast";
 import {
   ADDRESSES,
   TenderFactoryABI,
@@ -41,18 +43,29 @@ export default function AdminPage() {
   const [newBidderName, setNewBidderName] = useState("");
   const [newBidderRegId, setNewBidderRegId] = useState("");
 
-  // Check ownership
-  const { data: factoryOwner, isLoading: loadingOwner } = useReadContract({
+  // Check ownership — admin actions on this page hit TWO contracts:
+  //   • TenderFactory (createTender, setEscalation, setDisputeManager …)
+  //   • BidderRegistry (registerBidder, removeBidder)
+  // The deployer typically owns both, but we still verify each independently
+  // so the gate stays correct if ownership is split for governance later.
+  const { data: factoryOwner, isLoading: loadingFactoryOwner } = useReadContract({
     address: ADDRESSES.TenderFactory,
     abi: factoryAbi,
     functionName: "owner",
   });
+  const { data: registryOwner, isLoading: loadingRegistryOwner } = useReadContract({
+    address: ADDRESSES.BidderRegistry,
+    abi: registryAbi,
+    functionName: "owner",
+  });
 
-  const isOwner =
-    userAddress &&
-    factoryOwner &&
-    (userAddress as string).toLowerCase() ===
-      (factoryOwner as string).toLowerCase();
+  const loadingOwner = loadingFactoryOwner || loadingRegistryOwner;
+
+  const lc = (a: unknown) => (typeof a === "string" ? a.toLowerCase() : "");
+  const userLc = lc(userAddress);
+  const isFactoryOwner = Boolean(userLc) && userLc === lc(factoryOwner);
+  const isRegistryOwner = Boolean(userLc) && userLc === lc(registryOwner);
+  const isOwner = isFactoryOwner || isRegistryOwner;
 
   // Bidder registry
   const { data: bidderCount, isLoading: loadingBidders } =
@@ -141,12 +154,19 @@ export default function AdminPage() {
     });
   }, [profileResults, bidderAddresses]);
 
-  // Protocol settings
-  const { data: companyFee } = useReadContract({
+  // Protocol settings: in V2 the company complaint stake is per-tender
+  // (escrowAmount * 5%), so a single global "company fee" no longer exists.
+  // Surface the underlying constants — citizen stake (flat) and the company
+  // stake basis-points — so admins see the formula, not a misleading sample.
+  const { data: citizenStake } = useReadContract({
     address: ADDRESSES.DisputeManager,
     abi: disputeAbi,
-    functionName: "getComplaintStake",
-    args: [BigInt(1)], // Example tender ID
+    functionName: "CITIZEN_STAKE",
+  });
+  const { data: companyStakeBps } = useReadContract({
+    address: ADDRESSES.DisputeManager,
+    abi: disputeAbi,
+    functionName: "COMPLAINT_STAKE_BPS",
   });
 
   // Add bidder
@@ -163,8 +183,28 @@ export default function AdminPage() {
   // Remove bidder
   const {
     writeContract: writeRemove,
+    data: removeHash,
     isPending: isRemoving,
+    error: removeError,
   } = useWriteContract();
+
+  const { isSuccess: removeSuccess } = useWaitForTransactionReceipt({
+    hash: removeHash,
+  });
+
+  const { toast: addToast, dismiss: dismissAddToast } = useTxToast({
+    error: addError,
+    isSuccess: addSuccess,
+    successMessage: "Bidder registered successfully.",
+    errorPrefix: "Register bidder failed",
+  });
+
+  const { toast: removeToast, dismiss: dismissRemoveToast } = useTxToast({
+    error: removeError,
+    isSuccess: removeSuccess,
+    successMessage: "Bidder removed.",
+    errorPrefix: "Remove bidder failed",
+  });
 
   function handleAddBidder() {
     if (!newBidderAddr) return;
@@ -194,7 +234,12 @@ export default function AdminPage() {
 
   if (loadingOwner) {
     return (
-      <div className="flex flex-col gap-8">
+      <div
+        aria-busy="true"
+        aria-live="polite"
+        aria-label="Loading admin panel"
+        className="flex flex-col gap-8"
+      >
         <div className="h-8 w-36 bg-[#1E2230] rounded-lg animate-pulse" />
         <div className="h-4 w-64 bg-[#1E2230] rounded animate-pulse" />
         <div className="bg-[#0D0F14] border border-[#1E2230] rounded-lg p-8">
@@ -258,7 +303,13 @@ export default function AdminPage() {
           </div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00E87B] text-[#08090E] rounded-[6px] font-semibold text-xs hover:bg-[#00E87B]/90 transition-colors"
+            disabled={!isRegistryOwner}
+            title={
+              !isRegistryOwner
+                ? "Only the BidderRegistry owner can register bidders."
+                : undefined
+            }
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00E87B] text-[#08090E] rounded-[6px] font-semibold text-xs hover:bg-[#00E87B]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={14} />
             Add Bidder
@@ -266,7 +317,12 @@ export default function AdminPage() {
         </div>
 
         {loadingBidders ? (
-          <div className="p-5 space-y-3">
+          <div
+            aria-busy="true"
+            aria-live="polite"
+            aria-label="Loading bidders"
+            className="p-5 space-y-3"
+          >
             {[...Array(3)].map((_, i) => (
               <div key={i} className="flex gap-4 items-center">
                 <div className="h-4 flex-1 bg-[#1E2230] rounded animate-pulse" />
@@ -322,9 +378,14 @@ export default function AdminPage() {
                     <td className="px-5 py-[14px] text-right">
                       <button
                         onClick={() => handleRemoveBidder(bidder.address)}
-                        disabled={isRemoving}
+                        disabled={isRemoving || !isRegistryOwner}
                         aria-label={`Remove bidder ${bidder.name || bidder.address}`}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-[#FF4444] hover:bg-[#FF4444]/10 rounded transition-colors disabled:opacity-50"
+                        title={
+                          !isRegistryOwner
+                            ? "Only the BidderRegistry owner can remove bidders."
+                            : undefined
+                        }
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-[#FF4444] hover:bg-[#FF4444]/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Trash2 size={12} />
                         Remove
@@ -347,14 +408,24 @@ export default function AdminPage() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-[#0C0D14] rounded-lg p-4">
             <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
-              Company Complaint Fee
+              Citizen Complaint Stake
             </span>
             <p className="font-body text-[14px] text-[#F0F0F0] font-mono mt-1">
-              {companyFee
-                ? `${(Number(companyFee) / 1e18).toFixed(4)} ETH`
+              {citizenStake !== undefined
+                ? `${(Number(citizenStake as bigint) / 1e18).toFixed(4)} ETH`
+                : "--"}
+            </p>
+          </div>
+          <div className="bg-[#0C0D14] rounded-lg p-4">
+            <span className="font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase">
+              Company Stake (% of escrow)
+            </span>
+            <p className="font-body text-[14px] text-[#F0F0F0] font-mono mt-1">
+              {companyStakeBps !== undefined
+                ? `${(Number(companyStakeBps as bigint) / 100).toFixed(2)}%`
                 : "--"}
             </p>
           </div>
@@ -402,6 +473,21 @@ export default function AdminPage() {
           ))}
         </div>
       </div>
+
+      {addToast && (
+        <Toast
+          message={addToast.message}
+          type={addToast.type}
+          onClose={dismissAddToast}
+        />
+      )}
+      {removeToast && (
+        <Toast
+          message={removeToast.message}
+          type={removeToast.type}
+          onClose={dismissRemoveToast}
+        />
+      )}
 
       {/* Add Bidder Modal */}
       {showAddModal && (

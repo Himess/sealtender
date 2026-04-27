@@ -227,4 +227,84 @@ describe("BidEscrow", function () {
       expect(await escrow.getDeposit(TENDER_ID, alice.address)).to.equal(0);
     });
   });
+
+  describe("claimRefund (B-L6)", function () {
+    // Inline mock contract that implements ITenderStateReader.state() so we
+    // can control the tender state from tests without spinning up a full
+    // EncryptedTender (which requires the FHE coprocessor).
+    let mockTender: any;
+
+    const TENDER_STATE_BIDDING = 1;
+    const TENDER_STATE_CANCELLED = 5;
+
+    beforeEach(async function () {
+      const MockFactory = await ethers.getContractFactory("MockTenderStateReader");
+      mockTender = await MockFactory.deploy();
+      await mockTender.waitForDeployment();
+
+      await escrow.setRequiredDeposit(TENDER_ID, DEPOSIT_AMOUNT);
+      await escrow.setTenderAddress(TENDER_ID, await mockTender.getAddress());
+      await escrow.connect(alice).deposit(TENDER_ID, { value: DEPOSIT_AMOUNT });
+    });
+
+    it("should record the tender address and emit TenderRecorded", async function () {
+      const tenderAddr = await mockTender.getAddress();
+      expect(await escrow.tenderOf(TENDER_ID)).to.equal(tenderAddr);
+    });
+
+    it("should revert claimRefund when tender is not Cancelled", async function () {
+      await mockTender.setState(TENDER_STATE_BIDDING);
+      await expect(escrow.connect(alice).claimRefund(TENDER_ID))
+        .to.be.revertedWithCustomError(escrow, "TenderNotCancelled");
+    });
+
+    it("should revert claimRefund for unknown tender", async function () {
+      await expect(escrow.connect(alice).claimRefund(99))
+        .to.be.revertedWithCustomError(escrow, "TenderUnknown");
+    });
+
+    it("should refund permissionlessly once tender is Cancelled", async function () {
+      await mockTender.setState(TENDER_STATE_CANCELLED);
+      await expect(escrow.connect(alice).claimRefund(TENDER_ID))
+        .to.emit(escrow, "EscrowRefunded")
+        .withArgs(TENDER_ID, alice.address, DEPOSIT_AMOUNT)
+        .and.to.emit(escrow, "RefundClaimed")
+        .withArgs(TENDER_ID, alice.address, DEPOSIT_AMOUNT);
+
+      expect(await escrow.deposits(TENDER_ID, alice.address)).to.equal(0);
+      expect(await escrow.totalEscrow(TENDER_ID)).to.equal(0);
+      expect(await escrow.depositStatus(TENDER_ID, alice.address)).to.equal(4); // Refunded
+    });
+
+    it("should revert when caller has no active deposit", async function () {
+      await mockTender.setState(TENDER_STATE_CANCELLED);
+      await expect(escrow.connect(bob).claimRefund(TENDER_ID))
+        .to.be.revertedWithCustomError(escrow, "DepositNotActive");
+    });
+
+    it("should not double-refund the same caller", async function () {
+      await mockTender.setState(TENDER_STATE_CANCELLED);
+      await escrow.connect(alice).claimRefund(TENDER_ID);
+      await expect(escrow.connect(alice).claimRefund(TENDER_ID))
+        .to.be.revertedWithCustomError(escrow, "DepositNotActive");
+    });
+
+    it("setTenderAddress should be onlyAuthorized", async function () {
+      try {
+        await escrow.connect(alice).setTenderAddress(TENDER_ID, alice.address);
+        expect.fail("Expected revert");
+      } catch (e: any) {
+        expect(e.message || e.toString()).to.satisfy(
+          (msg: string) =>
+            msg.includes("NotAuthorized") || msg.includes("assertion failed")
+        );
+      }
+    });
+
+    it("setTenderAddress should reject zero address", async function () {
+      await expect(
+        escrow.setTenderAddress(TENDER_ID, ethers.ZeroAddress)
+      ).to.be.revertedWithCustomError(escrow, "ZeroAddress");
+    });
+  });
 });

@@ -135,20 +135,6 @@ export function useRevealedPrice(addr: `0x${string}` | undefined) {
   });
 }
 
-// V2: BidEscrow tracks total escrow per tenderId (not per tender contract).
-// We need the tenderId, which isn't trivially derivable from the address;
-// instead read the tender's own `tenderId()` getter and pass it into
-// BidEscrow.totalEscrow. To preserve the legacy hook shape we surface
-// totalEscrow directly when caller already knows the id.
-export function useTotalDeposits(_addr: `0x${string}` | undefined): {
-  data: undefined;
-  isLoading: false;
-  isError: false;
-} {
-  // Deprecated in v2 — callers should use {useTotalEscrow(tenderId)} directly.
-  return { data: undefined, isLoading: false, isError: false };
-}
-
 // ============================================================================
 // Escrow Hooks
 // ============================================================================

@@ -2,11 +2,12 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import {
+  useReadContract,
   useReadContracts,
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
-import { parseAbi, parseEther } from "viem";
+import { parseAbi, formatEther } from "viem";
 import {
   AlertTriangle,
   Plus,
@@ -73,6 +74,23 @@ export default function DisputesPage() {
     query: { enabled: count > 0 },
   });
 
+  // Second batch: disputeCreatedAt(id) for each dispute. The Dispute struct
+  // doesn't carry `filedAt` in V2, so we fetch it from the public mapping
+  // accessor and stitch it back in.
+  const filedAtContracts = useMemo(() => {
+    return Array.from({ length: count }, (_, i) => ({
+      address: ADDRESSES.DisputeManager,
+      abi: disputeAbi,
+      functionName: "disputeCreatedAt" as const,
+      args: [BigInt(i)] as const,
+    }));
+  }, [count]);
+
+  const { data: filedAtResults } = useReadContracts({
+    contracts: filedAtContracts,
+    query: { enabled: count > 0 },
+  });
+
   const disputes = useMemo(() => {
     if (!disputeResults) return [];
     return disputeResults
@@ -80,7 +98,8 @@ export default function DisputesPage() {
         if (r.status !== "success" || !r.result) return null;
         // V2 DisputeManager.getDispute returns the Dispute struct (named fields).
         // The legacy tuple [disputeType, tenderId, complainant, accused, reason,
-        // status, filedAt] is gone — `filedAt` is now in disputeCreatedAt(id).
+        // status, filedAt] is gone — `filedAt` is now in disputeCreatedAt(id),
+        // fetched via the second batch above.
         const d = r.result as {
           complainant: `0x${string}`;
           accused: `0x${string}`;
@@ -90,6 +109,11 @@ export default function DisputesPage() {
           stake: bigint;
           reason: string;
         };
+        const filedAtRes = filedAtResults?.[i];
+        const filedAt =
+          filedAtRes?.status === "success" && filedAtRes.result !== undefined
+            ? (filedAtRes.result as bigint)
+            : BigInt(0);
         return {
           id: i,
           disputeType: d.disputeType,
@@ -98,7 +122,7 @@ export default function DisputesPage() {
           accused: d.accused,
           reason: d.reason,
           status: d.status,
-          filedAt: BigInt(0), // separate disputeCreatedAt(id) call if needed
+          filedAt,
         };
       })
       .filter(Boolean) as Array<{
@@ -111,12 +135,27 @@ export default function DisputesPage() {
       status: number;
       filedAt: bigint;
     }>;
-  }, [disputeResults]);
+  }, [disputeResults, filedAtResults]);
 
   // Stats
   const pending = disputes.filter((d) => d.status === DisputeStatus.Open).length;
   const resolved = disputes.filter((d) => d.status === DisputeStatus.Slashed).length;
   const rejected = disputes.filter((d) => d.status === DisputeStatus.Dismissed).length;
+
+  // V2 DisputeManager.fileCompanyComplaint requires the *exact* stake returned
+  // by getComplaintStake(tenderId), which is escrowAmount * 5% (or the
+  // CITIZEN_STAKE fallback when no escrow is set). Query it for the tenderId
+  // currently typed into the form so the tx sends the right `msg.value`.
+  const stakeQueryEnabled =
+    complaintType === "company" && tenderId !== "" && /^\d+$/.test(tenderId);
+  const { data: companyStakeData } = useReadContract({
+    address: ADDRESSES.DisputeManager,
+    abi: disputeAbi,
+    functionName: "getComplaintStake",
+    args: stakeQueryEnabled ? [BigInt(tenderId)] : undefined,
+    query: { enabled: stakeQueryEnabled },
+  });
+  const companyStake = (companyStakeData ?? 0n) as bigint;
 
   // File complaint
   const {
@@ -143,12 +182,19 @@ export default function DisputesPage() {
     if (!tenderId || !accused || !reason) return;
 
     if (complaintType === "company") {
+      if (companyStake === 0n) {
+        setToast({
+          message: "Could not load complaint stake — refresh and try again.",
+          type: "error",
+        });
+        return;
+      }
       writeContract({
         address: ADDRESSES.DisputeManager,
         abi: disputeAbi,
         functionName: "fileCompanyComplaint",
         args: [BigInt(tenderId), accused as `0x${string}`, reason],
-        value: parseEther("0.01"),
+        value: companyStake,
       });
     } else {
       writeContract({
@@ -236,7 +282,12 @@ export default function DisputesPage() {
         </div>
 
         {isLoading ? (
-          <div className="p-5 space-y-3">
+          <div
+            aria-busy="true"
+            aria-live="polite"
+            aria-label="Loading disputes"
+            className="p-5 space-y-3"
+          >
             {[...Array(3)].map((_, i) => (
               <div key={i} className="flex gap-4 items-center">
                 <div className="h-4 w-8 bg-[#1E2230] rounded animate-pulse" />
@@ -304,7 +355,9 @@ export default function DisputesPage() {
                         {d.reason}
                       </td>
                       <td className="px-5 py-[14px] font-body text-[12px] text-[#666666]">
-                        {new Date(Number(d.filedAt) * 1000).toLocaleDateString()}
+                        {d.filedAt > 0n
+                          ? new Date(Number(d.filedAt) * 1000).toLocaleDateString()
+                          : "—"}
                       </td>
                       <td className="px-5 py-[14px]">
                         <span
@@ -388,7 +441,7 @@ export default function DisputesPage() {
                       }`}
                     >
                       <Building2 size={14} />
-                      Company (0.01 ETH)
+                      Company (5% of escrow)
                     </button>
                   </div>
                 </div>
@@ -461,7 +514,9 @@ export default function DisputesPage() {
                     <>
                       <AlertTriangle size={16} />
                       Submit Complaint
-                      {complaintType === "company" && " (0.01 ETH)"}
+                      {complaintType === "company" &&
+                        companyStake > 0n &&
+                        ` (${formatEther(companyStake)} ETH)`}
                     </>
                   )}
                 </button>

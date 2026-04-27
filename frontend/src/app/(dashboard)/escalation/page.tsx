@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { ADDRESSES, PriceEscalationABI } from "@/lib/contracts";
 import { useTenderCount, formatUsd } from "@/hooks/useContractData";
+import { useTxToast } from "@/hooks/useTxToast";
+import { Toast } from "@/components/Toast";
 
 const escalationAbi = parseAbi(PriceEscalationABI);
 
@@ -112,10 +114,25 @@ export default function EscalationPage() {
     writeContract: writeEvaluate,
     data: evalHash,
     isPending: isEvaluating,
+    error: evalError,
   } = useWriteContract();
 
   const { isLoading: evalConfirming, isSuccess: evalSuccess } =
     useWaitForTransactionReceipt({ hash: evalHash });
+
+  const { toast: trackToast, dismiss: dismissTrackToast } = useTxToast({
+    error: trackError,
+    isSuccess: trackSuccess,
+    successMessage: "Escalation rule registered.",
+    errorPrefix: "Set rule failed",
+  });
+
+  const { toast: evalToast, dismiss: dismissEvalToast } = useTxToast({
+    error: evalError,
+    isSuccess: evalSuccess,
+    successMessage: "Escalation evaluated.",
+    errorPrefix: "Evaluate failed",
+  });
 
   function handleTrackMaterial() {
     if (!materialName || !baselinePrice) return;
@@ -376,8 +393,19 @@ export default function EscalationPage() {
                     value={materialName}
                     onChange={(e) => setMaterialName(e.target.value)}
                     placeholder="e.g. STEEL, REBAR, CEMENT"
+                    aria-describedby="materialIdHint"
                     className="w-full px-3 py-2.5 bg-[#0C0D14] border border-[#1E2230] rounded-lg font-body text-[14px] text-[#F0F0F0] placeholder-[#555555] focus:outline-none focus:border-[#00E87B]/30 transition-colors"
                   />
+                  <p
+                    id="materialIdHint"
+                    className="font-body text-[11px] text-[#666666] mt-1"
+                  >
+                    Hashed on-chain as{" "}
+                    <code className="font-mono text-[#888888]">
+                      keccak256(toUtf8Bytes(NAME.toUpperCase()))
+                    </code>
+                    . Match this convention exactly when querying off-chain.
+                  </p>
                 </div>
                 <div>
                   <label htmlFor="trackBaselinePrice" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
@@ -462,6 +490,21 @@ export default function EscalationPage() {
             )}
           </div>
         </div>
+      )}
+
+      {trackToast && (
+        <Toast
+          message={trackToast.message}
+          type={trackToast.type}
+          onClose={dismissTrackToast}
+        />
+      )}
+      {evalToast && (
+        <Toast
+          message={evalToast.message}
+          type={evalToast.type}
+          onClose={dismissEvalToast}
+        />
       )}
     </div>
   );
