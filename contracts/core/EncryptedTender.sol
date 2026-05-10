@@ -258,10 +258,13 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable, Reentran
     ) external onlyVerified beforeDeadline inState(TenderState.Bidding) whenNotPaused nonReentrant {
         if (bidders.length >= config.maxBidders) revert MaxBiddersReached();
 
-        // Check escrow deposit
+        // Check escrow deposit. v7: amounts are encrypted euint64 in cUSDC,
+        // so we cannot read+compare in plaintext. The escrow flips a public
+        // boolean on deposit; we gate on that. The frontend is expected to
+        // encrypt exactly `config.escrowAmount` (uint64 cUSDC fixed-point).
+        // Bond-size enforcement on chain via FHE.ge is a v8 hardening.
         if (config.escrowAmount > 0) {
-            uint256 deposited = escrow.deposits(tenderId, msg.sender);
-            if (deposited < config.escrowAmount) revert EscrowRequired();
+            if (!escrow.hasDeposited(tenderId, msg.sender)) revert EscrowRequired();
         }
 
         // Check reputation

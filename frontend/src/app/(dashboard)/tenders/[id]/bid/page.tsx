@@ -30,15 +30,17 @@ import {
   ADDRESSES,
   BidEscrowABI,
   BidderRegistryABI,
+  ConfidentialUSDCABI,
   EncryptedTenderABI,
   TenderState,
 } from "@/lib/contracts";
-import { encryptBidData } from "@/lib/fhevm";
+import { encryptBidData, getFhevmInstance } from "@/lib/fhevm";
 import { Toast } from "@/components/Toast";
 
 const tenderAbi = parseAbi(EncryptedTenderABI);
 const escrowAbi = parseAbi(BidEscrowABI);
 const registryAbi = parseAbi(BidderRegistryABI);
+const cUSDCAbi = parseAbi(ConfidentialUSDCABI);
 
 type BidStatus =
   | "idle"
@@ -84,6 +86,20 @@ export default function BidPage({
   const requiredDeposit = (requiredDepositData ?? 0n) as bigint;
   const depositStatus = (depositStatusData ?? 0) as number; // 0 = None, 1 = Active
   const escrowSatisfied = requiredDeposit === 0n || depositStatus !== 0;
+
+  // v7: check whether the user has authorized BidEscrow as their cUSDC operator.
+  // Without operator approval, escrow.deposit() reverts because the internal
+  // confidentialTransferFrom call cannot move tokens on their behalf.
+  const { data: isOperatorData, refetch: refetchIsOperator } = useReadContract({
+    address: ADDRESSES.ConfidentialUSDC as `0x${string}`,
+    abi: cUSDCAbi,
+    functionName: "isOperator",
+    args: userAddress
+      ? [userAddress, ADDRESSES.BidEscrow as `0x${string}`]
+      : undefined,
+    query: { enabled: Boolean(userAddress) },
+  });
+  const isCUSDCOperator = Boolean(isOperatorData);
 
   // Pre-flight reputation + verification check. EncryptedTender.submitBid will
   // revert with NotVerifiedBidder() or InsufficientReputation() — we surface
@@ -165,7 +181,11 @@ export default function BidPage({
   // the encrypt → submitBid leg without forcing the user to click again.
   useEffect(() => {
     if (depositConfirmed) {
-      void Promise.all([refetchRequired(), refetchDepositStatus()]).then(() => {
+      void Promise.all([
+        refetchRequired(),
+        refetchDepositStatus(),
+        refetchIsOperator(),
+      ]).then(() => {
         void runEncryptAndSubmit();
       });
     }
@@ -231,19 +251,55 @@ export default function BidPage({
     setErrorMsg("");
     resetDeposit();
 
-    // EncryptedTender.submitBid is NOT payable in V2 — escrow is a prior tx
-    // through BidEscrow.deposit{value: required}(tenderId). If the tender
-    // requires a deposit and the user hasn't deposited yet, fire that tx now;
-    // the depositConfirmed effect will continue with encrypt + submitBid.
+    // v7: bidders deposit ENCRYPTED cUSDC. The two-step flow is unchanged
+    // from v3/v4 UX-wise — first a deposit tx, then submitBid — but the
+    // deposit now (a) requires `isOperator(user, escrow)` on cUSDC, and
+    // (b) carries an encrypted amount + ZK input proof rather than msg.value.
     if (!escrowSatisfied) {
+      // Pre-flight: confirm operator authorization exists. Without it the
+      // deposit reverts inside cUSDC.confidentialTransferFrom — and the
+      // revert reason is opaque ("operator not approved") which makes for a
+      // bad demo. Surface it explicitly.
+      if (!isCUSDCOperator) {
+        setBidStatus("error");
+        setErrorMsg(
+          "You haven't authorized BidEscrow as your cUSDC operator yet. Visit /cusdc to wrap USDC and set the operator before bidding."
+        );
+        return;
+      }
+
       try {
         setBidStatus("depositing");
+        // Build the encrypted euint64 deposit input bound to cUSDC + escrow
+        // (NOT bidder) because FHE.fromExternal runs inside cUSDC with
+        // msg.sender = BidEscrow during the confidentialTransferFrom call.
+        const fhevm = await getFhevmInstance();
+        const input = fhevm.createEncryptedInput(
+          ADDRESSES.ConfidentialUSDC,
+          ADDRESSES.BidEscrow
+        );
+        // requiredDeposit is uint64 in v7 (cUSDC fixed-point, 6 decimals).
+        input.add64(requiredDeposit);
+        const enc = await input.encrypt();
+
+        const handleHex: `0x${string}` =
+          typeof enc.handles[0] === "string"
+            ? (enc.handles[0] as `0x${string}`)
+            : (`0x${Array.from(enc.handles[0] as Uint8Array)
+                .map((b) => b.toString(16).padStart(2, "0"))
+                .join("")}` as `0x${string}`);
+        const proofHex: `0x${string}` =
+          typeof enc.inputProof === "string"
+            ? (enc.inputProof as `0x${string}`)
+            : (`0x${Array.from(enc.inputProof as Uint8Array)
+                .map((b) => b.toString(16).padStart(2, "0"))
+                .join("")}` as `0x${string}`);
+
         writeDeposit({
           address: ADDRESSES.BidEscrow as `0x${string}`,
           abi: escrowAbi,
           functionName: "deposit",
-          args: [tenderId],
-          value: requiredDeposit,
+          args: [tenderId, handleHex, proofHex],
         });
         setBidStatus("depositConfirming");
       } catch (err) {

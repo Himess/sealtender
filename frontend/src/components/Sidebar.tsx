@@ -12,6 +12,7 @@ import {
   Star,
   Settings,
   ShieldCheck,
+  Coins,
   User,
   Menu,
   X,
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutGrid },
   { href: "/tenders", label: "Tenders", icon: FileText },
   { href: "/bids", label: "My Bids", icon: Lock },
+  { href: "/cusdc", label: "cUSDC", icon: Coins },
   { href: "/disputes", label: "Disputes", icon: AlertTriangle },
   { href: "/reputation", label: "Reputation", icon: Star },
 ];

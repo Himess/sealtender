@@ -74,9 +74,11 @@ contract TenderFactory is Ownable2Step {
 
         // Set required deposit in escrow + record tender address so that
         // BidEscrow.claimRefund can verify TenderState.Cancelled if the tender
-        // contract ever goes silent on a cancellation.
+        // contract ever goes silent on a cancellation. v7: escrow amount is
+        // denominated in cUSDC fixed-point (uint64, 6 decimals).
         if (_config.escrowAmount > 0) {
-            BidEscrow(escrow).setRequiredDeposit(tenderId, _config.escrowAmount);
+            require(_config.escrowAmount <= type(uint64).max, "escrowAmount > uint64.max");
+            BidEscrow(escrow).setRequiredDeposit(tenderId, uint64(_config.escrowAmount));
             BidEscrow(escrow).setTenderAddress(tenderId, tenderAddress);
         }
 

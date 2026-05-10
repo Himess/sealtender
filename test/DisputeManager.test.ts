@@ -2,11 +2,14 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
-import { DisputeManager, BidEscrow, BidderRegistry } from "../typechain-types";
+import { DisputeManager, BidEscrow, BidderRegistry, ConfidentialUSDC, MockUSDC } from "../typechain-types";
+import { deployEscrowStack, fundAndDeposit } from "./helpers/escrowSetup";
 
 describe("DisputeManager", function () {
   let disputeManager: DisputeManager;
   let escrow: BidEscrow;
+  let cUSDC: ConfidentialUSDC;
+  let usdc: MockUSDC;
   let registry: BidderRegistry;
   let owner: HardhatEthersSigner;
   let municipality: HardhatEthersSigner;
@@ -27,9 +30,10 @@ describe("DisputeManager", function () {
     registry = await RegistryFactory.deploy(owner.address);
     await registry.waitForDeployment();
 
-    const EscrowFactory = await ethers.getContractFactory("BidEscrow");
-    escrow = await EscrowFactory.deploy();
-    await escrow.waitForDeployment();
+    const stack = await deployEscrowStack(owner);
+    escrow = stack.escrow;
+    cUSDC = stack.cUSDC;
+    usdc = stack.usdc;
 
     const DMFactory = await ethers.getContractFactory("DisputeManager");
     disputeManager = await DMFactory.deploy(
@@ -158,8 +162,10 @@ describe("DisputeManager", function () {
   describe("executeCourtOrder", function () {
     beforeEach(async function () {
       await disputeManager.setCourtAuthority(courtAuthority.address);
-      await escrow.setRequiredDeposit(TENDER_ID, DEPOSIT_AMOUNT);
-      await escrow.connect(accused).deposit(TENDER_ID, { value: DEPOSIT_AMOUNT });
+      // v7 cUSDC: convert wei amount to cUSDC fixed-point (use 1 cUSDC).
+      const CUSDC_DEPOSIT: bigint = 1_000_000n;
+      await escrow.setRequiredDeposit(TENDER_ID, CUSDC_DEPOSIT);
+      await fundAndDeposit({ escrow, cUSDC, usdc }, accused, TENDER_ID, CUSDC_DEPOSIT);
     });
 
     it("should execute court order with freeze", async function () {
@@ -189,8 +195,10 @@ describe("DisputeManager", function () {
 
   describe("resolveDispute", function () {
     beforeEach(async function () {
-      await escrow.setRequiredDeposit(TENDER_ID, DEPOSIT_AMOUNT);
-      await escrow.connect(accused).deposit(TENDER_ID, { value: DEPOSIT_AMOUNT });
+      // v7 cUSDC: convert wei amount to cUSDC fixed-point (use 1 cUSDC).
+      const CUSDC_DEPOSIT: bigint = 1_000_000n;
+      await escrow.setRequiredDeposit(TENDER_ID, CUSDC_DEPOSIT);
+      await fundAndDeposit({ escrow, cUSDC, usdc }, accused, TENDER_ID, CUSDC_DEPOSIT);
       await registry.registerBidder(accused.address);
       await registry.addAuthorizedCaller(await disputeManager.getAddress());
     });

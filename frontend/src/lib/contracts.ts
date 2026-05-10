@@ -16,25 +16,35 @@
 //
 // All other v3 contracts (BidderRegistry, BidEscrow, ConfidentialUSDC,
 // PriceEscalation, CollisionDetector, DisputeManager) are reused unchanged --
-// v4 is a delta upgrade, not a full redeploy. v3 contracts at the addresses
-// below remain Sourcify-verified at
+// v7 fresh deployment (May 11, 2026) — full ERC-7984 / cUSDC native stack.
+//
+// What changed vs v4:
+//   • BidEscrow now accepts confidential cUSDC (ERC-7984) instead of ETH.
+//     `deposit(tenderId, externalEuint64, proof)` pulls cUSDC via
+//     confidentialTransferFrom; refund / slash use confidentialTransfer.
+//   • EncryptedTender gates submitBid on the public `hasDeposited` boolean
+//     (the amount is encrypted and can no longer be read in plaintext).
+//   • TenderFactory casts escrowAmount to uint64 (cUSDC 6-decimal fixed point).
+//   • Fresh BidderRegistry + DisputeManager + ArbitrationSafe + PriceEscalation
+//     + CollisionDetector + MockUSDC + ConfidentialUSDC for a clean demo state.
+//
+// All addresses below are Sourcify-verified at
 // https://repo.sourcify.dev/contracts/full_match/11155111/<address>/
 export const ADDRESSES = {
-  BidderRegistry: "0x2E8037626102ca3393ab9EfE7a3A254b30B236CA" as const,
-  BidEscrow: "0x76FBC67992459E972b80A88e11a5c15B0CFDBD11" as const,
-  ConfidentialUSDC: "0xCe493fFaBf3763df8057E58c22a6dC6a65806553" as const,
-  PriceEscalation: "0x1CE25ee2D44aDCa3127AD3b3B9e0B6CBd598C012" as const,
-  CollisionDetector: "0x3e8c0eDC536bce66ba8ef161eC40E7fA39d38Aee" as const,
-  // v4 new (replaces v3 0x617C5414...96f)
-  TenderFactory: "0x7F6aBdc673557Df490DE7f1B007eceDeeAEb4061" as const,
-  DisputeManager: "0xEae392E045518CF78FF279Bf4129b9073eB3A5bb" as const,
-  // v4 governance gate (new, no v3 equivalent)
-  ArbitrationSafe: "0x5ba5b091312958127618A87F17D6c6f6412DE45e" as const,
+  MockUSDC: "0xA5e1564001d38bef369494F7E5CfcaA2BDb98B58" as const,
+  ConfidentialUSDC: "0xcD124Ce207A9817C8176AF8f2Ec771712974A399" as const,
+  BidderRegistry: "0x130fD0e572535F7E775f8ba101Cf428b41A7590B" as const,
+  BidEscrow: "0x94c51890eF43f81dbe81bc5b26A90fe31902371C" as const,
+  TenderFactory: "0x18b75f82289843247Aeb8561a7494149c3E07A14" as const,
+  DisputeManager: "0x86CbFd22E4d0c2969CF993E093e92B0A9B47057d" as const,
+  ArbitrationSafe: "0x7F039CD16D6F0920Ba57699bB88Fc37c93248F02" as const,
+  PriceEscalation: "0x4E5e0f989452A3A7F4d4CE2811AABC5fA06525d5" as const,
+  CollisionDetector: "0x14f9Be19e6c9cd4283A5569cf37ce0A9582d8Ce2" as const,
 } as const;
 
 /// External integrations bound at deploy time
 export const EXTERNAL_ADDRESSES = {
-  USDC: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238" as const, // Circle USDC on Sepolia
+  USDC: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238" as const, // Circle USDC on Sepolia (not used by v7)
   Pyth: "0xDd24F84d36BF92C65F92307595335bdFab5Bbd21" as const, // Pyth oracle on Sepolia
 } as const;
 
@@ -113,19 +123,24 @@ export const EncryptedTenderABI = [
   "event StuckRevealForceCancelled(address indexed by, uint256 elapsed)",
 ] as const;
 
+// v7: BidEscrow is cUSDC-native. `deposit` now takes an encrypted amount +
+// input proof; refunds + slashes move encrypted balances via
+// confidentialTransfer. Events carry only (tenderId, bidder) — amounts are
+// ciphertexts, never plaintext on chain.
 export const BidEscrowABI = [
   // --- Read ---
-  "function requiredDeposit(uint256 tenderId) external view returns (uint256)",
-  "function deposits(uint256 tenderId, address bidder) external view returns (uint256)",
-  "function totalEscrow(uint256 tenderId) external view returns (uint256)",
+  "function cToken() external view returns (address)",
+  "function requiredDeposit(uint256 tenderId) external view returns (uint64)",
+  "function deposits(uint256 tenderId, address bidder) external view returns (uint256)", // legacy shim: 1=deposited, 0=not
+  "function hasDeposited(uint256 tenderId, address bidder) external view returns (bool)",
   "function depositStatus(uint256 tenderId, address bidder) external view returns (uint8)",
-  "function getDeposit(uint256 tenderId, address bidder) external view returns (uint256)",
+  "function getDeposit(uint256 tenderId, address bidder) external view returns (bytes32)",
   "function getDepositStatus(uint256 tenderId, address bidder) external view returns (uint8)",
   "function authorizedCallers(address) external view returns (bool)",
   "function owner() external view returns (address)",
   "function tenderOf(uint256 tenderId) external view returns (address)",
-  // --- User write ---
-  "function deposit(uint256 tenderId) external payable",
+  // --- User write (cUSDC-native) ---
+  "function deposit(uint256 tenderId, bytes32 inputAmount, bytes inputProof) external",
   "function claimRefund(uint256 tenderId) external",
   // --- Authorized write (Vault / DisputeManager / Factory) ---
   "function release(uint256 tenderId, address bidder) external",
@@ -133,15 +148,15 @@ export const BidEscrowABI = [
   "function freeze(uint256 tenderId, address bidder) external",
   "function unfreeze(uint256 tenderId, address bidder) external",
   "function slash(uint256 tenderId, address bidder, address recipient) external",
-  "function setRequiredDeposit(uint256 tenderId, uint256 amount) external",
+  "function setRequiredDeposit(uint256 tenderId, uint64 amount) external",
   // --- Owner write ---
   "function authorizeCaller(address caller) external",
   "function deauthorizeCaller(address caller) external",
   // --- Events ---
-  "event EscrowDeposited(uint256 indexed tenderId, address indexed bidder, uint256 amount)",
-  "event EscrowReleased(uint256 indexed tenderId, address indexed bidder, uint256 amount)",
-  "event EscrowRefunded(uint256 indexed tenderId, address indexed bidder, uint256 amount)",
-  "event EscrowSlashed(uint256 indexed tenderId, address indexed bidder, address recipient, uint256 amount)",
+  "event EscrowDeposited(uint256 indexed tenderId, address indexed bidder)",
+  "event EscrowReleased(uint256 indexed tenderId, address indexed bidder)",
+  "event EscrowRefunded(uint256 indexed tenderId, address indexed bidder)",
+  "event EscrowSlashed(uint256 indexed tenderId, address indexed bidder, address recipient)",
 ] as const;
 
 export const BidderRegistryABI = [
@@ -231,6 +246,20 @@ export const PriceEscalationABI = [
   "event EscalationRuleSet(uint256 indexed tenderId, bytes32 materialId)",
   "event EscalationTriggered(uint256 indexed tenderId, bytes32 materialId, uint256 extraPayment)",
   "event EscalationPayment(uint256 indexed tenderId, address indexed winner, uint256 amount)",
+] as const;
+
+// MockUSDC — freely mintable ERC-20 used as the underlying for the demo
+// ConfidentialUSDC wrapper. In production, replace with a real USDC like
+// Circle's Sepolia USDC at 0x1c7D…7238.
+export const MockUSDCABI = [
+  "function balanceOf(address account) external view returns (uint256)",
+  "function allowance(address owner, address spender) external view returns (uint256)",
+  "function decimals() external view returns (uint8)",
+  "function name() external view returns (string)",
+  "function symbol() external view returns (string)",
+  "function approve(address spender, uint256 amount) external returns (bool)",
+  "function transfer(address to, uint256 amount) external returns (bool)",
+  "function mint(address to, uint256 amount) external",
 ] as const;
 
 // ConfidentialUSDC inherits OZ ERC7984ERC20Wrapper. Balances are encrypted

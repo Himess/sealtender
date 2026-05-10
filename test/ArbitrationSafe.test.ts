@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { ArbitrationSafe, DisputeManager, BidEscrow, BidderRegistry } from "../typechain-types";
+import { deployEscrowStack } from "./helpers/escrowSetup";
 
 // Mirrors enum DisputeStatus in contracts/interfaces/ISealTender.sol.
 const DisputeStatus = {
@@ -40,9 +41,8 @@ describe("ArbitrationSafe", function () {
     registry = await RegistryFactory.deploy(owner.address);
     await registry.waitForDeployment();
 
-    const EscrowFactory = await ethers.getContractFactory("BidEscrow");
-    escrow = await EscrowFactory.deploy();
-    await escrow.waitForDeployment();
+    const stack = await deployEscrowStack(owner);
+    escrow = stack.escrow;
 
     const DMFactory = await ethers.getContractFactory("DisputeManager");
     disputeManager = await DMFactory.deploy(

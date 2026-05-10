@@ -3,6 +3,7 @@ import { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { TenderFactory, BidderRegistry, BidEscrow } from "../typechain-types";
+import { deployEscrowStack } from "./helpers/escrowSetup";
 
 describe("TenderFactory", function () {
   let factory: TenderFactory;
@@ -45,9 +46,8 @@ describe("TenderFactory", function () {
     registry = await RegistryFactory.deploy(owner.address);
     await registry.waitForDeployment();
 
-    const EscrowFactory = await ethers.getContractFactory("BidEscrow");
-    escrow = await EscrowFactory.deploy();
-    await escrow.waitForDeployment();
+    const stack = await deployEscrowStack(owner);
+    escrow = stack.escrow;
 
     const FactoryFactory = await ethers.getContractFactory("TenderFactory");
     factory = await FactoryFactory.deploy(

@@ -13,6 +13,7 @@ import {
   EncryptedTender,
   MockUSDC,
 } from "../typechain-types";
+import { deployEscrowStack, fundAndDeposit, fundCUSDC, depositCUSDC } from "./helpers/escrowSetup";
 
 describe("EdgeCases", function () {
   let registry: BidderRegistry;
@@ -36,9 +37,10 @@ describe("EdgeCases", function () {
     registry = await RegistryFactory.deploy(owner.address);
     await registry.waitForDeployment();
 
-    const EscrowFactory = await ethers.getContractFactory("BidEscrow");
-    escrow = await EscrowFactory.deploy();
-    await escrow.waitForDeployment();
+    const stack = await deployEscrowStack(owner);
+    escrow = stack.escrow;
+    cusdc = stack.cUSDC;
+    mockUsdc = stack.usdc;
 
     const DMFactory = await ethers.getContractFactory("DisputeManager");
     disputeManager = await DMFactory.deploy(
@@ -56,13 +58,8 @@ describe("EdgeCases", function () {
     detector = await DetFactory.deploy();
     await detector.waitForDeployment();
 
-    const MockFactory = await ethers.getContractFactory("MockUSDC");
-    mockUsdc = await MockFactory.deploy();
-    await mockUsdc.waitForDeployment();
-
-    const CUSDCFactory = await ethers.getContractFactory("ConfidentialUSDC");
-    cusdc = await CUSDCFactory.deploy(owner.address, await mockUsdc.getAddress());
-    await cusdc.waitForDeployment();
+    // cusdc + mockUsdc are now provided by deployEscrowStack — no separate
+    // deployment needed here.
 
     const FactoryFactory = await ethers.getContractFactory("TenderFactory");
     factory = await FactoryFactory.deploy(
@@ -156,18 +153,30 @@ describe("EdgeCases", function () {
   // --- BidEscrow Edge Cases ---
   describe("BidEscrow Edge Cases", function () {
     const TENDER_ID = 0;
-    const DEPOSIT = ethers.parseEther("1");
+    // v7 cUSDC fixed-point: 1 cUSDC = 1_000_000 (6 decimals).
+    const DEPOSIT: bigint = 1_000_000n;
+    const FUND_AMOUNT: bigint = 1_000_000_000n; // 1000 cUSDC headroom
 
     it("should reject deposit when tender not configured (required=0)", async function () {
-      // Post L-5 fix: tenders with no required deposit set are rejected at the
-      // escrow boundary rather than silently locking funds under an unknown id.
-      await expect(escrow.connect(alice).deposit(TENDER_ID, { value: 0 }))
-        .to.be.revertedWithCustomError(escrow, "TenderNotConfigured");
+      // v7 deposit revert path uses an encrypted-input call, but since the
+      // pre-flight check on `requiredDeposit` is the first thing the function
+      // does, the revert fires before any FHE op. We craft a valid-looking
+      // encrypted input and confirm `TenderNotConfigured` is the revert.
+      await fundCUSDC(mockUsdc, cusdc, alice, FUND_AMOUNT, escrow);
+      const input = fhevm.createEncryptedInput(
+        await cusdc.getAddress(),
+        await escrow.getAddress()
+      );
+      input.add64(DEPOSIT);
+      const enc = await input.encrypt();
+      await expect(
+        escrow.connect(alice).deposit(TENDER_ID, enc.handles[0] as any, enc.inputProof as any)
+      ).to.be.revertedWithCustomError(escrow, "TenderNotConfigured");
     });
 
     it("should not allow release of frozen deposit", async function () {
       await escrow.setRequiredDeposit(TENDER_ID, DEPOSIT);
-      await escrow.connect(alice).deposit(TENDER_ID, { value: DEPOSIT });
+      await fundAndDeposit({ escrow, cUSDC: cusdc, usdc: mockUsdc }, alice, TENDER_ID, DEPOSIT);
       await escrow.freeze(TENDER_ID, alice.address);
       await expect(escrow.release(TENDER_ID, alice.address))
         .to.be.revertedWithCustomError(escrow, "DepositFrozen");
@@ -175,7 +184,7 @@ describe("EdgeCases", function () {
 
     it("should not allow refund of frozen deposit", async function () {
       await escrow.setRequiredDeposit(TENDER_ID, DEPOSIT);
-      await escrow.connect(alice).deposit(TENDER_ID, { value: DEPOSIT });
+      await fundAndDeposit({ escrow, cUSDC: cusdc, usdc: mockUsdc }, alice, TENDER_ID, DEPOSIT);
       await escrow.freeze(TENDER_ID, alice.address);
       await expect(escrow.refund(TENDER_ID, alice.address))
         .to.be.revertedWithCustomError(escrow, "DepositFrozen");
@@ -183,7 +192,7 @@ describe("EdgeCases", function () {
 
     it("should not allow double freeze", async function () {
       await escrow.setRequiredDeposit(TENDER_ID, DEPOSIT);
-      await escrow.connect(alice).deposit(TENDER_ID, { value: DEPOSIT });
+      await fundAndDeposit({ escrow, cUSDC: cusdc, usdc: mockUsdc }, alice, TENDER_ID, DEPOSIT);
       await escrow.freeze(TENDER_ID, alice.address);
       await expect(escrow.freeze(TENDER_ID, alice.address))
         .to.be.revertedWithCustomError(escrow, "DepositNotActive");
@@ -193,23 +202,25 @@ describe("EdgeCases", function () {
       expect(await escrow.getDepositStatus(TENDER_ID, alice.address)).to.equal(0); // None
     });
 
-    it("should reduce totalEscrow after release", async function () {
+    it("should flip status to Released after release", async function () {
+      // v7: totalEscrow no longer public (amounts are encrypted). Verify via
+      // the lifecycle status enum instead.
       await escrow.setRequiredDeposit(TENDER_ID, DEPOSIT);
-      await escrow.connect(alice).deposit(TENDER_ID, { value: DEPOSIT });
+      await fundAndDeposit({ escrow, cUSDC: cusdc, usdc: mockUsdc }, alice, TENDER_ID, DEPOSIT);
       await escrow.release(TENDER_ID, alice.address);
-      expect(await escrow.totalEscrow(TENDER_ID)).to.equal(0);
+      expect(await escrow.getDepositStatus(TENDER_ID, alice.address)).to.equal(3); // Released
     });
 
     it("should handle slash from active deposit", async function () {
       await escrow.setRequiredDeposit(TENDER_ID, DEPOSIT);
-      await escrow.connect(alice).deposit(TENDER_ID, { value: DEPOSIT });
+      await fundAndDeposit({ escrow, cUSDC: cusdc, usdc: mockUsdc }, alice, TENDER_ID, DEPOSIT);
       await expect(escrow.slash(TENDER_ID, alice.address, municipality.address))
         .to.emit(escrow, "EscrowSlashed");
     });
 
     it("should not allow slash on released deposit", async function () {
       await escrow.setRequiredDeposit(TENDER_ID, DEPOSIT);
-      await escrow.connect(alice).deposit(TENDER_ID, { value: DEPOSIT });
+      await fundAndDeposit({ escrow, cUSDC: cusdc, usdc: mockUsdc }, alice, TENDER_ID, DEPOSIT);
       await escrow.release(TENDER_ID, alice.address);
       await expect(escrow.slash(TENDER_ID, alice.address, municipality.address))
         .to.be.revertedWithCustomError(escrow, "DepositNotActive");
@@ -609,20 +620,23 @@ describe("EdgeCases", function () {
     });
 
     it("should not allow cross-tender escrow leakage", async function () {
-      // Tender A deposits should not affect Tender B balances
+      // Tender A deposits should not affect Tender B balances.
+      // v7 cUSDC: amounts in 6-decimal fixed-point uint64.
       const TENDER_A = 100;
       const TENDER_B = 200;
-      const DEPOSIT_A = ethers.parseEther("1");
-      const DEPOSIT_B = ethers.parseEther("2");
+      const DEPOSIT_A: bigint = 1_000_000n;
+      const DEPOSIT_B: bigint = 2_000_000n;
 
       await escrow.setRequiredDeposit(TENDER_A, DEPOSIT_A);
       await escrow.setRequiredDeposit(TENDER_B, DEPOSIT_B);
 
-      await escrow.connect(alice).deposit(TENDER_A, { value: DEPOSIT_A });
-      await escrow.connect(bob).deposit(TENDER_B, { value: DEPOSIT_B });
+      await fundAndDeposit({ escrow, cUSDC: cusdc, usdc: mockUsdc }, alice, TENDER_A, DEPOSIT_A);
+      await fundAndDeposit({ escrow, cUSDC: cusdc, usdc: mockUsdc }, bob, TENDER_B, DEPOSIT_B);
 
-      expect(await escrow.totalEscrow(TENDER_A)).to.equal(DEPOSIT_A);
-      expect(await escrow.totalEscrow(TENDER_B)).to.equal(DEPOSIT_B);
+      // Per-bidder status flag is the cross-tender isolation proof in v7
+      // (totalEscrow is no longer public because amounts are encrypted).
+      expect(await escrow.hasDeposited(TENDER_A, alice.address)).to.be.true;
+      expect(await escrow.hasDeposited(TENDER_B, bob.address)).to.be.true;
 
       // Alice has no deposit in Tender B
       expect(await escrow.getDepositStatus(TENDER_B, alice.address)).to.equal(0); // None
@@ -631,13 +645,12 @@ describe("EdgeCases", function () {
 
       // Release from Tender A should not affect Tender B
       await escrow.release(TENDER_A, alice.address);
-      expect(await escrow.totalEscrow(TENDER_A)).to.equal(0);
-      expect(await escrow.totalEscrow(TENDER_B)).to.equal(DEPOSIT_B);
+      expect(await escrow.getDepositStatus(TENDER_A, alice.address)).to.equal(3); // Released
+      expect(await escrow.getDepositStatus(TENDER_B, bob.address)).to.equal(1); // still Active
 
       // Slash in Tender B should not affect Tender A
       await escrow.slash(TENDER_B, bob.address, municipality.address);
-      expect(await escrow.totalEscrow(TENDER_B)).to.equal(0);
-      expect(await escrow.totalEscrow(TENDER_A)).to.equal(0);
+      expect(await escrow.getDepositStatus(TENDER_B, bob.address)).to.equal(5); // Slashed
 
       // Releasing alice from Tender B (where she never deposited) should fail
       await expect(escrow.release(TENDER_B, alice.address))

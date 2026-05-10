@@ -431,8 +431,8 @@
     </div>
 
     <div class="mt-6 italic text-center" style="font-size:28px;color:var(--fg);font-weight:500;letter-spacing:-0.01em;">
-      Bids never leave their envelopes. The chain compares them blind.
-      <span style="color:var(--accent);">Only the winning number is announced. Losing bids stay sealed by default — public auditability is opt-in.</span>
+      Bids never leave their envelopes. <span style="color:var(--accent);">Bonds settle in confidential USDC (ERC-7984).</span>
+      The chain compares blind; losing bids stay sealed by default.
     </div>
   </div>
 </section>
@@ -721,6 +721,13 @@
           replaces unilateral owner slash authority. Wired as <span class="mono">DisputeManager.courtAuthority</span>.
         </div>
       </div>
+      <div class="flex items-center" style="gap:18px;border:1px solid var(--accent);background:var(--accent-soft);border-radius:8px;padding:14px 22px;">
+        <div class="kicker" style="color:var(--accent);min-width:160px;">v7 · CONFIDENTIAL RAIL</div>
+        <div style="font-size:17px;color:var(--fg-dim);line-height:1.5;">
+          <span style="color:var(--fg);font-weight:600;">Bond escrow is cUSDC (ERC-7984)</span> — every deposit is an encrypted
+          euint64; refund + slash move ciphertexts via <span class="mono">confidentialTransfer</span>. No bond amounts leak via on-chain events.
+        </div>
+      </div>
       <div class="flex items-center" style="gap:18px;border:1px solid var(--mint);background:var(--accent-soft);border-radius:8px;padding:14px 22px;">
         <div class="kicker" style="color:var(--mint);min-width:160px;">OPTIONAL · v6</div>
         <div style="font-size:17px;color:var(--fg-dim);line-height:1.5;">
@@ -875,7 +882,7 @@
         </div>
         <div class="flex-1 flex flex-col" style="gap:6px;font-size:19px;">
           <div class="flex items-start"><span class="check">✓</span><span><span class="mono">@fhevm/solidity</span> 0.11.1 — FHE bindings, encrypted types, FHE.lt / FHE.select</span></div>
-          <div class="flex items-start"><span class="check">✓</span><span><span class="mono">@openzeppelin/confidential-contracts</span> 0.4.0 — confidential ERC primitives</span></div>
+          <div class="flex items-start"><span class="check">✓</span><span><span class="mono">@openzeppelin/confidential-contracts</span> 0.4.0 — <b>ERC-7984</b> wrapper, ERC7984ERC20Wrapper</span></div>
           <div class="flex items-start"><span class="check">✓</span><span><span class="mono">@zama-fhe/relayer-sdk</span> 0.4.1 — KMS quorum re-encryption, attestations</span></div>
         </div>
       </div>
@@ -899,7 +906,7 @@
         </div>
         <div class="flex-1 flex flex-col" style="gap:6px;font-size:19px;">
           <div class="flex items-start"><span class="check">✓</span><span>Chainlink + Pyth oracle fallback for material-price escalation</span></div>
-          <div class="flex items-start"><span class="check">✓</span><span>ERC-7984 confidential USDC wrapper for bond escrow rail</span></div>
+          <div class="flex items-start"><span class="check">✓</span><span><b>ERC-7984 cUSDC native escrow</b> — every bond deposit is an encrypted euint64</span></div>
           <div class="flex items-start"><span class="check">✓</span><span>Zama TKMS — 9-of-13 threshold KMS, mainnet live since Dec 30, 2025</span></div>
         </div>
       </div>
@@ -930,12 +937,12 @@
         <div class="mono mt-1" style="font-size:11px;color:var(--fg-faint);letter-spacing:0.08em;">CONTRACTS</div>
       </div>
       <div class="flex-1 text-center" style="padding:18px 0;border-right:1px solid var(--border);">
-        <div class="font-bold mono" style="font-size:36px;color:var(--mint);">334 / 334</div>
+        <div class="font-bold mono" style="font-size:36px;color:var(--mint);">329 / 329</div>
         <div class="mono mt-1" style="font-size:11px;color:var(--fg-faint);letter-spacing:0.08em;">TESTS PASSING</div>
       </div>
       <div class="flex-1 text-center" style="padding:18px 0;border-right:1px solid var(--border);">
-        <div class="font-bold mono" style="font-size:36px;">v5</div>
-        <div class="mono mt-1" style="font-size:11px;color:var(--fg-faint);letter-spacing:0.08em;">CURRENT · 3 INTERNAL AUDIT ITERATIONS</div>
+        <div class="font-bold mono" style="font-size:36px;">v7</div>
+        <div class="mono mt-1" style="font-size:11px;color:var(--fg-faint);letter-spacing:0.08em;">CUSDC NATIVE · 4 AUDIT ITERATIONS</div>
       </div>
       <div class="flex-1 text-center" style="padding:18px 0;border-right:1px solid var(--border);">
         <div class="font-bold mono" style="font-size:36px;">70+</div>
@@ -1096,6 +1103,18 @@
     </h2>
 
     <div class="flex flex-col mt-6" style="gap:12px;flex:1;min-height:0;">
+      <div class="flex" style="gap:24px;padding:16px 22px;align-items:flex-start;border:1px solid var(--accent);background:var(--accent-soft);border-radius:8px;">
+        <div style="width:220px;flex-shrink:0;">
+          <div class="font-bold" style="font-size:24px;color:var(--accent);">v7 SHIPPED</div>
+          <div class="mono" style="font-size:12px;color:var(--fg-faint);letter-spacing:0.08em;">CUSDC ERC-7984 LIVE</div>
+        </div>
+        <div class="flex-1 flex flex-wrap" style="gap:6px;">
+          <span class="chip-sm" style="background:#fff;">cUSDC-native BidEscrow (encrypted euint64)</span>
+          <span class="chip-sm" style="background:#fff;"><span class="mono">confidentialTransferFrom</span> deposit path</span>
+          <span class="chip-sm" style="background:#fff;">OpenZeppelin ERC-7984 wrapper</span>
+          <span class="chip-sm" style="background:#fff;">Bond amounts never leak via events</span>
+        </div>
+      </div>
       <div class="flex" style="gap:24px;padding:16px 22px;align-items:flex-start;border:1px solid var(--mint);background:var(--accent-soft);border-radius:8px;">
         <div style="width:220px;flex-shrink:0;">
           <div class="font-bold" style="font-size:24px;color:var(--mint);">v6 SHIPPED</div>

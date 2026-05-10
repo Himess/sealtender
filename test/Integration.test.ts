@@ -13,6 +13,7 @@ import {
   ConfidentialUSDC,
   MockUSDC,
 } from "../typechain-types";
+import { deployEscrowStack, fundAndDeposit, fundCUSDC, depositCUSDC } from "./helpers/escrowSetup";
 
 describe("Integration", function () {
   let registry: BidderRegistry;
@@ -38,9 +39,10 @@ describe("Integration", function () {
     registry = await RegistryFactory.deploy(owner.address);
     await registry.waitForDeployment();
 
-    const EscrowFactory = await ethers.getContractFactory("BidEscrow");
-    escrow = await EscrowFactory.deploy();
-    await escrow.waitForDeployment();
+    const stack = await deployEscrowStack(owner);
+    escrow = stack.escrow;
+    cusdc = stack.cUSDC;
+    mockUsdc = stack.usdc;
 
     const FactoryFactory = await ethers.getContractFactory("TenderFactory");
     factory = await FactoryFactory.deploy(
@@ -66,15 +68,8 @@ describe("Integration", function () {
     detector = await DetFactory.deploy();
     await detector.waitForDeployment();
 
-    // Deploy token
-    const MockFactory = await ethers.getContractFactory("MockUSDC");
-    mockUsdc = await MockFactory.deploy();
-    await mockUsdc.waitForDeployment();
-
-    // ERC7984ERC20Wrapper takes underlying at construction (immutable)
-    const CUSDCFactory = await ethers.getContractFactory("ConfidentialUSDC");
-    cusdc = await CUSDCFactory.deploy(owner.address, await mockUsdc.getAddress());
-    await cusdc.waitForDeployment();
+    // mockUsdc + cusdc are now provided by deployEscrowStack above —
+    // no separate deployment needed here.
 
     // Setup authorizations
     await registry.setTenderManager(await factory.getAddress());
@@ -250,7 +245,8 @@ describe("Integration", function () {
 
   describe("Tender with escrow deposits", function () {
     it("should require deposit before bidding", async function () {
-      const DEPOSIT = ethers.parseEther("0.5");
+      // v7: escrow is cUSDC-denominated. 0.5 cUSDC = 500_000 (6 decimals).
+      const DEPOSIT = 500_000n;
       const config = {
         description: "Escrow Tender",
         deadline: (await time.latest()) + 86400,
@@ -263,8 +259,8 @@ describe("Integration", function () {
       const tenderAddr = await factory.getTender(0);
       const tender = await ethers.getContractAt("EncryptedTender", tenderAddr) as EncryptedTender;
 
-      // Deposit to escrow
-      await escrow.connect(alice).deposit(0, { value: DEPOSIT });
+      // v7 cUSDC deposit path: wrap → approve → deposit.
+      await fundAndDeposit({ escrow, cUSDC: cusdc, usdc: mockUsdc }, alice, 0, DEPOSIT);
 
       // Now bid should work
       const encPrice = await fhevm.encryptUint(5, 50000n, tenderAddr, alice.address);
@@ -284,9 +280,10 @@ describe("Integration", function () {
 
   describe("Dispute flow", function () {
     it("should file and resolve dispute with slash", async function () {
-      const DEPOSIT = ethers.parseEther("1");
+      // v7 cUSDC: 1 cUSDC = 1_000_000 (6 decimals).
+      const DEPOSIT = 1_000_000n;
       await escrow.setRequiredDeposit(0, DEPOSIT);
-      await escrow.connect(bob).deposit(0, { value: DEPOSIT });
+      await fundAndDeposit({ escrow, cUSDC: cusdc, usdc: mockUsdc }, bob, 0, DEPOSIT);
 
       await registry.addAuthorizedCaller(await disputeManager.getAddress());
 
@@ -319,9 +316,9 @@ describe("Integration", function () {
     });
 
     it("should handle court order freeze", async function () {
-      const DEPOSIT = ethers.parseEther("1");
+      const DEPOSIT = 1_000_000n;
       await escrow.setRequiredDeposit(0, DEPOSIT);
-      await escrow.connect(bob).deposit(0, { value: DEPOSIT });
+      await fundAndDeposit({ escrow, cUSDC: cusdc, usdc: mockUsdc }, bob, 0, DEPOSIT);
 
       await disputeManager.connect(courtAuthority).executeCourtOrder(
         0, bob.address, "Court order", true

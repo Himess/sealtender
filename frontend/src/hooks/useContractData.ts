@@ -140,12 +140,12 @@ export function useRevealedPrice(addr: `0x${string}` | undefined) {
 // ============================================================================
 
 export function useTotalEscrow(tenderId: bigint) {
-  return useReadContract({
-    address: ADDRESSES.BidEscrow,
-    abi: escrowAbi,
-    functionName: "totalEscrow",
-    args: [tenderId],
-  });
+  // v7: per-tender plaintext total no longer tracked on chain (every deposit
+  // amount is an encrypted euint64). UI sums escrowAmount * bidderCount
+  // approximation in DashboardPage. Stub returns 0 for backward compatibility.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _ = tenderId;
+  return { data: 0n, isLoading: false };
 }
 
 // ============================================================================

@@ -2,12 +2,15 @@ import { expect } from "chai";
 import { ethers, fhevm } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
-import { EncryptedTender, BidderRegistry, BidEscrow } from "../typechain-types";
+import { EncryptedTender, BidderRegistry, BidEscrow, ConfidentialUSDC, MockUSDC } from "../typechain-types";
+import { deployEscrowStack } from "./helpers/escrowSetup";
 
 describe("EncryptedTender", function () {
   let tender: EncryptedTender;
   let registry: BidderRegistry;
   let escrow: BidEscrow;
+  let cUSDC: ConfidentialUSDC;
+  let usdc: MockUSDC;
   let owner: HardhatEthersSigner;
   let alice: HardhatEthersSigner;
   let bob: HardhatEthersSigner;
@@ -65,9 +68,10 @@ describe("EncryptedTender", function () {
     registry = await RegistryFactory.deploy(owner.address);
     await registry.waitForDeployment();
 
-    const EscrowFactory = await ethers.getContractFactory("BidEscrow");
-    escrow = await EscrowFactory.deploy();
-    await escrow.waitForDeployment();
+    const stack = await deployEscrowStack(owner);
+    escrow = stack.escrow;
+    cUSDC = stack.cUSDC;
+    usdc = stack.usdc;
 
     // Register and verify bidders
     await registry.registerBidder(alice.address);
