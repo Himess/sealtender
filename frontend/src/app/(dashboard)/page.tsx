@@ -76,9 +76,15 @@ export default function DashboardPage() {
     addresses as readonly `0x${string}`[] | undefined
   );
 
-  // Calculate total escrow from all tenders
+  // Calculate total escrow from all tenders.
+  // v2 dropped tender.totalDeposits (escrow is keyed by tenderId in BidEscrow now).
+  // For the dashboard summary we approximate as escrowAmount * bidderCount which
+  // is exact for the canonical "every bidder deposits exactly the required amount"
+  // path. A precise read would batch BidEscrow.totalEscrow(tenderId) per tender.
   const totalEscrow = tenders.reduce((sum, t) => {
-    return sum + (t.totalDeposits || BigInt(0));
+    const escrow = (t.config?.escrowAmount as bigint | undefined) || BigInt(0);
+    const bidders = t.bidderCount || BigInt(0);
+    return sum + escrow * bidders;
   }, BigInt(0));
 
   const activeTenders = tenders.filter(
@@ -222,7 +228,11 @@ export default function DashboardPage() {
                       /{tender.config?.maxBidders !== undefined ? String(tender.config.maxBidders) : "--"}
                     </td>
                     <td className="px-5 py-[14px] font-body text-[14px] text-[#888888] font-mono">
-                      {formatUsd(tender.totalDeposits)}
+                      {formatUsd(
+                        ((tender.config?.escrowAmount as bigint | undefined) ||
+                          BigInt(0)) *
+                          (tender.bidderCount || BigInt(0))
+                      )}
                     </td>
                     <td className="px-5 py-[14px] font-body text-[14px] text-[#888888]">
                       {formatDeadline(tender.config?.deadline)}
