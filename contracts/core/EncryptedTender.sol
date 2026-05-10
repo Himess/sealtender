@@ -87,6 +87,27 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable, Reentran
     bool public announced;
     uint256 public announcedAt;
 
+    // --- v6 transparency mode (code committed, deployment deferred to maintain v5 demo state) ---
+    //
+    // Three-mode disclosure architecture:
+    //   1. DEFAULT (privacy)        — losing bids stay encrypted forever; only winner price + addr surface.
+    //   2. PUBLIC AUDIT (this file) — procurement entity calls {publishAllBids} after announce; each
+    //                                 bid handle is promoted to publicly-decryptable; a follow-up KMS
+    //                                 roundtrip per bidder lands the plaintext via {recordLoserBidPlaintext}.
+    //                                 Matches 4734 sayili Kamu Ihale Kanunu Madde 36's transparency
+    //                                 requirement when the procurement entity opts in.
+    //   3. SELECTIVE (off-chain)    — auditor-scoped FHE.delegateUserDecryption gate; not implemented here
+    //                                 because it does not require new state, only an admin-flagged delegation.
+    //
+    /// @notice True after {publishAllBids} has been called. Once true, individual
+    ///         loser bid plaintexts may be landed via {recordLoserBidPlaintext}
+    ///         using KMS-signed proofs over the now-public ciphertext handles.
+    bool public allBidsPublished;
+    /// @notice Plaintext bid prices captured per loser via {recordLoserBidPlaintext}.
+    ///         Keyed by bidder address; zero indicates "not yet decrypted on-chain"
+    ///         (caller can re-run the KMS roundtrip and submit the proof).
+    mapping(address => uint256) public plaintextLoserBids;
+
     // --- Events ---
     event BidSubmitted(address indexed bidder, uint256 timestamp);
     event BidUpdated(address indexed bidder, uint256 version);
@@ -113,6 +134,15 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable, Reentran
     event WinnerSinkForwardFailed(address indexed sink, bytes returnData);
     event RevealTimeoutSet(uint256 secondsValue);
     event StuckRevealForceCancelled(address indexed by, uint256 elapsed);
+    /// @notice Emitted by {publishAllBids} when the procurement entity opts into
+    ///         the transparency-mode disclosure. After this, every bid handle is
+    ///         publicly-decryptable and a KMS roundtrip per bidder can land
+    ///         plaintexts via {recordLoserBidPlaintext}.
+    event AllBidsPublished(uint256 timestamp);
+    /// @notice Emitted by {recordLoserBidPlaintext} when a KMS-attested plaintext
+    ///         price is committed on-chain for a single bidder. Indexers should
+    ///         treat this as the canonical "this losing bid was X TRY" record.
+    event LoserBidPublished(address indexed bidder, uint256 plaintextPrice);
 
     // --- Errors ---
     error NotVerifiedBidder();
@@ -137,6 +167,10 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable, Reentran
     error AlreadyAnnounced();
     error AnnounceTimelockNotElapsed(uint256 revealedAt, uint256 timelockEnd, uint256 nowTs);
     error WinnerAddressMismatch(uint256 winnerIdx, address kmsAttested, address bidderAtIdx);
+    error WinnerNotAnnounced();
+    error BidsNotPublished();
+    error BidsAlreadyPublished();
+    error UnknownBidder();
 
     /// @notice Hard cap on bidders per tender. Above this gas costs per evaluation
     ///         batch exceed practical block limits even with optimal batching.
@@ -521,6 +555,61 @@ contract EncryptedTender is ZamaEthereumConfig, Ownable2Step, Pausable, Reentran
         }
 
         emit WinnerAnnounced(winnerAddress, revealedPrice, announcedAt);
+    }
+
+    // --- v6 transparency mode (code committed, deployment deferred to maintain v5 demo state) ---
+
+    /// @notice After winner announcement, the procurement entity can opt into
+    ///         publishing every losing bid's ciphertext to public-decryptable
+    ///         status. Matches 4734 Madde 36's transparency requirement when
+    ///         the entity selects the public-audit disclosure mode. When this
+    ///         function is NOT called, losing bids stay sealed forever
+    ///         (default privacy mode).
+    /// @dev We deliberately gate on `announced` (not just `revealed`) so the
+    ///      transparency window can never precede the official public notice;
+    ///      otherwise observers could correlate ciphertexts with leaked
+    ///      identities before the legally-effective award date.
+    /// @dev v6 transparency mode — code committed, deployment deferred to
+    ///      maintain v5 demo state.
+    function publishAllBids() external onlyOwner {
+        if (!announced) revert WinnerNotAnnounced();
+        if (allBidsPublished) revert BidsAlreadyPublished();
+
+        for (uint256 i = 0; i < bidders.length; i++) {
+            BidData storage bid = bids[bidders[i]];
+            FHE.makePubliclyDecryptable(bid.encPrice);
+            FHE.makePubliclyDecryptable(bid.encYears);
+            FHE.makePubliclyDecryptable(bid.encProjects);
+            FHE.makePubliclyDecryptable(bid.encBond);
+        }
+
+        allBidsPublished = true;
+        emit AllBidsPublished(block.timestamp);
+    }
+
+    /// @notice Permissionless once {publishAllBids} has been called. The caller
+    ///         supplies a KMS-signed decryption proof for a single bidder's
+    ///         encrypted price handle and the cleartext is committed on-chain.
+    ///         The KMS attestation is the security gate -- supplying an
+    ///         incorrect plaintext makes `FHE.checkSignatures` revert.
+    /// @dev v6 transparency mode — code committed, deployment deferred to
+    ///      maintain v5 demo state.
+    function recordLoserBidPlaintext(
+        address bidder,
+        uint256 plaintextPrice,
+        bytes calldata decryptionProof
+    ) external {
+        if (!allBidsPublished) revert BidsNotPublished();
+        if (!hasBid[bidder]) revert UnknownBidder();
+
+        bytes32[] memory handlesList = new bytes32[](1);
+        handlesList[0] = FHE.toBytes32(bids[bidder].encPrice);
+
+        bytes memory cleartexts = abi.encode(plaintextPrice);
+        FHE.checkSignatures(handlesList, cleartexts, decryptionProof);
+
+        plaintextLoserBids[bidder] = plaintextPrice;
+        emit LoserBidPublished(bidder, plaintextPrice);
     }
 
     /// @notice Owner-set destination contract for winner propagation. Must implement

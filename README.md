@@ -315,6 +315,7 @@ What we've shipped:
 - **v3** (April 2026) — base FHE pipeline, ERC-7984 wrapper, oracle-backed price escalation, full audit pass
 - **v4** (May 2026) — permissionless reveal pipeline, 3-of-5 ArbitrationSafe, governance hardening
 - **v5** (May 2026) — `eaddress` encrypted winner address, 3-handle KMS attestation, announcement timelock, user-side bid decryption, escalation-auth telemetry event
+- **v6** (May 2026, code-committed, deployment deferred to maintain v5 demo state) — three-mode disclosure: `publishAllBids` + `recordLoserBidPlaintext` give the procurement entity an opt-in path to publicly land losing-bid plaintexts via per-bidder KMS roundtrips. Three modes: (1) **default privacy** — losing bids stay sealed forever; (2) **public audit** — `publishAllBids` after announcement matches 4734 Madde 36 transparency requirement; (3) **selective auditor** — off-chain via existing `FHE.delegateUserDecryption`. Default mode unchanged so existing flows are not disrupted.
 
 What's next, in priority order:
 

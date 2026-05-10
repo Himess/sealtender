@@ -742,4 +742,32 @@ describe("EncryptedTender", function () {
         .to.be.revertedWithCustomError(tender, "WinnerNotRevealed");
     });
   });
+
+  describe("v6 transparency mode: publishAllBids + recordLoserBidPlaintext", function () {
+    it("allBidsPublished defaults to false on a fresh tender", async function () {
+      expect(await tender.allBidsPublished()).to.be.false;
+    });
+
+    it("plaintextLoserBids defaults to zero for any address before publish", async function () {
+      expect(await tender.plaintextLoserBids(alice.address)).to.equal(0n);
+      expect(await tender.plaintextLoserBids(bob.address)).to.equal(0n);
+    });
+
+    it("publishAllBids reverts with WinnerNotAnnounced before announceWinner", async function () {
+      await expect(tender.publishAllBids())
+        .to.be.revertedWithCustomError(tender, "WinnerNotAnnounced");
+    });
+
+    it("publishAllBids reverts when called by non-owner", async function () {
+      await expect(tender.connect(alice).publishAllBids())
+        .to.be.revertedWithCustomError(tender, "OwnableUnauthorizedAccount");
+    });
+
+    it("recordLoserBidPlaintext reverts with BidsNotPublished before publishAllBids fires", async function () {
+      const fakeProof = "0x" + "00".repeat(32);
+      await expect(
+        tender.recordLoserBidPlaintext(alice.address, 1_000_000n, fakeProof)
+      ).to.be.revertedWithCustomError(tender, "BidsNotPublished");
+    });
+  });
 });
