@@ -253,11 +253,30 @@ Every value that crosses the encrypted/clear boundary is gated by `FHE.checkSign
 | `CollisionDetector.setCollisionResult` | `FHE.checkSignatures` over (bool result) |
 | `ConfidentialUSDC.finalizeUnwrap` (inherited from OZ) | `FHE.checkSignatures` over (uint64 unwrapAmount) |
 
-### 3. Liveness — single-owner, with a permissionless escape hatch
+### 3. Liveness — fully permissionless reveal pipeline (v4) + announcement timelock (v5)
 
-`requestReveal` and `revealWinner` are the only `onlyOwner` chokepoint. To prevent an unresponsive owner from freezing user escrows indefinitely, anyone may call `forceCancelStuckReveal()` after `revealTimeout` (default 7 days, configurable 1–30 days) has elapsed since `requestReveal` — this transitions the tender to `Cancelled` so bidders can recover their escrow via `BidEscrow.refund`.
+Starting **v4** (May 2026) the entire reveal pipeline is permissionless and gated only by timelocks, removing the tender owner's unilateral power to time-manipulate evaluations:
 
-> **Recommended deployment:** the tender owner should be a multisig or a DAO module rather than a single EOA. The KMS layer guarantees privacy + integrity even if the owner is malicious; the timeout guarantees liveness even if the owner is absent.
+- `evaluateBatch(...)` — anyone can crank evaluation in batches once the bidding deadline has passed. The encrypted FHE.lt + FHE.select chain is invariant to caller.
+- `requestReveal()` — anyone can promote the running winner ciphertexts to publicly decryptable once `block.timestamp >= deadline + REVEAL_TIMELOCK` (60 s in this build, 7 days in production target).
+- `revealWinner(idx, price, addr, proof)` — anyone in possession of a valid KMS-signed decryption proof can finalize the reveal. The 9-of-13 threshold KMS attestation is the only security gate.
+
+Starting **v5** (May 2026) the reveal flow is split into two phases that mirror Türkiye's 4734 Sayılı Kamu İhale Kanunu Madde 41 distinction between *kararın kesinleşmesi* and *kamuya ilan*:
+
+| Phase | Function | Effect |
+|---|---|---|
+| Reveal | `revealWinner(idx, price, addr, proof)` | KMS-attested 3-handle tuple validated; `_pendingWinnerAddress` set; `revealed=true`; **public `winnerAddress` getter still returns `address(0)`** |
+| Announce | `announceWinner()` (permissionless after `revealedAt + ANNOUNCE_TIMELOCK`) or `ownerAnnounceEarly()` | `winnerAddress = _pendingWinnerAddress`; registry win recorded; winnerSink forwarded; `WinnerAnnounced` event emitted |
+
+`ANNOUNCE_TIMELOCK` is a constant — 60 seconds in this demo build, 48 hours in the production target (matching the public-notice window used by KIK procurement).
+
+**Escape hatch:** `forceCancelStuckReveal()` is still available after `revealTimeout` (1–30 days, default 7) has elapsed since `requestReveal` — transitions the tender to `Cancelled` so bidders can recover their escrows via `BidEscrow.claimRefund` (also permissionless after Cancelled).
+
+### 4. Disputes — 3-of-5 multi-sig court (v4)
+
+`DisputeManager.resolveDispute(...)` accepts calls from EITHER the contract owner (legacy path, useful for emergencies) OR `courtAuthority`, which v4 wires to the new `ArbitrationSafe` contract. ArbitrationSafe is a 3-of-5 N-of-M gate — three independent arbitrators (KIK seat + İdari Mahkeme seat + 2 sector representatives + 1 NGO seat) must agree on the (disputeId, resolution) tuple before any escrow gets slashed. Mirrors the commission-decision requirement in 4734 Madde 12.
+
+Production deployments should disown `DisputeManager` to the same `ArbitrationSafe` via `Ownable2Step.transferOwnership`, removing the owner backdoor and leaving multi-sig as the sole authority.
 
 ## Security
 
@@ -288,6 +307,37 @@ See [docs/06-security.md](docs/06-security.md) for the full internal audit log i
 | [08-deployment-guide](docs/08-deployment-guide.md) | Step-by-step Sepolia deployment |
 | [09-comparison](docs/09-comparison.md) | vs EKAP/TED/SAM.gov, vs commit-reveal/MPC/ZK/TEE |
 | [10-full-audit-report](docs/10-full-audit-report.md) | Self-audit with P0/P1/P2 fixes |
+
+## Roadmap (v5 → v∞)
+
+What we've shipped:
+
+- **v3** (April 2026) — base FHE pipeline, ERC-7984 wrapper, oracle-backed price escalation, full audit pass
+- **v4** (May 2026) — permissionless reveal pipeline, 3-of-5 ArbitrationSafe, governance hardening
+- **v5** (May 2026) — `eaddress` encrypted winner address, 3-handle KMS attestation, announcement timelock, user-side bid decryption, escalation-auth telemetry event
+
+What's next, in priority order:
+
+| Tier | Feature | Effort | Why |
+|---|---|---|---|
+| Quick | Multi-stage tendering (PreQual → Price → BAFO) | 2 weeks | Real Turkish KIK workflow; current single-round is a simplification |
+| Quick | Lot/category bundling + partial awards | 1.5 weeks | Most public RFPs have 5–10 lots, partial awards are standard |
+| Quick | Performance bond escrow (post-award milestone-locked, 5–10 % of contract) | 1 week | KIK KHK requirement; BidEscrow extension only |
+| Medium | Encrypted reputation scores w/ `delegateUserDecryption` | 1.5 weeks | Selective reveal to evaluators; uses v0.11.1 delegation API |
+| Medium | Merkle-root sealed bidder list (ZK proof of inclusion) | 2 weeks | Hides bidder identities until award; Noir/circom toolchain |
+| Medium | Sub-contractor encrypted disclosure (revealed to KIK only) | 1 week | Anti-collusion compliance; re-uses delegation flow |
+| Medium | Tournament-tree comparison (n→log n) | 1.5 weeks | Unlocks 50+ bidders within block budget |
+| Medium | ConfUSDC (ERC-7984) bid bonds | 1 week | Native confidential settlement; token contract already live |
+| Research | `FHE.randEuint` stochastic tie-breaking | 1 week | KIK allows it; underused FHE primitive |
+| Research | Cross-chain announcement (Mainnet) + bids (FHE chain) via CCIP | 2 weeks | Censorship resistance + discoverability |
+| Research | zk-VM proof of evaluation correctness (RISC0/SP1) | 4 weeks+ | Provable winner derivation; eliminates owner trust on batching |
+
+Production hardening that needs operator action (not contract changes):
+
+- Set tender owner to a multi-sig or DAO module (Ownable2Step)
+- Set `ANNOUNCE_TIMELOCK` to 48 hours and `REVEAL_TIMELOCK` to 7 days for mainnet
+- Disown `DisputeManager` to `ArbitrationSafe` so owner backdoor is removed
+- Whitelist Idare addresses via a future `IdareRegistry` contract gated by KIK
 
 ## License
 

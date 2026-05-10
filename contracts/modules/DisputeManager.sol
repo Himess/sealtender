@@ -128,10 +128,20 @@ contract DisputeManager is Ownable2Step, ReentrancyGuard {
 
     // --- Resolution ---
 
+    /// @notice Resolve a filed dispute. Callable by the contract `owner` (the
+    ///         deploying procurement entity, legacy path) OR by the configured
+    ///         `courtAuthority` (typically an N-of-M arbitration safe so a
+    ///         single party cannot unilaterally slash a contractor's escrow).
+    /// @dev Both paths active simultaneously for backward compatibility with
+    ///      v3 deployments. Production should disown via Ownable2Step transfer
+    ///      to the same arbitration safe and rely solely on courtAuthority.
     function resolveDispute(
         uint256 disputeId,
         DisputeStatus resolution
-    ) external onlyOwner nonReentrant {
+    ) external nonReentrant {
+        if (msg.sender != owner() && msg.sender != courtAuthority) {
+            revert NotCourtAuthority();
+        }
         if (disputeId >= disputeCount) revert InvalidDisputeId(disputeId);
         Dispute storage d = disputes[disputeId];
         if (

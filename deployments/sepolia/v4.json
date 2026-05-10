@@ -1,0 +1,43 @@
+{
+  "deployedAt": "2026-05-10T17:16:59.479Z",
+  "chain": "sepolia",
+  "chainId": 11155111,
+  "deployer": "0xF505e2E71df58D7244189072008f25f6b6aaE5ae",
+  "v3": {
+    "BidderRegistry": "0x2E8037626102ca3393ab9EfE7a3A254b30B236CA",
+    "BidEscrow": "0x76FBC67992459E972b80A88e11a5c15B0CFDBD11",
+    "PriceEscalation": "0x1CE25ee2D44aDCa3127AD3b3B9e0B6CBd598C012",
+    "DisputeManager": "0xEae392E045518CF78FF279Bf4129b9073eB3A5bb"
+  },
+  "v4": {
+    "TenderFactory": "0x7F6aBdc673557Df490DE7f1B007eceDeeAEb4061",
+    "ArbitrationSafe": "0x5ba5b091312958127618A87F17D6c6f6412DE45e"
+  },
+  "arbitrators": [
+    {
+      "seat": "sealtender::arbitrator::kik-seat",
+      "address": "0x71FE4bdc636bc1B35D0aB708924252CAf1a77a65"
+    },
+    {
+      "seat": "sealtender::arbitrator::idari-mahkeme",
+      "address": "0x041197AEF730FE908e7C2782eDE95A3679813B37"
+    },
+    {
+      "seat": "sealtender::arbitrator::sektor-1",
+      "address": "0x3711fCc48Cc0bd389E6015FD2844a901Cd7E7CDD"
+    },
+    {
+      "seat": "sealtender::arbitrator::sektor-2",
+      "address": "0x38dA37E68b7Eed819207da429e97707430202101"
+    },
+    {
+      "seat": "sealtender::arbitrator::stk",
+      "address": "0x1D7EC907181A1c1520a428B828cecfe019cd38C1"
+    }
+  ],
+  "notes": [
+    "v4 = governance hardening only. v3 contracts (registry/escrow/oracle/cUSDC/disputes) reused.",
+    "EncryptedTender_v4 bytecode is identical with v3 except for: REVEAL_TIMELOCK constant + permissionless evaluateBatch + permissionless requestReveal/revealWinner + new RevealTimelockNotElapsed error + PermissionlessRevealTriggered event.",
+    "ArbitrationSafe.THRESHOLD = 3 of 5. Resolution requires three independent arbitrator votes for the same (disputeId, resolution) tuple."
+  ]
+}

@@ -265,10 +265,13 @@ describe("EdgeCases", function () {
       expect(dispute.stake).to.equal(STAKE * 2n);
     });
 
-    it("should prevent non-owner from resolving dispute", async function () {
+    it("should prevent non-owner non-court from resolving dispute", async function () {
+      // v4 governance change: resolveDispute is now gated by `owner()` OR
+      // `courtAuthority` (the wired ArbitrationSafe). Non-owner non-court
+      // callers revert with NotCourtAuthority instead of Ownable's variant.
       await disputeManager.connect(alice).fileCitizenComplaint(0, bob.address, "R", { value: ethers.parseEther("0.001") });
       await expect(disputeManager.connect(alice).resolveDispute(0, 4))
-        .to.be.revertedWithCustomError(disputeManager, "OwnableUnauthorizedAccount");
+        .to.be.revertedWithCustomError(disputeManager, "NotCourtAuthority");
     });
 
     it("should prevent resolving already dismissed dispute", async function () {

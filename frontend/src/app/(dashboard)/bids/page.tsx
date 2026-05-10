@@ -299,13 +299,22 @@ export default function BidsPage() {
                         )}
                       </td>
                       <td className="px-5 py-[14px] text-right">
-                        <Link
-                          href={`/tenders/${tender.index}`}
-                          aria-label={`View details for tender #${tender.index}`}
-                          className="font-body text-[12px] text-[#00E87B] hover:text-[#00E87B]/80 transition-colors"
-                        >
-                          View &rarr;
-                        </Link>
+                        <div className="flex items-center justify-end gap-3">
+                          <Link
+                            href={`/bids/${tender.index}`}
+                            aria-label={`Reveal my bid for tender #${tender.index}`}
+                            className="font-body text-[12px] text-[#A855F7] hover:text-[#A855F7]/80 transition-colors"
+                          >
+                            Reveal My Bid &rarr;
+                          </Link>
+                          <Link
+                            href={`/tenders/${tender.index}`}
+                            aria-label={`View details for tender #${tender.index}`}
+                            className="font-body text-[12px] text-[#666666] hover:text-[#888888] transition-colors"
+                          >
+                            Tender
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   );

@@ -31,6 +31,12 @@ contract TenderFactory is Ownable2Step {
     event DisputeManagerSet(address indexed dm);
     event EscalationSet(address indexed esc);
     event CollisionDetectorSet(address indexed cd);
+    /// @notice Emitted when the best-effort `PriceEscalation.authorizeTender(tender)`
+    ///         call fails during {createTender}. Tender deploys regardless --
+    ///         the auto-forward path from tender.winnerSink simply won't work
+    ///         until the auth gap is patched. Operator should re-attempt
+    ///         authorization manually via `escalation.authorizeTender(...)`.
+    event EscalationAuthorizationFailed(address indexed tender, bytes returnData);
 
     // --- Errors ---
     error ZeroAddress();
@@ -83,12 +89,15 @@ contract TenderFactory is Ownable2Step {
         // `escalation.tenderManager` (post-deploy step) for this to succeed.
         // Authorize is best-effort — older deployments where `escalation` isn't
         // set or doesn't yet expose authorizeTender continue to work, just
-        // without the auto-forward.
+        // without the auto-forward. v5 fix: explicit event on failure so the
+        // operator sees the gap instead of "ok; // ignore" silent swallow.
         if (escalation != address(0)) {
-            (bool ok, ) = escalation.call(
+            (bool ok, bytes memory ret) = escalation.call(
                 abi.encodeWithSignature("authorizeTender(address)", tenderAddress)
             );
-            ok; // ignore — escalation may not have been upgraded yet
+            if (!ok) {
+                emit EscalationAuthorizationFailed(tenderAddress, ret);
+            }
         }
 
         emit TenderCreated(tenderId, tenderAddress, _config.description);

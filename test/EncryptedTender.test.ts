@@ -362,11 +362,15 @@ describe("EncryptedTender", function () {
       expect(await tender.evaluationComplete()).to.be.true;
     });
 
-    it("should not allow non-owner to evaluate", async function () {
+    it("permissionless: non-owner can crank evaluateBatch after deadline", async function () {
+      // Governance v4: evaluateBatch is intentionally permissionless after the
+      // bidding deadline. The encrypted FHE.lt + FHE.select chain is invariant
+      // to caller -- the running ciphertexts are guarded by FHE.allowThis ACL,
+      // so adversaries cannot read intermediate state even when they trigger it.
       await submitBidForSigner(alice, 50000n);
       await time.increase(86401);
       await expect(tender.connect(alice).evaluateBatch(0, 1))
-        .to.be.revertedWithCustomError(tender, "OwnableUnauthorizedAccount");
+        .to.emit(tender, "EvaluationBatchCompleted");
     });
 
     it("should revert evaluateBatch with batch too large", async function () {
@@ -615,6 +619,10 @@ describe("EncryptedTender", function () {
       await tender.evaluateBatch(0, 1);
       expect(await tender.evaluationComplete()).to.be.true;
 
+      // v4 governance change: requestReveal now requires the REVEAL_TIMELOCK
+      // (60 s in this build) to elapse after the bidding deadline.
+      await time.increase(61);
+
       // requestReveal calls FHE.makePubliclyDecryptable on derived handles.
       // In FHEVM mock, this may fail with ACL permission error.
       try {
@@ -639,6 +647,99 @@ describe("EncryptedTender", function () {
 
       await expect(tender.requestReveal())
         .to.be.revertedWithCustomError(tender, "EvaluationNotComplete");
+    });
+  });
+
+  describe("v4 governance: timelock + permissionless reveal", function () {
+    // Local submit helper, scoped to this describe (the one in evaluateBatch's
+    // describe block is not visible at this level).
+    async function submit(signer: HardhatEthersSigner, price: bigint) {
+      const addr = await tender.getAddress();
+      const encPrice = await fhevm.encryptUint(5, price, addr, signer.address);
+      const encYears = await fhevm.encryptUint(4, 5n, addr, signer.address);
+      const encProjects = await fhevm.encryptUint(4, 10n, addr, signer.address);
+      const encBond = await fhevm.encryptUint(5, 10000n, addr, signer.address);
+      await tender.connect(signer).submitBid(
+        encPrice.externalEuint, encPrice.inputProof,
+        encYears.externalEuint, encYears.inputProof,
+        encProjects.externalEuint, encProjects.inputProof,
+        encBond.externalEuint, encBond.inputProof
+      );
+    }
+
+    it("rejects requestReveal during the REVEAL_TIMELOCK window", async function () {
+      // Single bidder, drive evaluation to completion, then attempt reveal
+      // immediately (timelock not yet elapsed).
+      await submit(alice, 50000n);
+      await time.increase(86401);
+      await tender.evaluateBatch(0, 1);
+      expect(await tender.evaluationComplete()).to.be.true;
+
+      // Without time.increase past REVEAL_TIMELOCK (60 s) we expect a revert.
+      await expect(tender.requestReveal())
+        .to.be.revertedWithCustomError(tender, "RevealTimelockNotElapsed");
+    });
+
+    it("permissionless: any caller can crank requestReveal once timelock elapses", async function () {
+      const [, , , , , stranger] = await ethers.getSigners();
+
+      await submit(alice, 50000n);
+      await time.increase(86401);
+      await tender.evaluateBatch(0, 1);
+
+      // Skip past the 60 s timelock window.
+      await time.increase(61);
+
+      // Stranger (non-owner, non-bidder) calls requestReveal. In FHEVM mock the
+      // makePubliclyDecryptable call may revert on ACL; either branch is OK
+      // because both prove the *gate* (timelock + permissionless) is correct.
+      try {
+        const tx = await tender.connect(stranger).requestReveal();
+        await expect(tx).to.emit(tender, "PermissionlessRevealTriggered");
+      } catch (e: any) {
+        expect(e.message).to.satisfy((m: string) =>
+          m.includes("SenderNotAllowed") || m.includes("ACLNotAllowed")
+        );
+      }
+    });
+
+    it("REVEAL_TIMELOCK constant exposed and pinned to 60 s for this build", async function () {
+      expect(await tender.REVEAL_TIMELOCK()).to.equal(60n);
+    });
+  });
+
+  describe("v5 governance: eaddress winner + announce timelock", function () {
+    it("ANNOUNCE_TIMELOCK constant exposed and pinned to 60 s in this build", async function () {
+      expect(await tender.ANNOUNCE_TIMELOCK()).to.equal(60n);
+    });
+
+    it("winnerAddrHandle is bytes32(0) before requestReveal", async function () {
+      expect(await tender.winnerAddrHandle()).to.equal(ethers.ZeroHash);
+    });
+
+    it("announced flag is false before announceWinner", async function () {
+      expect(await tender.announced()).to.be.false;
+      expect(await tender.announcedAt()).to.equal(0n);
+    });
+
+    it("announceWinner reverts before winner is revealed", async function () {
+      await expect(tender.announceWinner())
+        .to.be.revertedWithCustomError(tender, "WinnerNotRevealed");
+    });
+
+    it("revealWinner accepts the new (idx, price, addr, proof) signature", async function () {
+      // Confirm ABI change: revealWinner now takes 4 args. Static call against
+      // unrevealed state will revert (revealRequestedAt=0, "Reveal not requested")
+      // but the call SHAPE is what we want to verify here.
+      const fakeProof = "0x" + "00".repeat(32);
+      await expect(
+        tender.revealWinner(0, 0, ethers.ZeroAddress, fakeProof)
+      ).to.be.reverted;
+    });
+
+    it("ownerAnnounceEarly reverts before reveal even from owner", async function () {
+      await expect(tender.ownerAnnounceEarly())
+        .to.be.revertedWithCustomError(tender, "WinnerNotRevealed");
     });
   });
 });

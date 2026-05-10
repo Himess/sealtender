@@ -220,6 +220,12 @@ describe("Integration", function () {
       expect(await tender.evaluatedCount()).to.equal(3);
       expect(await tender.state()).to.equal(2); // Evaluating
 
+      // v4 governance change: requestReveal requires REVEAL_TIMELOCK (60 s)
+      // to elapse after the bidding deadline before any caller -- including
+      // the owner -- can promote handles to publicly decryptable. Skip
+      // forward to clear the gate.
+      await time.increase(61);
+
       // Request reveal — this triggers FHE decryption request.
       // In FHEVM mock, makePubliclyDecryptable on FHE.select-derived handles
       // may fail with ACL permission error.

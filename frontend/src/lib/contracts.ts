@@ -2,23 +2,34 @@
 // SealTender Contract Addresses, ABIs, Types
 // ============================================================================
 
-// Sepolia v3 deployment (B-L6 + B-M5 + frontend audit fix-up, April 2026).
-// Sourcify-verified at https://repo.sourcify.dev/contracts/full_match/11155111/<address>/
+// Sepolia v4 deployment (governance hardening, May 2026).
 //
-// What changed vs v2:
-//   • BidEscrow — adds claimRefund(tenderId), tenderOf mapping, setTenderAddress
-//   • PriceEscalation — adds tenderManager + authorizedTenders, broader
-//     setTenderWinner auth so winnerSink auto-forwards from EncryptedTender
-//   • TenderFactory — wires new BidEscrow.setTenderAddress + escalation auth
-//   • DisputeManager — redeployed against new BidEscrow address
+// What changed vs v3:
+//   • TenderFactory_v4 — produces EncryptedTender_v4 with REVEAL_TIMELOCK (60 s
+//     in this build, 7 days in production target) + permissionless
+//     evaluateBatch / requestReveal / revealWinner. Removes tender owner's
+//     unilateral power to time-manipulate the reveal.
+//   • ArbitrationSafe — new 3-of-5 N-of-M dispute resolution gate (Kamu
+//     Ihale Kurumu + Idari Mahkeme + 2 sector reps + 1 NGO seat) wired as
+//     DisputeManager.courtAuthority. Replaces "owner unilaterally slashes
+//     escrow" with quorum voting.
+//
+// All other v3 contracts (BidderRegistry, BidEscrow, ConfidentialUSDC,
+// PriceEscalation, CollisionDetector, DisputeManager) are reused unchanged --
+// v4 is a delta upgrade, not a full redeploy. v3 contracts at the addresses
+// below remain Sourcify-verified at
+// https://repo.sourcify.dev/contracts/full_match/11155111/<address>/
 export const ADDRESSES = {
   BidderRegistry: "0x2E8037626102ca3393ab9EfE7a3A254b30B236CA" as const,
   BidEscrow: "0x76FBC67992459E972b80A88e11a5c15B0CFDBD11" as const,
   ConfidentialUSDC: "0xCe493fFaBf3763df8057E58c22a6dC6a65806553" as const,
   PriceEscalation: "0x1CE25ee2D44aDCa3127AD3b3B9e0B6CBd598C012" as const,
   CollisionDetector: "0x3e8c0eDC536bce66ba8ef161eC40E7fA39d38Aee" as const,
-  TenderFactory: "0x617C5414f0b9e2a2c7850d81068FC50138b5c96f" as const,
+  // v4 new (replaces v3 0x617C5414...96f)
+  TenderFactory: "0x7F6aBdc673557Df490DE7f1B007eceDeeAEb4061" as const,
   DisputeManager: "0xEae392E045518CF78FF279Bf4129b9073eB3A5bb" as const,
+  // v4 governance gate (new, no v3 equivalent)
+  ArbitrationSafe: "0x5ba5b091312958127618A87F17D6c6f6412DE45e" as const,
 } as const;
 
 /// External integrations bound at deploy time
