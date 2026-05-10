@@ -1,11 +1,16 @@
 "use client";
 
+// /web is the proper ESM build with WASM bundled. /bundle is the CDN-shim
+// that re-exports from `window.relayerSDK` and only works after a UMD
+// <script> tag has loaded — without that tag every export is undefined,
+// which is why submitBid was failing with "Cannot read properties of
+// undefined (reading 'initSDK')". /web has zero global dependency.
 import {
   initSDK,
   createInstance,
   SepoliaConfig,
   type FhevmInstance,
-} from "@zama-fhe/relayer-sdk/bundle";
+} from "@zama-fhe/relayer-sdk/web";
 
 let instance: FhevmInstance | null = null;
 let initPromise: Promise<FhevmInstance> | null = null;
