@@ -1,0 +1,1355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>SealTender — FHE-Encrypted Sealed-Bid Procurement</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Caveat:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --bg-elev: #ffffff;
+    --fg: #0e0e10;
+    --fg-dim: #4b4b52;
+    --fg-faint: #8a8a92;
+    --accent: #b8860b;
+    --accent-soft: #fff4d1;
+    --mint: #059669;
+    --red: #dc2626;
+    --border: #e5e5e2;
+    --border-strong: #d4d4d0;
+    --code-bg: #f1f1ee;
+    --blue: #2563eb;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #ececea;
+    color: var(--fg);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+  .slide {
+    width: 1920px; height: 1080px;
+    position: relative; overflow: hidden;
+    background: var(--bg); color: var(--fg);
+    padding: 60px 70px;
+    margin: 24px auto;
+    box-shadow: 0 0 0 1px var(--border), 0 30px 80px rgba(0,0,0,0.12);
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .hand { font-family: 'Caveat', cursive; }
+  .kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--fg-faint); font-weight: 500;
+  }
+  .headline-tight { letter-spacing: -0.02em; line-height: 1.05; }
+  .card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 8px; padding: 24px;
+  }
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+    background-size: 80px 80px;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 14px 22px; border: 1px solid var(--border);
+    background: var(--bg-elev); border-radius: 999px;
+    font-family: 'JetBrains Mono', monospace; font-size: 22px; color: var(--fg-dim);
+  }
+  .chip-sm {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border: 1px solid var(--border);
+    background: var(--bg-elev); border-radius: 999px;
+    font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--fg-dim);
+  }
+  .num-badge {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--accent); color: #fff; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 16px;
+  }
+  .num-badge.lg { width: 56px; height: 56px; font-size: 22px; }
+  .check { color: var(--mint); font-family: 'JetBrains Mono', monospace; font-weight: 600; margin-right: 14px; }
+  .cross { color: var(--red); font-family: 'JetBrains Mono', monospace; font-weight: 600; margin-right: 14px; }
+  .pulse-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--mint); box-shadow: 0 0 0 4px rgba(5,150,105,0.15);
+    display: inline-block; animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(5,150,105,0.15); }
+    50%      { box-shadow: 0 0 0 8px rgba(5,150,105,0.05); }
+  }
+
+  /* Hand-drawn stroke style for SVGs */
+  .stroke { fill: none; stroke: var(--fg); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .stroke-dim { fill: none; stroke: var(--fg-dim); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .stroke-accent { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .stroke-mint { fill: none; stroke: var(--mint); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .stroke-red { fill: none; stroke: var(--red); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .fill-accent { fill: var(--accent); }
+  .fill-bg { fill: var(--bg-elev); }
+  .fill-soft { fill: var(--accent-soft); }
+  .svg-label { font-family: 'JetBrains Mono', monospace; font-size: 14px; fill: var(--fg-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+  .svg-cap { font-family: 'JetBrains Mono', monospace; font-size: 12px; fill: var(--fg-faint); letter-spacing: 0.08em; text-transform: uppercase; }
+  .svg-hand { font-family: 'Caveat', cursive; font-size: 28px; fill: var(--fg); }
+
+  /* Present mode */
+  body.present { background: #000; overflow: hidden; }
+  body.present .slide {
+    display: none; margin: 0; box-shadow: none;
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(var(--present-scale, 1));
+    transform-origin: center center;
+  }
+  body.present .slide.is-current { display: block; }
+
+  #slide-indicator {
+    position: fixed; bottom: 14px; right: 14px;
+    background: rgba(0,0,0,0.6); color: #fff;
+    padding: 6px 12px; border-radius: 999px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    z-index: 9999; backdrop-filter: blur(6px);
+  }
+  #slide-help {
+    position: fixed; top: 14px; right: 14px;
+    background: rgba(0,0,0,0.6); color: #fff;
+    padding: 6px 12px; border-radius: 999px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    z-index: 9999; backdrop-filter: blur(6px); opacity: 0.7;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- 01 — TITLE                                                  -->
+<!-- ============================================================ -->
+<section class="slide grid-bg" data-screen-label="01 Title">
+  <div class="h-full w-full flex flex-col">
+    <div class="flex-1"></div>
+    <div class="kicker">ZAMA DEVELOPER PROGRAM S2 · SKILLS + DAPP TRACK</div>
+    <h1 class="headline-tight font-bold mt-6" style="font-size:168px;">SEALTENDER</h1>
+    <div class="italic mt-6" style="font-size:42px;font-weight:500;color:var(--accent);letter-spacing:-0.01em;">
+      FHE-Encrypted Sealed-Bid Procurement.
+    </div>
+    <div class="mt-10" style="max-width:1500px;font-size:30px;line-height:1.45;color:var(--fg-dim);">
+      Sealed envelopes for public procurement, on the world computer.
+    </div>
+    <div class="flex-1"></div>
+    <div>
+      <div class="kicker mb-4">RUNTIME · STACK · STATUS:</div>
+      <div class="flex items-center flex-wrap" style="gap:16px;">
+        <div class="chip"><span class="pulse-dot"></span> Sepolia · live</div>
+        <div class="chip">Zama fhEVM</div>
+        <div class="chip">Solidity 0.8.27</div>
+        <div class="chip"><span style="color:var(--mint);">✓</span> 329 / 329 tests</div>
+        <div class="chip">11 contracts</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 02 — THE STAKES                                              -->
+<!-- ============================================================ -->
+<section class="slide" data-screen-label="02 The Stakes">
+  <div class="h-full w-full flex flex-col">
+    <div class="kicker">THE STAKES</div>
+    <h2 class="headline-tight font-bold mt-4" style="font-size:64px;max-width:1700px;">
+      Public procurement is where your tax money meets contractors.
+    </h2>
+
+    <!-- Hero number row -->
+    <div class="flex mt-10" style="gap:0;border:1px solid var(--border);border-radius:8px;background:var(--bg-elev);overflow:hidden;">
+      <div class="flex-1 text-center" style="padding:28px 0;border-right:1px solid var(--border);">
+        <div class="font-bold mono" style="font-size:78px;line-height:1;color:var(--accent);">15–30%</div>
+        <div class="mono mt-3" style="font-size:13px;color:var(--fg-faint);letter-spacing:0.08em;">GDP · PUBLIC SPENDING</div>
+      </div>
+      <div class="flex-1 text-center" style="padding:28px 0;border-right:1px solid var(--border);">
+        <div class="font-bold mono" style="font-size:78px;line-height:1;color:var(--accent);">₺1T+</div>
+        <div class="mono mt-3" style="font-size:13px;color:var(--fg-faint);letter-spacing:0.08em;">TENDER VOLUME / YR (KIK 2023)</div>
+      </div>
+      <div class="flex-1 text-center" style="padding:28px 0;">
+        <div class="font-bold mono" style="font-size:78px;line-height:1;color:var(--accent);">3–5%</div>
+        <div class="mono mt-3" style="font-size:13px;color:var(--fg-faint);letter-spacing:0.08em;">LOST TO BID LEAKAGE · ~$400–600B / YR</div>
+      </div>
+    </div>
+
+    <!-- 3 story cards -->
+    <div class="flex mt-8" style="gap:18px;flex:1;min-height:0;">
+      <div class="card flex-1 flex flex-col" style="gap:12px;">
+        <div class="kicker" style="color:var(--accent);">TÜRKIYE</div>
+        <div style="font-size:19px;line-height:1.55;color:var(--fg-dim);">
+          KIK 4734 sayılı Kanun Madde 36 says bidder names are
+          <span class="mono" style="color:var(--fg);">"only known by the procurement commission."</span>
+          Commission staff are human. Leaks recur in audit reports. The legal property has never been enforced cryptographically.
+        </div>
+      </div>
+      <div class="card flex-1 flex flex-col" style="gap:12px;">
+        <div class="kicker" style="color:var(--accent);">GLOBAL</div>
+        <div style="font-size:19px;line-height:1.55;color:var(--fg-dim);">
+          World Bank and OECD anti-bribery surveys repeatedly cite bid-rigging in 15–20% of audited public-procurement files across developing economies, with cartels typically inflating winning prices 15–30%.
+        </div>
+      </div>
+      <div class="card flex-1 flex flex-col" style="gap:12px;">
+        <div class="kicker" style="color:var(--accent);">IMPACT</div>
+        <div style="font-size:19px;line-height:1.55;color:var(--fg-dim);">
+          When over-charging is structural, what gets cut is concrete, rebar, oversight.
+          <span style="color:var(--fg);font-weight:500;">Bid-rigging is not abstract — it shows up in the physical world long after the tender closes.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 italic" style="border-left:3px solid var(--accent);padding:8px 0 8px 24px;font-size:26px;line-height:1.45;color:var(--fg);max-width:1700px;">
+      This is not a software bug. It is a 200-year structural assumption that humans in the middle won't peek.
+      <span style="color:var(--accent);font-weight:600;">They do.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 03 — THE PARADOX                                             -->
+<!-- ============================================================ -->
+<section class="slide" data-screen-label="03 The Paradox">
+  <div class="h-full w-full flex flex-col">
+    <div class="kicker">THE PARADOX</div>
+    <h2 class="headline-tight font-bold mt-4" style="font-size:60px;max-width:1700px;">
+      Open tenders leak prices. Sealed tenders trust the operator.
+    </h2>
+
+    <!-- Hero SVG -->
+    <div class="mt-10" style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;">
+      <svg viewBox="0 0 1700 500" style="width:100%;height:100%;max-height:500px;" xmlns="http://www.w3.org/2000/svg">
+        <!-- LEFT panel: OPEN BID -->
+        <g transform="translate(40,40)">
+          <text x="0" y="0" class="svg-label" style="font-size:18px;fill:var(--accent);">OPEN BID</text>
+
+          <!-- Glass tender box -->
+          <rect x="0" y="40" width="500" height="280" rx="8" class="stroke" />
+          <rect x="0" y="40" width="500" height="280" rx="8" fill="rgba(184,134,11,0.04)" />
+
+          <!-- bid amounts visible inside -->
+          <g font-family="JetBrains Mono, monospace" font-size="22" fill="var(--fg)">
+            <text x="40"  y="100">₺ 1,240,000</text>
+            <text x="40"  y="150">₺ 1,180,000</text>
+            <text x="40"  y="200">₺ 1,310,000</text>
+            <text x="40"  y="250">₺ 1,205,000</text>
+            <text x="40"  y="300">₺ 1,275,000</text>
+          </g>
+          <!-- eye glyph -->
+          <g transform="translate(360,170)">
+            <path d="M -50 0 Q 0 -40 50 0 Q 0 40 -50 0 Z" class="stroke-red" />
+            <circle cx="0" cy="0" r="14" class="stroke-red" />
+            <circle cx="0" cy="0" r="6" fill="var(--red)" />
+          </g>
+
+          <!-- stick figures (cartel) -->
+          <g transform="translate(120,360)" class="stroke" stroke-width="2.4">
+            <!-- 4 figures -->
+            <g><circle cx="0" cy="0" r="10" /><line x1="0" y1="10" x2="0" y2="40"/><line x1="-14" y1="20" x2="14" y2="20"/><line x1="0" y1="40" x2="-12" y2="62"/><line x1="0" y1="40" x2="12" y2="62"/></g>
+            <g transform="translate(70,0)"><circle cx="0" cy="0" r="10" /><line x1="0" y1="10" x2="0" y2="40"/><line x1="-14" y1="20" x2="14" y2="20"/><line x1="0" y1="40" x2="-12" y2="62"/><line x1="0" y1="40" x2="12" y2="62"/></g>
+            <g transform="translate(140,0)"><circle cx="0" cy="0" r="10" /><line x1="0" y1="10" x2="0" y2="40"/><line x1="-14" y1="20" x2="14" y2="20"/><line x1="0" y1="40" x2="-12" y2="62"/><line x1="0" y1="40" x2="12" y2="62"/></g>
+            <g transform="translate(210,0)"><circle cx="0" cy="0" r="10" /><line x1="0" y1="10" x2="0" y2="40"/><line x1="-14" y1="20" x2="14" y2="20"/><line x1="0" y1="40" x2="-12" y2="62"/><line x1="0" y1="40" x2="12" y2="62"/></g>
+            <!-- coordination lines -->
+            <path d="M 0 -8 Q 105 -50 210 -8" class="stroke-red" stroke-dasharray="5,5" />
+          </g>
+          <text x="350" y="380" class="svg-cap" style="fill:var(--red);">CARTEL</text>
+
+          <text x="0" y="450" class="svg-cap">EVERYONE SEES MAX PRICE · CARTELS COORDINATE</text>
+        </g>
+
+        <!-- CENTER divider -->
+        <g transform="translate(700,250)">
+          <line x1="-50" y1="-100" x2="-50" y2="100" class="stroke-dim" stroke-dasharray="4,6" />
+          <text x="0" y="10" font-family="Inter, sans-serif" font-size="64" font-weight="700" fill="var(--accent)" text-anchor="middle">OR</text>
+          <line x1="50" y1="-100" x2="50" y2="100" class="stroke-dim" stroke-dasharray="4,6" />
+        </g>
+
+        <!-- RIGHT panel: SEALED BID -->
+        <g transform="translate(820,40)">
+          <text x="0" y="0" class="svg-label" style="font-size:18px;fill:var(--accent);">SEALED BID</text>
+
+          <!-- envelope -->
+          <g transform="translate(50,80)">
+            <rect x="0" y="0" width="380" height="240" rx="6" class="stroke fill-bg" />
+            <path d="M 0 0 L 190 130 L 380 0" class="stroke" />
+            <!-- wax seal -->
+            <circle cx="190" cy="120" r="34" fill="var(--red)" opacity="0.85"/>
+            <circle cx="190" cy="120" r="34" class="stroke" stroke="var(--fg)" stroke-width="2" fill="none"/>
+            <text x="190" y="128" font-family="Caveat, cursive" font-size="28" fill="#fff" text-anchor="middle" font-weight="600">seal</text>
+          </g>
+
+          <!-- hand reaching in -->
+          <g transform="translate(450,40)">
+            <path d="M 0 0 L 10 80 L 30 90 L 50 80 L 70 90 L 90 70 L 80 30 L 60 0" class="stroke" stroke-width="2.4"/>
+            <line x1="40" y1="-30" x2="40" y2="0" class="stroke-dim" stroke-dasharray="3,4"/>
+          </g>
+          <text x="500" y="20" class="svg-cap">OPERATOR</text>
+
+          <!-- watching eye -->
+          <g transform="translate(620,80)">
+            <path d="M -40 0 Q 0 -30 40 0 Q 0 30 -40 0 Z" class="stroke-red" />
+            <circle cx="0" cy="0" r="12" class="stroke-red"/>
+            <circle cx="0" cy="0" r="5" fill="var(--red)"/>
+          </g>
+
+          <text x="0" y="450" class="svg-cap">OPERATOR CAN STALL · LEAK · SELECTIVELY REVEAL</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Explanation -->
+    <div class="mt-8" style="font-size:22px;line-height:1.55;color:var(--fg-dim);max-width:1700px;">
+      Cryptography has tried to fix this. Commit-reveal needs a reveal phase that can stall. MPC needs every bidder online for the ceremony. TEE needs hardware vendors you have to trust.
+      <span style="color:var(--fg);">Each solution adds a new trust point.</span>
+    </div>
+    <div class="mt-6" style="border-top:1px solid var(--border);padding-top:18px;font-size:34px;font-weight:700;color:var(--accent);letter-spacing:-0.01em;">
+      FHE is the first PRACTICAL primitive that gives privacy AND transparency together.
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 04 — THE TRANSLATION                                         -->
+<!-- ============================================================ -->
+<section class="slide" data-screen-label="04 The Translation">
+  <div class="h-full w-full flex flex-col">
+    <div class="kicker">THE TRANSLATION</div>
+    <h2 class="headline-tight font-bold mt-4" style="font-size:54px;">
+      Sealed envelopes are 200 years of fair procurement.
+    </h2>
+    <div class="italic mt-2" style="font-size:30px;color:var(--fg-dim);font-weight:500;letter-spacing:-0.01em;">
+      SealTender puts them on the world computer.
+    </div>
+
+    <!-- Hero SVG -->
+    <div class="mt-10" style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;">
+      <svg viewBox="0 0 1700 650" style="width:100%;height:100%;max-height:660px;" xmlns="http://www.w3.org/2000/svg">
+
+        <!-- STAGE 1 — PHYSICAL -->
+        <g transform="translate(40,140)">
+          <text x="180" y="-20" class="svg-cap" text-anchor="middle">TENDER OFFER · PHYSICAL · 1820–2025</text>
+          <!-- envelope flat -->
+          <rect x="20" y="60" width="360" height="220" rx="6" class="stroke fill-bg" />
+          <path d="M 20 60 L 200 200 L 380 60" class="stroke" />
+          <!-- red wax seal -->
+          <circle cx="200" cy="190" r="32" fill="var(--red)" opacity="0.9"/>
+          <circle cx="200" cy="190" r="32" stroke="var(--fg)" stroke-width="1.6" fill="none"/>
+          <path d="M 188 188 L 196 196 L 212 178" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- subtle aging marks -->
+          <line x1="40"  y1="290" x2="80"  y2="295" class="stroke-dim" stroke-width="1"/>
+          <line x1="320" y1="290" x2="360" y2="294" class="stroke-dim" stroke-width="1"/>
+        </g>
+
+        <!-- ARROW 1 -->
+        <g transform="translate(440,260)">
+          <text x="80" y="-10" class="svg-cap" text-anchor="middle">MIGRATE</text>
+          <line x1="0" y1="20" x2="160" y2="20" class="stroke-accent" stroke-dasharray="8,8"/>
+          <path d="M 150 8 L 165 20 L 150 32" class="stroke-accent"/>
+        </g>
+
+        <!-- STAGE 2 — ETHEREUM -->
+        <g transform="translate(620,120)">
+          <text x="180" y="0" class="svg-cap" text-anchor="middle">ETHEREUM · WORLD COMPUTER</text>
+          <!-- node mesh background -->
+          <g class="stroke-dim" stroke-width="1" opacity="0.6">
+            <line x1="40" y1="60" x2="160" y2="120"/>
+            <line x1="160" y1="120" x2="280" y2="80"/>
+            <line x1="280" y1="80" x2="320" y2="180"/>
+            <line x1="320" y1="180" x2="220" y2="240"/>
+            <line x1="220" y1="240" x2="80" y2="200"/>
+            <line x1="80" y1="200" x2="40" y2="60"/>
+            <line x1="160" y1="120" x2="220" y2="240"/>
+            <line x1="280" y1="80" x2="80" y2="200"/>
+          </g>
+          <g fill="var(--fg-faint)">
+            <circle cx="40" cy="60" r="4"/>
+            <circle cx="160" cy="120" r="4"/>
+            <circle cx="280" cy="80" r="4"/>
+            <circle cx="320" cy="180" r="4"/>
+            <circle cx="220" cy="240" r="4"/>
+            <circle cx="80" cy="200" r="4"/>
+          </g>
+          <!-- ethereum diamond (canonical) — upper and lower halves meet at y=45 waist -->
+          <g transform="translate(180,200)">
+            <path d="M 0 -100 L 70 45 L 0 5 L -70 45 Z" class="stroke fill-bg" stroke-width="2.6" stroke-linejoin="round"/>
+            <path d="M 0 100 L 70 45 L 0 5 L -70 45 Z" class="stroke" stroke-width="2.6" fill="var(--accent-soft)" stroke-linejoin="round"/>
+            <line x1="-70" y1="45" x2="70" y2="45" class="stroke-dim" stroke-width="0.8" stroke-dasharray="2,3"/>
+          </g>
+        </g>
+
+        <!-- ARROW 2 -->
+        <g transform="translate(1060,260)">
+          <text x="80" y="-10" class="svg-cap" text-anchor="middle">SEAL WITH FHE</text>
+          <line x1="0" y1="20" x2="160" y2="20" class="stroke-accent" stroke-dasharray="8,8"/>
+          <path d="M 150 8 L 165 20 L 150 32" class="stroke-accent"/>
+        </g>
+
+        <!-- STAGE 3 — ON-CHAIN ENCRYPTED -->
+        <g transform="translate(1240,120)">
+          <text x="200" y="0" class="svg-cap" text-anchor="middle">ON CHAIN · ENCRYPTED · EVALUATED · PUBLIC</text>
+          <!-- 3 envelopes inside translucent cubes -->
+          <g transform="translate(20,40)">
+            <!-- back envelope -->
+            <g transform="translate(80,40)" opacity="0.55">
+              <rect x="0" y="0" width="240" height="160" rx="4" stroke="var(--fg-dim)" stroke-width="1.6" fill="var(--bg-elev)"/>
+              <path d="M 0 0 L 120 90 L 240 0" stroke="var(--fg-dim)" stroke-width="1.6" fill="none"/>
+            </g>
+            <!-- middle envelope -->
+            <g transform="translate(40,80)" opacity="0.78">
+              <rect x="0" y="0" width="240" height="160" rx="4" stroke="var(--fg-dim)" stroke-width="1.8" fill="var(--bg-elev)"/>
+              <path d="M 0 0 L 120 90 L 240 0" stroke="var(--fg-dim)" stroke-width="1.8" fill="none"/>
+            </g>
+            <!-- front envelope inside cube -->
+            <g transform="translate(0,120)">
+              <!-- cube outline -->
+              <path d="M -10 -10 L 250 -10 L 250 175 L -10 175 Z" class="stroke-accent" stroke-dasharray="3,4"/>
+              <text x="120" y="-22" class="svg-cap" text-anchor="middle" style="fill:var(--accent);">FHE CIPHERTEXT</text>
+              <rect x="0" y="0" width="240" height="160" rx="4" class="stroke fill-bg"/>
+              <path d="M 0 0 L 120 90 L 240 0" class="stroke"/>
+              <!-- padlock overlay -->
+              <g transform="translate(120,90)">
+                <rect x="-22" y="-6" width="44" height="36" rx="4" class="stroke fill-bg" stroke-width="2.4"/>
+                <path d="M -14 -6 L -14 -22 Q -14 -36 0 -36 Q 14 -36 14 -22 L 14 -6" class="stroke" stroke-width="2.4"/>
+                <circle cx="0" cy="12" r="3.5" fill="var(--fg)"/>
+              </g>
+            </g>
+          </g>
+        </g>
+      </svg>
+    </div>
+
+    <div class="mt-6 italic text-center" style="font-size:28px;color:var(--fg);font-weight:500;letter-spacing:-0.01em;">
+      Bids never leave their envelopes. The chain compares them blind.
+      <span style="color:var(--accent);">Only the winning number is announced. Losing bids stay sealed by default — public auditability is opt-in.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 05 — THE FHE PRIMITIVE                                       -->
+<!-- ============================================================ -->
+<section class="slide" data-screen-label="05 FHE Primitive">
+  <div class="h-full w-full flex flex-col">
+    <div class="kicker">THE FHE PRIMITIVE</div>
+    <h2 class="headline-tight font-bold mt-4" style="font-size:54px;max-width:1700px;">
+      Compute on ciphertext. Decrypt only the result. With a quorum.
+    </h2>
+
+    <!-- Hero SVG -->
+    <div class="mt-8 card" style="padding:30px;">
+      <svg viewBox="0 0 1700 320" style="width:100%;height:auto;" xmlns="http://www.w3.org/2000/svg">
+        <!-- Bidder -->
+        <g transform="translate(40,80)">
+          <circle cx="40" cy="40" r="22" class="stroke fill-bg"/>
+          <path d="M 0 130 Q 40 80 80 130 L 80 160 L 0 160 Z" class="stroke fill-bg"/>
+          <text x="40" y="200" class="svg-cap" text-anchor="middle">BIDDER</text>
+        </g>
+        <!-- arrow -->
+        <g transform="translate(140,160)"><line x1="0" y1="0" x2="60" y2="0" class="stroke-accent"/><path d="M 50 -8 L 65 0 L 50 8" class="stroke-accent"/></g>
+
+        <!-- Encrypt box (FHE chip) -->
+        <g transform="translate(220,80)">
+          <rect x="0" y="20" width="180" height="140" rx="6" class="stroke fill-bg"/>
+          <text x="90" y="50" class="svg-label" text-anchor="middle">ENCRYPT</text>
+          <!-- chip -->
+          <g transform="translate(50,75)">
+            <rect x="0" y="0" width="80" height="60" rx="4" class="stroke" fill="var(--accent-soft)"/>
+            <text x="40" y="36" font-family="JetBrains Mono, monospace" font-size="14" text-anchor="middle" fill="var(--fg)">FHE</text>
+            <!-- pins -->
+            <g class="stroke" stroke-width="1.6">
+              <line x1="-8" y1="12" x2="0" y2="12"/><line x1="-8" y1="30" x2="0" y2="30"/><line x1="-8" y1="48" x2="0" y2="48"/>
+              <line x1="80" y1="12" x2="88" y2="12"/><line x1="80" y1="30" x2="88" y2="30"/><line x1="80" y1="48" x2="88" y2="48"/>
+            </g>
+          </g>
+          <text x="90" y="200" class="svg-cap" text-anchor="middle">CLIENT-SIDE</text>
+        </g>
+        <!-- arrow -->
+        <g transform="translate(420,160)"><line x1="0" y1="0" x2="60" y2="0" class="stroke-accent"/><path d="M 50 -8 L 65 0 L 50 8" class="stroke-accent"/></g>
+
+        <!-- locked-padlock ciphertext -->
+        <g transform="translate(500,90)">
+          <rect x="0" y="0" width="160" height="140" rx="6" class="stroke fill-soft"/>
+          <text x="80" y="56" font-family="JetBrains Mono, monospace" font-size="22" text-anchor="middle" fill="var(--fg)">1,240,000</text>
+          <!-- padlock -->
+          <g transform="translate(80,90)">
+            <rect x="-18" y="-4" width="36" height="28" rx="3" class="stroke fill-bg" stroke-width="2"/>
+            <path d="M -10 -4 L -10 -16 Q -10 -28 0 -28 Q 10 -28 10 -16 L 10 -4" class="stroke" stroke-width="2"/>
+          </g>
+          <text x="80" y="170" class="svg-cap" text-anchor="middle">CIPHERTEXT</text>
+        </g>
+        <!-- arrow -->
+        <g transform="translate(680,160)"><line x1="0" y1="0" x2="60" y2="0" class="stroke-accent"/><path d="M 50 -8 L 65 0 L 50 8" class="stroke-accent"/></g>
+
+        <!-- on-chain box -->
+        <g transform="translate(760,60)">
+          <rect x="0" y="20" width="280" height="200" rx="6" class="stroke fill-bg"/>
+          <text x="140" y="50" class="svg-label" text-anchor="middle">ON-CHAIN EVALUATE</text>
+          <!-- 3 padlock numbers -->
+          <g font-family="JetBrains Mono, monospace" font-size="14" fill="var(--fg)">
+            <g transform="translate(30,80)"><rect x="0" y="0" width="68" height="22" class="stroke fill-soft"/><text x="34" y="15" text-anchor="middle">1.24M</text><circle cx="76" cy="11" r="4" class="stroke" stroke-width="1.4"/></g>
+            <g transform="translate(110,80)"><rect x="0" y="0" width="68" height="22" class="stroke fill-soft"/><text x="34" y="15" text-anchor="middle">1.18M</text><circle cx="76" cy="11" r="4" class="stroke" stroke-width="1.4"/></g>
+            <g transform="translate(190,80)"><rect x="0" y="0" width="68" height="22" class="stroke fill-soft"/><text x="34" y="15" text-anchor="middle">1.31M</text></g>
+          </g>
+          <text x="140" y="135" font-family="JetBrains Mono, monospace" font-size="20" text-anchor="middle" fill="var(--accent)" font-weight="600">FHE.lt + FHE.select</text>
+          <text x="140" y="165" font-family="JetBrains Mono, monospace" font-size="13" text-anchor="middle" fill="var(--fg-dim)">→ min(ciphertext)</text>
+          <text x="140" y="240" class="svg-cap" text-anchor="middle">~700K GAS / SUBMITBID</text>
+        </g>
+        <!-- arrow -->
+        <g transform="translate(1060,160)"><line x1="0" y1="0" x2="60" y2="0" class="stroke-accent"/><path d="M 50 -8 L 65 0 L 50 8" class="stroke-accent"/></g>
+
+        <!-- KMS quorum: 13 circles, 9 filled -->
+        <g transform="translate(1140,70)">
+          <text x="80" y="0" class="svg-label" text-anchor="middle">KMS QUORUM</text>
+          <g>
+            <!-- row 1 (7) -->
+            <g>
+              <circle cx="10"  cy="40" r="14" class="fill-accent"/>
+              <circle cx="42"  cy="40" r="14" class="fill-accent"/>
+              <circle cx="74"  cy="40" r="14" class="fill-accent"/>
+              <circle cx="106" cy="40" r="14" class="fill-accent"/>
+              <circle cx="138" cy="40" r="14" class="fill-accent"/>
+              <circle cx="10"  cy="40" r="14" class="stroke"/>
+              <circle cx="42"  cy="40" r="14" class="stroke"/>
+              <circle cx="74"  cy="40" r="14" class="stroke"/>
+              <circle cx="106" cy="40" r="14" class="stroke"/>
+              <circle cx="138" cy="40" r="14" class="stroke"/>
+              <circle cx="170" cy="40" r="14" class="stroke fill-bg"/>
+              <circle cx="202" cy="40" r="14" class="stroke fill-bg"/>
+            </g>
+            <!-- row 2 (6) -->
+            <g>
+              <circle cx="26"  cy="80" r="14" class="fill-accent"/>
+              <circle cx="58"  cy="80" r="14" class="fill-accent"/>
+              <circle cx="90"  cy="80" r="14" class="fill-accent"/>
+              <circle cx="122" cy="80" r="14" class="fill-accent"/>
+              <circle cx="26"  cy="80" r="14" class="stroke"/>
+              <circle cx="58"  cy="80" r="14" class="stroke"/>
+              <circle cx="90"  cy="80" r="14" class="stroke"/>
+              <circle cx="122" cy="80" r="14" class="stroke"/>
+              <circle cx="154" cy="80" r="14" class="stroke fill-bg"/>
+              <circle cx="186" cy="80" r="14" class="stroke fill-bg"/>
+            </g>
+          </g>
+          <text x="106" y="120" font-family="JetBrains Mono, monospace" font-size="14" text-anchor="middle" fill="var(--accent)" font-weight="600">9-of-13 SIGN</text>
+        </g>
+        <!-- arrow -->
+        <g transform="translate(1380,160)"><line x1="0" y1="0" x2="60" y2="0" class="stroke-accent"/><path d="M 50 -8 L 65 0 L 50 8" class="stroke-accent"/></g>
+
+        <!-- Final box: only winner visible -->
+        <g transform="translate(1460,60)">
+          <rect x="0" y="20" width="200" height="200" rx="6" class="stroke fill-bg"/>
+          <text x="100" y="50" class="svg-label" text-anchor="middle" style="fill:var(--accent);">RESULT</text>
+          <text x="100" y="100" font-family="JetBrains Mono, monospace" font-size="22" text-anchor="middle" font-weight="700" fill="var(--mint)">1,180,000</text>
+          <text x="100" y="124" class="svg-cap" text-anchor="middle">WINNER (CLEAR)</text>
+          <!-- losers padlocked -->
+          <g transform="translate(20,150)">
+            <g><rect x="0" y="0" width="68" height="22" class="stroke fill-soft"/><text x="34" y="15" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="var(--fg)">1.24M</text><circle cx="76" cy="11" r="4" class="stroke" stroke-width="1.4"/></g>
+            <g transform="translate(80,0)"><rect x="0" y="0" width="68" height="22" class="stroke fill-soft"/><text x="34" y="15" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="var(--fg)">1.31M</text><circle cx="76" cy="11" r="4" class="stroke" stroke-width="1.4"/></g>
+          </g>
+          <text x="100" y="200" class="svg-cap" text-anchor="middle">LOSERS SEALED BY DEFAULT</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- 3 captions row -->
+    <div class="flex mt-6" style="gap:18px;">
+      <div class="flex-1" style="font-size:16px;line-height:1.5;color:var(--fg-dim);">
+        <span class="kicker" style="color:var(--accent);font-size:11px;">ENCRYPT CLIENT-SIDE</span><br>
+        FHE ciphertext for price/years/projects/bond. Bound to <span class="mono">(contract, user)</span> by an input ZK proof — Zama's input verification gates ciphertext authenticity before FHE compute begins.
+      </div>
+      <div class="flex-1" style="font-size:16px;line-height:1.5;color:var(--fg-dim);">
+        <span class="kicker" style="color:var(--accent);font-size:11px;">EVALUATE ON-CHAIN</span><br>
+        <span class="mono">FHE.lt</span> + <span class="mono">FHE.select</span> find the minimum without ever seeing plaintext. ~700K gas per submitBid.
+      </div>
+      <div class="flex-1" style="font-size:16px;line-height:1.5;color:var(--fg-dim);">
+        <span class="kicker" style="color:var(--accent);font-size:11px;">DECRYPT WITH QUORUM</span><br>
+        9-of-13 KMS threshold (Zama TKMS, mainnet live since Dec 30, 2025). <span class="mono">FHE.checkSignatures</span> binds cleartext on-chain.
+      </div>
+    </div>
+
+    <div class="mt-6 flex items-center" style="gap:20px;border:1px solid var(--accent);background:var(--accent-soft);border-radius:8px;padding:14px 22px;">
+      <div class="kicker" style="color:var(--accent);min-width:170px;">// ANTI-PATTERN</div>
+      <div style="font-size:18px;color:var(--fg);">
+        SealTender does <b>NOT</b> use commit-reveal, MPC, or TEE. Full-FHE end to end.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 06 — LIFECYCLE                                               -->
+<!-- ============================================================ -->
+<section class="slide" data-screen-label="06 Lifecycle">
+  <div class="h-full w-full flex flex-col">
+    <div class="kicker">HOW IT WORKS · LIFECYCLE</div>
+    <h2 class="headline-tight font-bold mt-4" style="font-size:46px;color:var(--fg-dim);max-width:1700px;">
+      Six phases. Each one role-gated or permissionless.
+    </h2>
+
+    <!-- Role rail -->
+    <div class="mt-8 flex" style="gap:8px;">
+      <div class="flex-1 mono" style="font-size:11px;color:var(--fg-faint);letter-spacing:0.1em;text-align:center;">PROCUREMENT ENTITY</div>
+      <div class="flex-1 mono" style="font-size:11px;color:var(--fg-faint);letter-spacing:0.1em;text-align:center;">BIDDER</div>
+      <div class="flex-1 mono" style="font-size:11px;color:var(--mint);letter-spacing:0.1em;text-align:center;">ANY CALLER</div>
+      <div class="flex-1 mono" style="font-size:11px;color:var(--mint);letter-spacing:0.1em;text-align:center;">ANY CALLER</div>
+      <div class="flex-1 mono" style="font-size:11px;color:var(--mint);letter-spacing:0.1em;text-align:center;">KMS QUORUM</div>
+      <div class="flex-1 mono" style="font-size:11px;color:var(--mint);letter-spacing:0.1em;text-align:center;">ANY CALLER</div>
+    </div>
+
+    <!-- Arrow rail SVG -->
+    <div class="mt-2" style="position:relative;height:40px;">
+      <svg viewBox="0 0 1780 40" style="width:100%;height:40px;" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+        <!-- 5 arrow segments between 6 phases -->
+        <!-- yellow: 1→2 -->
+        <line x1="20"   y1="20" x2="290"  y2="20" stroke="var(--accent)" stroke-width="2.6"/>
+        <path d="M 280 12 L 295 20 L 280 28" stroke="var(--accent)" stroke-width="2.6" fill="none"/>
+        <!-- yellow→green transition: 2→3 with deadline badge -->
+        <line x1="320"  y1="20" x2="580"  y2="20" stroke="var(--accent)" stroke-width="2.6"/>
+        <line x1="450"  y1="20" x2="600"  y2="20" stroke="var(--mint)" stroke-width="2.6" stroke-dasharray="6,4"/>
+        <path d="M 590 12 L 605 20 L 590 28" stroke="var(--mint)" stroke-width="2.6" fill="none"/>
+        <!-- mint: 3→4 -->
+        <line x1="630"  y1="20" x2="890"  y2="20" stroke="var(--mint)" stroke-width="2.6"/>
+        <path d="M 880 12 L 895 20 L 880 28" stroke="var(--mint)" stroke-width="2.6" fill="none"/>
+        <!-- mint: 4→5 -->
+        <line x1="920"  y1="20" x2="1180" y2="20" stroke="var(--mint)" stroke-width="2.6"/>
+        <path d="M 1170 12 L 1185 20 L 1170 28" stroke="var(--mint)" stroke-width="2.6" fill="none"/>
+        <!-- mint: 5→6 -->
+        <line x1="1210" y1="20" x2="1480" y2="20" stroke="var(--mint)" stroke-width="2.6"/>
+        <path d="M 1470 12 L 1485 20 L 1470 28" stroke="var(--mint)" stroke-width="2.6" fill="none"/>
+        <!-- deadline badge -->
+        <g transform="translate(450,5)">
+          <rect x="-50" y="-2" width="100" height="20" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1"/>
+          <text x="0" y="13" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle" fill="var(--accent)">DEADLINE + 60s</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Phase cards -->
+    <div class="flex mt-2" style="gap:8px;flex:1;min-height:0;">
+      <!-- Phase 1: idare court icon -->
+      <div class="card flex-1 flex flex-col" style="gap:8px;padding:18px;">
+        <div class="flex items-center" style="gap:10px;">
+          <svg width="28" height="28" viewBox="0 0 28 28"><path d="M2 24 L26 24 M4 24 L4 12 M10 24 L10 12 M18 24 L18 12 M24 24 L24 12 M2 12 L26 12 L14 4 L2 12" class="stroke" stroke-width="1.8"/></svg>
+          <div class="num-badge">1</div>
+        </div>
+        <div class="kicker" style="color:var(--accent);font-size:11px;">CREATE</div>
+        <div class="font-semibold" style="font-size:19px;line-height:1.2;">Procurement entity <span style="color:var(--fg-faint);font-weight:500;font-size:15px;">(İdare)</span> creates tender.</div>
+        <div style="font-size:13px;line-height:1.45;color:var(--fg-dim);">
+          <span class="mono">TenderConfig</span> (deadline, weights, minRep) +
+          <span class="mono">TenderSpecification</span> (BoQ, ISO/TS EN refs, value range).
+        </div>
+      </div>
+      <!-- Phase 2: bidder envelope icon -->
+      <div class="card flex-1 flex flex-col" style="gap:8px;padding:18px;">
+        <div class="flex items-center" style="gap:10px;">
+          <svg width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="6" r="3" class="stroke" stroke-width="1.8"/><path d="M14 9 L14 16 M9 12 L19 12 M14 16 L10 22 M14 16 L18 22" class="stroke" stroke-width="1.8"/><rect x="20" y="14" width="6" height="4" class="stroke" stroke-width="1.4" fill="var(--accent-soft)"/></svg>
+          <div class="num-badge">2</div>
+        </div>
+        <div class="kicker" style="color:var(--accent);font-size:11px;">SUBMIT</div>
+        <div class="font-semibold" style="font-size:19px;line-height:1.2;">Bidder submits.</div>
+        <div style="font-size:13px;line-height:1.45;color:var(--fg-dim);">
+          Encrypted (price, years, projects, bond) + escrow deposit. ZK input proof binds ciphertext to bidder.
+        </div>
+      </div>
+      <!-- Phase 3: gear -->
+      <div class="card flex-1 flex flex-col" style="gap:8px;padding:18px;">
+        <div class="flex items-center" style="gap:10px;">
+          <svg width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="4" class="stroke-mint" stroke-width="1.8"/><g class="stroke-mint" stroke-width="1.8"><line x1="14" y1="2"  x2="14" y2="6"/><line x1="14" y1="22" x2="14" y2="26"/><line x1="2"  y1="14" x2="6"  y2="14"/><line x1="22" y1="14" x2="26" y2="14"/><line x1="5.6" y1="5.6"   x2="8.5" y2="8.5"/><line x1="19.5" y1="19.5" x2="22.4" y2="22.4"/><line x1="22.4" y1="5.6" x2="19.5" y2="8.5"/><line x1="8.5" y1="19.5" x2="5.6" y2="22.4"/></g></svg>
+          <div class="num-badge" style="background:var(--mint);">3</div>
+        </div>
+        <div class="kicker" style="color:var(--mint);font-size:11px;">EVALUATE</div>
+        <div class="font-semibold" style="font-size:19px;line-height:1.2;">Permissionless <span class="mono">evaluateBatch</span>.</div>
+        <div style="font-size:13px;line-height:1.45;color:var(--fg-dim);">
+          Any caller cranks <span class="mono">FHE.lt</span> comparisons after deadline. v4 governance hardening.
+        </div>
+      </div>
+      <!-- Phase 4: unlock -->
+      <div class="card flex-1 flex flex-col" style="gap:8px;padding:18px;">
+        <div class="flex items-center" style="gap:10px;">
+          <svg width="28" height="28" viewBox="0 0 28 28"><rect x="6" y="14" width="16" height="12" rx="2" class="stroke-mint" stroke-width="1.8" fill="var(--accent-soft)"/><path d="M10 14 L10 8 Q10 4 14 4 Q18 4 18 8" class="stroke-mint" stroke-width="1.8" fill="none"/><circle cx="14" cy="20" r="1.5" fill="var(--mint)"/></svg>
+          <div class="num-badge" style="background:var(--mint);">4</div>
+        </div>
+        <div class="kicker" style="color:var(--mint);font-size:11px;">REVEAL REQ</div>
+        <div class="font-semibold" style="font-size:19px;line-height:1.2;">Permissionless <span class="mono">requestReveal</span>.</div>
+        <div style="font-size:13px;line-height:1.45;color:var(--fg-dim);">
+          After deadline + REVEAL_TIMELOCK (60s demo / 7d production). Promotes ciphertexts to publicly decryptable.
+        </div>
+      </div>
+      <!-- Phase 5: network nodes -->
+      <div class="card flex-1 flex flex-col" style="gap:8px;padding:18px;">
+        <div class="flex items-center" style="gap:10px;">
+          <svg width="28" height="28" viewBox="0 0 28 28"><g class="stroke-mint" stroke-width="1.4"><line x1="6" y1="6" x2="14" y2="14"/><line x1="22" y1="6" x2="14" y2="14"/><line x1="6" y1="22" x2="14" y2="14"/><line x1="22" y1="22" x2="14" y2="14"/></g><circle cx="14" cy="14" r="3" fill="var(--mint)"/><circle cx="6" cy="6" r="2.5" class="stroke-mint" fill="var(--bg-elev)"/><circle cx="22" cy="6" r="2.5" class="stroke-mint" fill="var(--bg-elev)"/><circle cx="6" cy="22" r="2.5" class="stroke-mint" fill="var(--bg-elev)"/><circle cx="22" cy="22" r="2.5" class="stroke-mint" fill="var(--bg-elev)"/></svg>
+          <div class="num-badge" style="background:var(--mint);">5</div>
+        </div>
+        <div class="kicker" style="color:var(--mint);font-size:11px;">REVEAL</div>
+        <div class="font-semibold" style="font-size:19px;line-height:1.2;"><span class="mono">revealWinner</span>.</div>
+        <div style="font-size:13px;line-height:1.45;color:var(--fg-dim);">
+          KMS-attested 3-handle tuple (idx + price + eaddress). Plaintext stored in pending slot, NOT public yet.
+        </div>
+      </div>
+      <!-- Phase 6: megaphone -->
+      <div class="card flex-1 flex flex-col" style="gap:8px;padding:18px;">
+        <div class="flex items-center" style="gap:10px;">
+          <svg width="28" height="28" viewBox="0 0 28 28"><path d="M4 12 L4 18 L12 18 L22 24 L22 6 L12 12 Z" class="stroke-mint" stroke-width="1.8" fill="var(--accent-soft)"/><path d="M24 10 Q26 14 24 18" class="stroke-mint" stroke-width="1.6" fill="none"/></svg>
+          <div class="num-badge" style="background:var(--mint);">6</div>
+        </div>
+        <div class="kicker" style="color:var(--mint);font-size:11px;">ANNOUNCE</div>
+        <div class="font-semibold" style="font-size:19px;line-height:1.2;"><span class="mono">announceWinner</span>.</div>
+        <div style="font-size:13px;line-height:1.45;color:var(--fg-dim);">
+          Permissionless after ANNOUNCE_TIMELOCK (60s demo / 48h production). Mirrors 4734 Madde 41.
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-6 flex flex-col" style="gap:8px;">
+      <div class="flex items-center" style="gap:18px;border:1px solid var(--border);background:var(--bg-elev);border-radius:8px;padding:14px 22px;">
+        <div class="kicker" style="color:var(--accent);min-width:160px;">DISPUTES</div>
+        <div style="font-size:17px;color:var(--fg-dim);line-height:1.5;">
+          <span style="color:var(--fg);font-weight:600;">ArbitrationSafe (3-of-5 multi-sig)</span> handles disputes —
+          replaces unilateral owner slash authority. Wired as <span class="mono">DisputeManager.courtAuthority</span>.
+        </div>
+      </div>
+      <div class="flex items-center" style="gap:18px;border:1px solid var(--mint);background:var(--accent-soft);border-radius:8px;padding:14px 22px;">
+        <div class="kicker" style="color:var(--mint);min-width:160px;">OPTIONAL · v6</div>
+        <div style="font-size:17px;color:var(--fg-dim);line-height:1.5;">
+          <span style="color:var(--fg);font-weight:600;"><span class="mono">publishAllBids</span></span> — procurement entity opts into
+          4734 Madde 36 transparency: each loser bid landed plaintext via per-bidder KMS roundtrip. Default mode keeps loser bids sealed.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 07 — DEMO                                                    -->
+<!-- ============================================================ -->
+<section class="slide" data-screen-label="07 Demo">
+  <div class="h-full w-full flex flex-col">
+    <div class="flex items-center justify-between">
+      <div class="kicker">DEMO · FRONTEND SHOWCASE</div>
+      <div class="chip-sm"><span class="pulse-dot"></span><span style="color:var(--accent);">sealtender.vercel.app</span></div>
+    </div>
+    <h2 class="headline-tight font-bold mt-4" style="font-size:50px;">
+      Four routes. Self-sovereign decryption. Live on Sepolia.
+    </h2>
+
+    <div class="flex mt-8" style="gap:32px;flex:1;min-height:0;">
+      <!-- Browser frame SVG with hotspots -->
+      <div class="flex-1" style="position:relative;">
+        <svg viewBox="0 0 1100 720" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+          <!-- Window frame -->
+          <rect x="20" y="20" width="1060" height="680" rx="10" class="stroke fill-bg"/>
+          <!-- Title bar -->
+          <rect x="20" y="20" width="1060" height="44" rx="10" class="stroke" fill="#f1f1ee"/>
+          <line x1="20" y1="64" x2="1080" y2="64" class="stroke-dim" stroke-width="1"/>
+          <!-- traffic lights -->
+          <circle cx="44" cy="42" r="7" fill="#dc2626"/>
+          <circle cx="64" cy="42" r="7" fill="#facc15"/>
+          <circle cx="84" cy="42" r="7" fill="#22c55e"/>
+          <!-- URL bar -->
+          <rect x="120" y="30" width="780" height="24" rx="12" fill="var(--bg-elev)" class="stroke-dim" stroke-width="1"/>
+          <text x="140" y="46" font-family="JetBrains Mono, monospace" font-size="13" fill="var(--fg-dim)">▸ sealtender.vercel.app/tenders</text>
+
+          <!-- Mock UI: tender list page -->
+          <g transform="translate(60,90)">
+            <text x="0" y="0" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="var(--fg)">Tenders Register</text>
+            <text x="0" y="22" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--fg-faint)">PUBLIC · ENCRYPTED BID COUNTERS</text>
+            <!-- 4 tender cards -->
+            <g transform="translate(0,40)">
+              <rect x="0" y="0" width="980" height="100" rx="6" class="stroke-dim" fill="var(--bg-elev)"/>
+              <text x="20" y="30" font-family="Inter, sans-serif" font-size="16" font-weight="600" fill="var(--fg)">Tender #1 · Hospital Renovation · Ankara</text>
+              <text x="20" y="54" font-family="JetBrains Mono, monospace" font-size="12" fill="var(--fg-dim)">BoQ-2026-A14 · ISO/TS EN 14001 · 240 days · Value range ₺1.0M–₺1.5M</text>
+              <text x="20" y="76" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--accent)">5 ENCRYPTED BIDS · Deadline 14d</text>
+            </g>
+            <g transform="translate(0,150)">
+              <rect x="0" y="0" width="980" height="100" rx="6" class="stroke-dim" fill="var(--bg-elev)"/>
+              <text x="20" y="30" font-family="Inter, sans-serif" font-size="16" font-weight="600" fill="var(--fg)">Tender #2 · Road Resurfacing · Izmir</text>
+              <text x="20" y="54" font-family="JetBrains Mono, monospace" font-size="12" fill="var(--fg-dim)">BoQ-2026-B07 · ISO 9001 · 90 days · Value range ₺2.5M–₺3.2M</text>
+              <text x="20" y="76" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--accent)">3 ENCRYPTED BIDS · Deadline 7d</text>
+            </g>
+            <g transform="translate(0,260)">
+              <rect x="0" y="0" width="980" height="100" rx="6" class="stroke-dim" fill="var(--bg-elev)"/>
+              <text x="20" y="30" font-family="Inter, sans-serif" font-size="16" font-weight="600" fill="var(--fg)">Tender #3 · School Construction · Bursa</text>
+              <text x="20" y="54" font-family="JetBrains Mono, monospace" font-size="12" fill="var(--fg-dim)">BoQ-2026-C22 · ISO/TS EN 19650 · 365 days · Value range ₺4.0M–₺5.5M</text>
+              <text x="20" y="76" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--accent)">7 ENCRYPTED BIDS · Deadline 21d</text>
+            </g>
+            <g transform="translate(0,370)">
+              <rect x="0" y="0" width="980" height="100" rx="6" class="stroke-accent" fill="var(--accent-soft)"/>
+              <text x="20" y="30" font-family="Inter, sans-serif" font-size="16" font-weight="600" fill="var(--fg)">Tender #4 · Bridge Inspection · Istanbul · DEMO</text>
+              <text x="20" y="54" font-family="JetBrains Mono, monospace" font-size="12" fill="var(--fg-dim)">BoQ-2026-D04 · ISO/TS EN 17640 · 60 days · Value range ₺0.6M–₺0.9M</text>
+              <text x="20" y="76" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--mint)">▸ READY FOR LIVE PERMISSIONLESS-REVEAL DEMO</text>
+            </g>
+          </g>
+
+          <!-- 4 hotspots at corners of screenshot -->
+          <g transform="translate(80,110)">
+            <circle cx="0" cy="0" r="22" fill="var(--accent)"/>
+            <circle cx="0" cy="0" r="22" stroke="#fff" stroke-width="3" fill="none"/>
+            <text x="0" y="6" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="#fff" text-anchor="middle">1</text>
+          </g>
+          <g transform="translate(1010,200)">
+            <circle cx="0" cy="0" r="22" fill="var(--accent)"/>
+            <circle cx="0" cy="0" r="22" stroke="#fff" stroke-width="3" fill="none"/>
+            <text x="0" y="6" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="#fff" text-anchor="middle">2</text>
+          </g>
+          <g transform="translate(80,520)">
+            <circle cx="0" cy="0" r="22" fill="var(--accent)"/>
+            <circle cx="0" cy="0" r="22" stroke="#fff" stroke-width="3" fill="none"/>
+            <text x="0" y="6" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="#fff" text-anchor="middle">3</text>
+          </g>
+          <g transform="translate(1010,610)">
+            <circle cx="0" cy="0" r="22" fill="var(--accent)"/>
+            <circle cx="0" cy="0" r="22" stroke="#fff" stroke-width="3" fill="none"/>
+            <text x="0" y="6" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="#fff" text-anchor="middle">4</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Right side: 4 cards -->
+      <div style="width:600px;" class="flex flex-col" style="gap:14px;">
+        <div class="card flex" style="gap:18px;padding:18px 22px;align-items:center;">
+          <div class="num-badge">1</div>
+          <div class="flex-1">
+            <div class="mono" style="font-size:14px;color:var(--accent);">/tenders</div>
+            <div class="font-semibold mt-1" style="font-size:20px;">Public register.</div>
+            <div style="font-size:15px;color:var(--fg-dim);line-height:1.45;">Encrypted bid counters · real BoQ references.</div>
+          </div>
+        </div>
+        <div class="card flex" style="gap:18px;padding:18px 22px;align-items:center;">
+          <div class="num-badge">2</div>
+          <div class="flex-1">
+            <div class="mono" style="font-size:14px;color:var(--accent);">/tenders/[id]</div>
+            <div class="font-semibold mt-1" style="font-size:20px;">Government-document tender page.</div>
+            <div style="font-size:15px;color:var(--fg-dim);line-height:1.45;">Escrow amount · oracle pricing · multi-bidder list.</div>
+          </div>
+        </div>
+        <div class="card flex" style="gap:18px;padding:18px 22px;align-items:center;">
+          <div class="num-badge">3</div>
+          <div class="flex-1">
+            <div class="mono" style="font-size:14px;color:var(--accent);">/bids/[tenderId]</div>
+            <div class="font-semibold mt-1" style="font-size:20px;">Self-sovereign user-decryption.</div>
+            <div style="font-size:15px;color:var(--fg-dim);line-height:1.45;">EIP-712 sign → KMS quorum re-encrypt → only their wallet decrypts.</div>
+          </div>
+        </div>
+        <div class="card flex" style="gap:18px;padding:18px 22px;align-items:center;">
+          <div class="num-badge">4</div>
+          <div class="flex-1">
+            <div class="mono" style="font-size:14px;color:var(--accent);">/disputes</div>
+            <div class="font-semibold mt-1" style="font-size:20px;">Citizen complaint mechanism.</div>
+            <div style="font-size:15px;color:var(--fg-dim);line-height:1.45;">3-of-5 ArbitrationSafe multi-sig review.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 08 — HOW IT'S MADE                                           -->
+<!-- ============================================================ -->
+<section class="slide" data-screen-label="08 How Its Made">
+  <div class="h-full w-full flex flex-col">
+    <div class="kicker">HOW IT'S MADE · STACK + NUMBERS</div>
+    <h2 class="headline-tight font-bold mt-4" style="font-size:54px;">
+      Eleven contracts. Three audit passes. Sourcify-verified.
+    </h2>
+
+    <div class="flex flex-col mt-8" style="gap:14px;">
+      <div class="flex items-center" style="gap:32px;background:var(--bg-elev);border:1px solid var(--border);border-radius:8px;padding:22px 28px;">
+        <div style="width:300px;">
+          <div class="kicker" style="color:var(--accent);">SMART CONTRACTS</div>
+          <div class="font-bold mt-2" style="font-size:32px;letter-spacing:-0.01em;">Solidity 0.8.27</div>
+          <div class="mono mt-1" style="font-size:13px;color:var(--fg-faint);">cancun · viaIR</div>
+        </div>
+        <div class="flex-1 flex flex-col" style="gap:6px;font-size:19px;">
+          <div class="flex items-start"><span class="check">✓</span><span><span class="mono">@fhevm/solidity</span> 0.11.1 — FHE bindings, encrypted types, FHE.lt / FHE.select</span></div>
+          <div class="flex items-start"><span class="check">✓</span><span><span class="mono">@openzeppelin/confidential-contracts</span> 0.4.0 — confidential ERC primitives</span></div>
+          <div class="flex items-start"><span class="check">✓</span><span><span class="mono">@zama-fhe/relayer-sdk</span> 0.4.1 — KMS quorum re-encryption, attestations</span></div>
+        </div>
+      </div>
+      <div class="flex items-center" style="gap:32px;border:1px solid var(--border);border-radius:8px;padding:22px 28px;">
+        <div style="width:300px;">
+          <div class="kicker" style="color:var(--accent);">FRONTEND</div>
+          <div class="font-bold mt-2" style="font-size:32px;letter-spacing:-0.01em;">Next.js 16</div>
+          <div class="mono mt-1" style="font-size:13px;color:var(--fg-faint);">government-document theme</div>
+        </div>
+        <div class="flex-1 flex flex-col" style="gap:6px;font-size:19px;">
+          <div class="flex items-start"><span class="check">✓</span><span>wagmi · ethers v6 — wallet + RPC layer</span></div>
+          <div class="flex items-start"><span class="check">✓</span><span><span class="mono">@zama-fhe/relayer-sdk/bundle</span> — browser flavor for client-side encryption</span></div>
+          <div class="flex items-start"><span class="check">✓</span><span>Tailwind · EIP-712 user-decryption flow</span></div>
+        </div>
+      </div>
+      <div class="flex items-center" style="gap:32px;background:var(--bg-elev);border:1px solid var(--border);border-radius:8px;padding:22px 28px;">
+        <div style="width:300px;">
+          <div class="kicker" style="color:var(--accent);">INFRA</div>
+          <div class="font-bold mt-2" style="font-size:32px;letter-spacing:-0.01em;">Sepolia mainnet</div>
+          <div class="mono mt-1" style="font-size:13px;color:var(--fg-faint);">Sourcify-verified contracts</div>
+        </div>
+        <div class="flex-1 flex flex-col" style="gap:6px;font-size:19px;">
+          <div class="flex items-start"><span class="check">✓</span><span>Chainlink + Pyth oracle fallback for material-price escalation</span></div>
+          <div class="flex items-start"><span class="check">✓</span><span>ERC-7984 confidential USDC wrapper for bond escrow rail</span></div>
+          <div class="flex items-start"><span class="check">✓</span><span>Zama TKMS — 9-of-13 threshold KMS, mainnet live since Dec 30, 2025</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mini architecture flow -->
+    <div class="mt-6 flex items-center" style="gap:14px;border:1px solid var(--border);border-radius:8px;padding:14px 22px;background:var(--bg-elev);">
+      <div class="kicker" style="color:var(--accent);">ARCHITECTURE</div>
+      <div class="flex-1 flex items-center" style="gap:10px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--fg-dim);">
+        <span class="chip-sm">TenderFactory</span>
+        <span style="color:var(--accent);">→</span>
+        <span class="chip-sm">Tender</span>
+        <span style="color:var(--accent);">→</span>
+        <span class="chip-sm">BidEscrow</span>
+        <span style="color:var(--accent);">→</span>
+        <span class="chip-sm">DisputeManager</span>
+        <span style="color:var(--mint);">⇄</span>
+        <span class="chip-sm">KMS Quorum</span>
+        <span style="color:var(--mint);">⇄</span>
+        <span class="chip-sm">Frontend</span>
+      </div>
+    </div>
+
+    <!-- Stat strip -->
+    <div class="mt-auto flex" style="gap:0;border:1px solid var(--border);border-radius:8px;background:var(--bg-elev);overflow:hidden;">
+      <div class="flex-1 text-center" style="padding:18px 0;border-right:1px solid var(--border);">
+        <div class="font-bold mono" style="font-size:36px;">11</div>
+        <div class="mono mt-1" style="font-size:11px;color:var(--fg-faint);letter-spacing:0.08em;">CONTRACTS</div>
+      </div>
+      <div class="flex-1 text-center" style="padding:18px 0;border-right:1px solid var(--border);">
+        <div class="font-bold mono" style="font-size:36px;color:var(--mint);">334 / 334</div>
+        <div class="mono mt-1" style="font-size:11px;color:var(--fg-faint);letter-spacing:0.08em;">TESTS PASSING</div>
+      </div>
+      <div class="flex-1 text-center" style="padding:18px 0;border-right:1px solid var(--border);">
+        <div class="font-bold mono" style="font-size:36px;">v5</div>
+        <div class="mono mt-1" style="font-size:11px;color:var(--fg-faint);letter-spacing:0.08em;">CURRENT · 3 INTERNAL AUDIT ITERATIONS</div>
+      </div>
+      <div class="flex-1 text-center" style="padding:18px 0;border-right:1px solid var(--border);">
+        <div class="font-bold mono" style="font-size:36px;">70+</div>
+        <div class="mono mt-1" style="font-size:11px;color:var(--fg-faint);letter-spacing:0.08em;">ON-CHAIN DEMO TXS · SEPOLIA</div>
+      </div>
+      <div class="flex-1 text-center" style="padding:18px 0;">
+        <div class="font-bold mono" style="font-size:36px;color:var(--mint);">✓</div>
+        <div class="mono mt-1" style="font-size:11px;color:var(--fg-faint);letter-spacing:0.08em;">SOURCIFY-VERIFIED</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 09 — TRUST MODEL · PENTAGON                                  -->
+<!-- ============================================================ -->
+<section class="slide" data-screen-label="09 Trust Model">
+  <div class="h-full w-full flex flex-col">
+    <div class="kicker">TRUST MODEL · 5 PILLARS</div>
+    <h2 class="headline-tight font-bold mt-4" style="font-size:46px;max-width:1700px;">
+      Each property is enforced cryptographically — and we're explicit about residual trust.
+    </h2>
+
+    <div class="flex mt-6" style="gap:32px;flex:1;min-height:0;">
+      <!-- Pentagon SVG -->
+      <div style="flex:0 0 60%;display:flex;align-items:center;justify-content:center;">
+        <svg viewBox="0 0 900 900" style="width:100%;max-width:780px;height:auto;" xmlns="http://www.w3.org/2000/svg">
+          <!-- Pentagon vertices: 5 points around center (450,450), radius 320 -->
+          <!-- top, right, bottom-right, bottom-left, left -->
+          <!--
+            v1 (top):          x = 450, y = 130
+            v2 (top-right):    x = 754, y = 351
+            v3 (bottom-right): x = 638, y = 709
+            v4 (bottom-left):  x = 262, y = 709
+            v5 (top-left):     x = 146, y = 351
+          -->
+          <!-- Pentagon edges -->
+          <polygon points="450,130 754,351 638,709 262,709 146,351"
+            fill="var(--accent-soft)" fill-opacity="0.5" stroke="var(--accent)" stroke-width="2.4"/>
+
+          <!-- Inner spokes to center (subtle) -->
+          <g class="stroke-dim" stroke-width="1" stroke-dasharray="4,5" opacity="0.6">
+            <line x1="450" y1="450" x2="450" y2="130"/>
+            <line x1="450" y1="450" x2="754" y2="351"/>
+            <line x1="450" y1="450" x2="638" y2="709"/>
+            <line x1="450" y1="450" x2="262" y2="709"/>
+            <line x1="450" y1="450" x2="146" y2="351"/>
+          </g>
+
+          <!-- Edge labels (mid-edge enforcement) -->
+          <!-- top→right: PRIVACY · 9-of-13 KMS threshold -->
+          <text x="617" y="220" font-family="JetBrains Mono, monospace" font-size="14" fill="var(--fg-dim)" text-anchor="middle" transform="rotate(36 617 220)">9-of-13 KMS THRESHOLD</text>
+          <!-- right→bottom-right: INTEGRITY · FHE.checkSignatures -->
+          <text x="725" y="555" font-family="JetBrains Mono, monospace" font-size="14" fill="var(--fg-dim)" text-anchor="middle" transform="rotate(72 725 555)">FHE.checkSignatures</text>
+          <!-- bottom-right→bottom-left: LIVENESS · permissionless reveal -->
+          <text x="450" y="740" font-family="JetBrains Mono, monospace" font-size="14" fill="var(--fg-dim)" text-anchor="middle">PERMISSIONLESS REVEAL + ESCAPE HATCH</text>
+          <!-- bottom-left→top-left: DISPUTES · 3-of-5 ArbitrationSafe -->
+          <text x="175" y="555" font-family="JetBrains Mono, monospace" font-size="14" fill="var(--fg-dim)" text-anchor="middle" transform="rotate(-72 175 555)">3-of-5 ARBITRATIONSAFE</text>
+          <!-- top-left→top: LIQUIDITY · permissionless claimRefund -->
+          <text x="283" y="220" font-family="JetBrains Mono, monospace" font-size="14" fill="var(--fg-dim)" text-anchor="middle" transform="rotate(-36 283 220)">PERMISSIONLESS claimRefund</text>
+
+          <!-- Vertex nodes -->
+          <g>
+            <circle cx="450" cy="130" r="58" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="3"/>
+            <text x="450" y="125" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="var(--fg-faint)" text-anchor="middle">01</text>
+            <text x="450" y="148" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="var(--fg)" text-anchor="middle">PRIVACY</text>
+          </g>
+          <g>
+            <circle cx="754" cy="351" r="58" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="3"/>
+            <text x="754" y="346" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="var(--fg-faint)" text-anchor="middle">02</text>
+            <text x="754" y="369" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="var(--fg)" text-anchor="middle">INTEGRITY</text>
+          </g>
+          <g>
+            <circle cx="638" cy="709" r="58" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="3"/>
+            <text x="638" y="704" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="var(--fg-faint)" text-anchor="middle">03</text>
+            <text x="638" y="727" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="var(--fg)" text-anchor="middle">LIVENESS</text>
+          </g>
+          <g>
+            <circle cx="262" cy="709" r="58" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="3"/>
+            <text x="262" y="704" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="var(--fg-faint)" text-anchor="middle">04</text>
+            <text x="262" y="727" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="var(--fg)" text-anchor="middle">DISPUTES</text>
+          </g>
+          <g>
+            <circle cx="146" cy="351" r="58" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="3"/>
+            <text x="146" y="346" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="var(--fg-faint)" text-anchor="middle">05</text>
+            <text x="146" y="369" font-family="Inter, sans-serif" font-size="17" font-weight="700" fill="var(--fg)" text-anchor="middle">LIQUIDITY</text>
+          </g>
+
+          <!-- Center logomark -->
+          <g transform="translate(450,450)">
+            <circle cx="0" cy="0" r="68" fill="var(--bg-elev)" stroke="var(--fg)" stroke-width="2.4"/>
+            <circle cx="0" cy="0" r="68" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3,4" fill="none"/>
+            <text x="0" y="14" font-family="Inter, sans-serif" font-size="56" font-weight="800" fill="var(--accent)" text-anchor="middle">S</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Right list -->
+      <div style="flex:1;" class="flex flex-col" style="gap:10px;">
+        <div class="card" style="padding:14px 18px;">
+          <div class="flex items-center" style="gap:10px;">
+            <div class="num-badge" style="width:30px;height:30px;font-size:13px;">1</div>
+            <div class="kicker" style="color:var(--accent);">PRIVACY · BID VALUES STAY SEALED</div>
+          </div>
+          <div style="font-size:14px;line-height:1.5;color:var(--fg-dim);margin-top:6px;">
+            <b style="color:var(--fg);">Enforced by</b> 9-of-13 KMS threshold · <b style="color:var(--fg);">Residual trust:</b> 5 colluding operators not enough.
+          </div>
+        </div>
+        <div class="card" style="padding:14px 18px;">
+          <div class="flex items-center" style="gap:10px;">
+            <div class="num-badge" style="width:30px;height:30px;font-size:13px;">2</div>
+            <div class="kicker" style="color:var(--accent);">INTEGRITY · NO FABRICATED CLEARTEXT</div>
+          </div>
+          <div style="font-size:14px;line-height:1.5;color:var(--fg-dim);margin-top:6px;">
+            <b style="color:var(--fg);">Enforced by</b> <span class="mono">FHE.checkSignatures</span> binds plaintext to KMS attestation · <b style="color:var(--fg);">Residual trust:</b> we don't believe a fabricated cleartext.
+          </div>
+        </div>
+        <div class="card" style="padding:14px 18px;">
+          <div class="flex items-center" style="gap:10px;">
+            <div class="num-badge" style="width:30px;height:30px;font-size:13px;">3</div>
+            <div class="kicker" style="color:var(--accent);">LIVENESS · NO SINGLE OPERATOR CAN STALL</div>
+          </div>
+          <div style="font-size:14px;line-height:1.5;color:var(--fg-dim);margin-top:6px;">
+            <b style="color:var(--fg);">Enforced by</b> permissionless reveal pipeline + <span class="mono">forceCancelStuckReveal</span> · <b style="color:var(--fg);">Residual trust:</b> none.
+          </div>
+        </div>
+        <div class="card" style="padding:14px 18px;">
+          <div class="flex items-center" style="gap:10px;">
+            <div class="num-badge" style="width:30px;height:30px;font-size:13px;">4</div>
+            <div class="kicker" style="color:var(--accent);">DISPUTES · COMMISSION, NOT OWNER</div>
+          </div>
+          <div style="font-size:14px;line-height:1.5;color:var(--fg-dim);margin-top:6px;">
+            <b style="color:var(--fg);">Enforced by</b> 3-of-5 ArbitrationSafe (KIK + Idari Mahkeme + 2 sector reps + 1 NGO) · <b style="color:var(--fg);">Residual trust:</b> 4734 Madde 12 commission rule on chain.
+          </div>
+        </div>
+        <div class="card" style="padding:14px 18px;">
+          <div class="flex items-center" style="gap:10px;">
+            <div class="num-badge" style="width:30px;height:30px;font-size:13px;">5</div>
+            <div class="kicker" style="color:var(--accent);">LIQUIDITY · DEPOSITS NEVER FROZEN</div>
+          </div>
+          <div style="font-size:14px;line-height:1.5;color:var(--fg-dim);margin-top:6px;">
+            <b style="color:var(--fg);">Enforced by</b> <span class="mono">BidEscrow.claimRefund</span> permissionless after Cancelled · <b style="color:var(--fg);">Residual trust:</b> none.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 10 — ROADMAP                                                 -->
+<!-- ============================================================ -->
+<section class="slide" data-screen-label="10 Roadmap">
+  <div class="h-full w-full flex flex-col">
+    <div class="kicker">FUTURE WORK · ROADMAP</div>
+    <h2 class="headline-tight font-bold mt-2" style="font-size:48px;">
+      Tiered by cost, not priority.
+    </h2>
+
+    <div class="flex flex-col mt-6" style="gap:12px;flex:1;min-height:0;">
+      <div class="flex" style="gap:24px;padding:16px 22px;align-items:flex-start;border:1px solid var(--mint);background:var(--accent-soft);border-radius:8px;">
+        <div style="width:220px;flex-shrink:0;">
+          <div class="font-bold" style="font-size:24px;color:var(--mint);">v6 SHIPPED</div>
+          <div class="mono" style="font-size:12px;color:var(--fg-faint);letter-spacing:0.08em;">CODE-COMMITTED · DEFERRED DEPLOY</div>
+        </div>
+        <div class="flex-1 flex flex-wrap" style="gap:6px;">
+          <span class="chip-sm" style="background:#fff;">Three-mode disclosure architecture</span>
+          <span class="chip-sm" style="background:#fff;"><span class="mono">publishAllBids</span> opt-in (4734 Madde 36)</span>
+          <span class="chip-sm" style="background:#fff;"><span class="mono">recordLoserBidPlaintext</span> per-bidder KMS roundtrip</span>
+        </div>
+      </div>
+      <div class="card flex" style="gap:24px;padding:16px 22px;align-items:flex-start;">
+        <div style="width:220px;flex-shrink:0;">
+          <div class="font-bold" style="font-size:24px;color:var(--accent);">QUICK</div>
+          <div class="mono" style="font-size:12px;color:var(--fg-faint);letter-spacing:0.08em;">1–2 WEEKS EACH</div>
+        </div>
+        <div class="flex-1 flex flex-wrap" style="gap:6px;">
+          <span class="chip-sm">Multi-stage tendering</span>
+          <span class="chip-sm">Lot bundling + partial awards</span>
+          <span class="chip-sm">Performance bond escrow</span>
+          <span class="chip-sm">ConfUSDC bid bonds</span>
+        </div>
+      </div>
+      <div class="card flex" style="gap:24px;padding:16px 22px;align-items:flex-start;">
+        <div style="width:220px;flex-shrink:0;">
+          <div class="font-bold" style="font-size:24px;color:var(--accent);">MEDIUM</div>
+          <div class="mono" style="font-size:12px;color:var(--fg-faint);letter-spacing:0.08em;">2–4 WEEKS</div>
+        </div>
+        <div class="flex-1 flex flex-wrap" style="gap:6px;">
+          <span class="chip-sm">Encrypted reputation w/ <span class="mono">delegateUserDecryption</span></span>
+          <span class="chip-sm">Sub-contractor confidential disclosure</span>
+          <span class="chip-sm">Tournament-tree comparison (n → log n)</span>
+        </div>
+      </div>
+      <div class="card flex" style="gap:24px;padding:16px 22px;align-items:flex-start;">
+        <div style="width:220px;flex-shrink:0;">
+          <div class="font-bold" style="font-size:24px;color:var(--accent);">RESEARCH</div>
+          <div class="mono" style="font-size:12px;color:var(--fg-faint);letter-spacing:0.08em;">4 WEEKS+</div>
+        </div>
+        <div class="flex-1 flex flex-wrap" style="gap:6px;">
+          <span class="chip-sm"><span class="mono">FHE.randEuint</span> stochastic tie-breaking</span>
+          <span class="chip-sm">CCIP cross-chain announcements</span>
+        </div>
+      </div>
+      <div class="flex" style="gap:24px;padding:16px 22px;align-items:flex-start;border:1px solid var(--accent);background:var(--accent-soft);border-radius:8px;">
+        <div style="width:220px;flex-shrink:0;">
+          <div class="font-bold" style="font-size:24px;color:var(--fg);">PRODUCTION HARDENING</div>
+          <div class="mono" style="font-size:12px;color:var(--accent);letter-spacing:0.08em;">OPERATOR + EXTERNAL</div>
+        </div>
+        <div class="flex-1 flex flex-wrap" style="gap:6px;">
+          <span class="chip-sm" style="background:#fff;">Multi-sig tender owner (Ownable2Step)</span>
+          <span class="chip-sm" style="background:#fff;">ANNOUNCE_TIMELOCK 48h · REVEAL_TIMELOCK 7d</span>
+          <span class="chip-sm" style="background:#fff;">Disown DisputeManager → ArbitrationSafe</span>
+          <span class="chip-sm" style="background:#fff;">Trail of Bits / Halborn formal audit</span>
+          <span class="chip-sm" style="background:#fff;">Mainnet deployment cost analysis</span>
+          <span class="chip-sm" style="background:#fff;">EKAP / Vergi / SGK bridge (Türkiye adoption)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 11 — THANKS / LINKS / QR                                     -->
+<!-- ============================================================ -->
+<section class="slide grid-bg" data-screen-label="11 Thanks">
+  <div class="h-full w-full flex flex-col">
+    <div class="kicker">THANKS FOR WATCHING.</div>
+    <h2 class="font-bold headline-tight mt-4" style="font-size:104px;color:var(--accent);">SealTender.</h2>
+    <div class="italic mt-2" style="font-size:30px;font-weight:500;color:var(--fg-dim);letter-spacing:-0.01em;">
+      FHE-Encrypted Sealed-Bid Procurement.
+    </div>
+
+    <!-- 3 QR codes -->
+    <div class="flex mt-12" style="gap:32px;justify-content:center;">
+      <!-- QR 1: GitHub -->
+      <div class="card flex flex-col items-center" style="padding:28px 32px;gap:16px;width:480px;">
+        <div class="kicker" style="color:var(--accent);">CODE</div>
+        <svg viewBox="0 0 25 25" width="220" height="220" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated;">
+          <rect width="25" height="25" fill="#fff"/>
+          <!-- Generated deterministic QR-style pattern -->
+          <g fill="var(--fg)">
+            <!-- finder TL -->
+            <rect x="0" y="0" width="7" height="1"/><rect x="0" y="6" width="7" height="1"/>
+            <rect x="0" y="0" width="1" height="7"/><rect x="6" y="0" width="1" height="7"/>
+            <rect x="2" y="2" width="3" height="3"/>
+            <!-- finder TR -->
+            <rect x="18" y="0" width="7" height="1"/><rect x="18" y="6" width="7" height="1"/>
+            <rect x="18" y="0" width="1" height="7"/><rect x="24" y="0" width="1" height="7"/>
+            <rect x="20" y="2" width="3" height="3"/>
+            <!-- finder BL -->
+            <rect x="0" y="18" width="7" height="1"/><rect x="0" y="24" width="7" height="1"/>
+            <rect x="0" y="18" width="1" height="7"/><rect x="6" y="18" width="1" height="7"/>
+            <rect x="2" y="20" width="3" height="3"/>
+            <!-- timing -->
+            <rect x="8" y="6" width="1" height="1"/><rect x="10" y="6" width="1" height="1"/><rect x="12" y="6" width="1" height="1"/><rect x="14" y="6" width="1" height="1"/><rect x="16" y="6" width="1" height="1"/>
+            <rect x="6" y="8" width="1" height="1"/><rect x="6" y="10" width="1" height="1"/><rect x="6" y="12" width="1" height="1"/><rect x="6" y="14" width="1" height="1"/><rect x="6" y="16" width="1" height="1"/>
+            <!-- data scatter -->
+            <rect x="9" y="2" width="1" height="1"/><rect x="11" y="3" width="1" height="1"/><rect x="13" y="2" width="1" height="1"/><rect x="15" y="4" width="1" height="1"/><rect x="17" y="3" width="1" height="1"/>
+            <rect x="8" y="9" width="1" height="1"/><rect x="10" y="8" width="1" height="1"/><rect x="11" y="10" width="1" height="1"/><rect x="13" y="9" width="1" height="1"/><rect x="14" y="11" width="1" height="1"/><rect x="16" y="9" width="1" height="1"/><rect x="18" y="10" width="1" height="1"/><rect x="20" y="9" width="1" height="1"/><rect x="22" y="11" width="1" height="1"/>
+            <rect x="9" y="12" width="1" height="1"/><rect x="11" y="13" width="1" height="1"/><rect x="14" y="13" width="1" height="1"/><rect x="16" y="12" width="1" height="1"/><rect x="19" y="13" width="1" height="1"/><rect x="21" y="14" width="1" height="1"/>
+            <rect x="8" y="15" width="1" height="1"/><rect x="10" y="16" width="1" height="1"/><rect x="13" y="15" width="1" height="1"/><rect x="15" y="17" width="1" height="1"/><rect x="17" y="16" width="1" height="1"/><rect x="20" y="15" width="1" height="1"/><rect x="22" y="17" width="1" height="1"/>
+            <rect x="9" y="19" width="1" height="1"/><rect x="11" y="20" width="1" height="1"/><rect x="13" y="22" width="1" height="1"/><rect x="15" y="20" width="1" height="1"/><rect x="17" y="22" width="1" height="1"/><rect x="19" y="19" width="1" height="1"/><rect x="20" y="22" width="1" height="1"/><rect x="22" y="20" width="1" height="1"/>
+            <rect x="8" y="21" width="1" height="1"/><rect x="10" y="23" width="1" height="1"/><rect x="14" y="23" width="1" height="1"/><rect x="16" y="21" width="1" height="1"/><rect x="18" y="23" width="1" height="1"/><rect x="21" y="22" width="1" height="1"/>
+            <rect x="18" y="14" width="1" height="1"/><rect x="22" y="14" width="1" height="1"/><rect x="24" y="13" width="1" height="1"/>
+          </g>
+        </svg>
+        <div class="mono text-center" style="font-size:18px;color:var(--accent);">github.com/Himess/sealtender</div>
+      </div>
+
+      <!-- QR 2: Live -->
+      <div class="card flex flex-col items-center" style="padding:28px 32px;gap:16px;width:480px;">
+        <div class="kicker" style="color:var(--accent);">LIVE</div>
+        <svg viewBox="0 0 25 25" width="220" height="220" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated;">
+          <rect width="25" height="25" fill="#fff"/>
+          <g fill="var(--fg)">
+            <rect x="0" y="0" width="7" height="1"/><rect x="0" y="6" width="7" height="1"/>
+            <rect x="0" y="0" width="1" height="7"/><rect x="6" y="0" width="1" height="7"/>
+            <rect x="2" y="2" width="3" height="3"/>
+            <rect x="18" y="0" width="7" height="1"/><rect x="18" y="6" width="7" height="1"/>
+            <rect x="18" y="0" width="1" height="7"/><rect x="24" y="0" width="1" height="7"/>
+            <rect x="20" y="2" width="3" height="3"/>
+            <rect x="0" y="18" width="7" height="1"/><rect x="0" y="24" width="7" height="1"/>
+            <rect x="0" y="18" width="1" height="7"/><rect x="6" y="18" width="1" height="7"/>
+            <rect x="2" y="20" width="3" height="3"/>
+            <rect x="8" y="6" width="1" height="1"/><rect x="10" y="6" width="1" height="1"/><rect x="12" y="6" width="1" height="1"/><rect x="14" y="6" width="1" height="1"/><rect x="16" y="6" width="1" height="1"/>
+            <rect x="6" y="8" width="1" height="1"/><rect x="6" y="10" width="1" height="1"/><rect x="6" y="12" width="1" height="1"/><rect x="6" y="14" width="1" height="1"/><rect x="6" y="16" width="1" height="1"/>
+            <rect x="8" y="2" width="1" height="1"/><rect x="10" y="3" width="1" height="1"/><rect x="12" y="2" width="1" height="1"/><rect x="14" y="4" width="1" height="1"/><rect x="16" y="2" width="1" height="1"/>
+            <rect x="9" y="9" width="1" height="1"/><rect x="11" y="8" width="1" height="1"/><rect x="13" y="11" width="1" height="1"/><rect x="15" y="9" width="1" height="1"/><rect x="17" y="10" width="1" height="1"/><rect x="19" y="11" width="1" height="1"/><rect x="21" y="9" width="1" height="1"/><rect x="23" y="11" width="1" height="1"/>
+            <rect x="8" y="12" width="1" height="1"/><rect x="10" y="13" width="1" height="1"/><rect x="12" y="14" width="1" height="1"/><rect x="14" y="12" width="1" height="1"/><rect x="16" y="14" width="1" height="1"/><rect x="18" y="13" width="1" height="1"/><rect x="20" y="14" width="1" height="1"/><rect x="22" y="12" width="1" height="1"/>
+            <rect x="9" y="15" width="1" height="1"/><rect x="11" y="17" width="1" height="1"/><rect x="13" y="16" width="1" height="1"/><rect x="15" y="15" width="1" height="1"/><rect x="17" y="17" width="1" height="1"/><rect x="19" y="16" width="1" height="1"/><rect x="21" y="15" width="1" height="1"/><rect x="23" y="17" width="1" height="1"/>
+            <rect x="8" y="19" width="1" height="1"/><rect x="10" y="20" width="1" height="1"/><rect x="12" y="22" width="1" height="1"/><rect x="14" y="20" width="1" height="1"/><rect x="16" y="22" width="1" height="1"/><rect x="18" y="20" width="1" height="1"/><rect x="20" y="19" width="1" height="1"/><rect x="22" y="22" width="1" height="1"/>
+            <rect x="9" y="23" width="1" height="1"/><rect x="11" y="21" width="1" height="1"/><rect x="13" y="23" width="1" height="1"/><rect x="15" y="22" width="1" height="1"/><rect x="17" y="23" width="1" height="1"/><rect x="19" y="22" width="1" height="1"/><rect x="21" y="23" width="1" height="1"/>
+          </g>
+        </svg>
+        <div class="mono text-center" style="font-size:18px;color:var(--accent);">sealtender.vercel.app</div>
+      </div>
+
+      <!-- QR 3: Etherscan -->
+      <div class="card flex flex-col items-center" style="padding:28px 32px;gap:16px;width:480px;">
+        <div class="kicker" style="color:var(--accent);">PERMISSIONLESS REVEAL · TX</div>
+        <svg viewBox="0 0 25 25" width="220" height="220" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated;">
+          <rect width="25" height="25" fill="#fff"/>
+          <g fill="var(--fg)">
+            <rect x="0" y="0" width="7" height="1"/><rect x="0" y="6" width="7" height="1"/>
+            <rect x="0" y="0" width="1" height="7"/><rect x="6" y="0" width="1" height="7"/>
+            <rect x="2" y="2" width="3" height="3"/>
+            <rect x="18" y="0" width="7" height="1"/><rect x="18" y="6" width="7" height="1"/>
+            <rect x="18" y="0" width="1" height="7"/><rect x="24" y="0" width="1" height="7"/>
+            <rect x="20" y="2" width="3" height="3"/>
+            <rect x="0" y="18" width="7" height="1"/><rect x="0" y="24" width="7" height="1"/>
+            <rect x="0" y="18" width="1" height="7"/><rect x="6" y="18" width="1" height="7"/>
+            <rect x="2" y="20" width="3" height="3"/>
+            <rect x="8" y="6" width="1" height="1"/><rect x="10" y="6" width="1" height="1"/><rect x="12" y="6" width="1" height="1"/><rect x="14" y="6" width="1" height="1"/><rect x="16" y="6" width="1" height="1"/>
+            <rect x="6" y="8" width="1" height="1"/><rect x="6" y="10" width="1" height="1"/><rect x="6" y="12" width="1" height="1"/><rect x="6" y="14" width="1" height="1"/><rect x="6" y="16" width="1" height="1"/>
+            <rect x="9" y="3" width="1" height="1"/><rect x="11" y="2" width="1" height="1"/><rect x="13" y="4" width="1" height="1"/><rect x="15" y="2" width="1" height="1"/><rect x="17" y="3" width="1" height="1"/>
+            <rect x="8" y="8" width="1" height="1"/><rect x="11" y="9" width="1" height="1"/><rect x="14" y="10" width="1" height="1"/><rect x="16" y="8" width="1" height="1"/><rect x="18" y="11" width="1" height="1"/><rect x="20" y="8" width="1" height="1"/><rect x="22" y="10" width="1" height="1"/>
+            <rect x="9" y="11" width="1" height="1"/><rect x="13" y="13" width="1" height="1"/><rect x="15" y="14" width="1" height="1"/><rect x="17" y="13" width="1" height="1"/><rect x="19" y="14" width="1" height="1"/><rect x="21" y="13" width="1" height="1"/><rect x="23" y="14" width="1" height="1"/>
+            <rect x="8" y="15" width="1" height="1"/><rect x="10" y="14" width="1" height="1"/><rect x="12" y="16" width="1" height="1"/><rect x="14" y="17" width="1" height="1"/><rect x="16" y="15" width="1" height="1"/><rect x="18" y="17" width="1" height="1"/><rect x="20" y="16" width="1" height="1"/><rect x="22" y="17" width="1" height="1"/>
+            <rect x="9" y="20" width="1" height="1"/><rect x="11" y="22" width="1" height="1"/><rect x="13" y="19" width="1" height="1"/><rect x="15" y="21" width="1" height="1"/><rect x="17" y="20" width="1" height="1"/><rect x="19" y="22" width="1" height="1"/><rect x="20" y="20" width="1" height="1"/><rect x="22" y="22" width="1" height="1"/><rect x="24" y="20" width="1" height="1"/>
+            <rect x="8" y="23" width="1" height="1"/><rect x="11" y="20" width="1" height="1"/><rect x="14" y="22" width="1" height="1"/><rect x="16" y="23" width="1" height="1"/><rect x="18" y="19" width="1" height="1"/><rect x="21" y="19" width="1" height="1"/><rect x="23" y="22" width="1" height="1"/>
+          </g>
+        </svg>
+        <div class="mono text-center" style="font-size:13px;color:var(--accent);word-break:break-all;line-height:1.4;">sepolia.etherscan.io/<br>address/0xb01B…d5AA</div>
+      </div>
+    </div>
+
+    <div class="mt-auto pt-6 flex items-center" style="gap:14px;border-top:1px solid var(--border);">
+      <div class="mono" style="font-size:14px;color:var(--fg-dim);letter-spacing:0.04em;">
+        ZAMA DEVELOPER PROGRAM S2 · SKILLS + DAPP TRACK · MAY 10, 2026
+      </div>
+      <div class="ml-auto flex items-center" style="gap:14px;">
+        <div class="chip-sm">GitHub · @Himess</div>
+        <div class="chip-sm">License · MIT</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="slide-indicator">1 / 11</div>
+<div id="slide-help">F = Present · ←/→ = Slide · Esc = Exit</div>
+
+<script>
+  (function() {
+    const slides = Array.from(document.querySelectorAll('section.slide'));
+    const indicator = document.getElementById('slide-indicator');
+    const total = slides.length;
+    let current = 0;
+
+    function setCurrent(idx, scrollInto = false) {
+      current = Math.max(0, Math.min(total - 1, idx));
+      slides.forEach((s, i) => s.classList.toggle('is-current', i === current));
+      indicator.textContent = `${current + 1} / ${total}`;
+      if (scrollInto && !document.body.classList.contains('present')) {
+        slides[current].scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+    function fitScale() {
+      const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      document.body.style.setProperty('--present-scale', String(scale));
+    }
+    function togglePresent() {
+      const isPresent = document.body.classList.toggle('present');
+      if (isPresent) {
+        fitScale(); setCurrent(current);
+        document.documentElement.requestFullscreen?.().catch(() => {});
+      } else {
+        if (document.fullscreenElement) document.exitFullscreen?.();
+      }
+    }
+    function exitPresent() {
+      if (document.body.classList.contains('present')) {
+        document.body.classList.remove('present');
+        if (document.fullscreenElement) document.exitFullscreen?.();
+      }
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      switch (e.key) {
+        case 'ArrowRight': case 'PageDown': case ' ':
+          e.preventDefault(); setCurrent(current + 1, true); break;
+        case 'ArrowLeft':  case 'PageUp':
+          e.preventDefault(); setCurrent(current - 1, true); break;
+        case 'ArrowDown':  e.preventDefault(); setCurrent(current + 1, true); break;
+        case 'ArrowUp':    e.preventDefault(); setCurrent(current - 1, true); break;
+        case 'Home':       e.preventDefault(); setCurrent(0, true); break;
+        case 'End':        e.preventDefault(); setCurrent(total - 1, true); break;
+        case 'f': case 'F':e.preventDefault(); togglePresent(); break;
+        case 'Escape':     exitPresent(); break;
+        default:
+          if (/^[1-9]$/.test(e.key)) {
+            const idx = parseInt(e.key, 10) - 1;
+            if (idx < total) { e.preventDefault(); setCurrent(idx, true); }
+          }
+      }
+    });
+    if ('IntersectionObserver' in window) {
+      const obs = new IntersectionObserver((entries) => {
+        if (document.body.classList.contains('present')) return;
+        for (const entry of entries) {
+          if (entry.intersectionRatio > 0.5) {
+            const idx = slides.indexOf(entry.target);
+            if (idx >= 0) setCurrent(idx, false);
+          }
+        }
+      }, { threshold: [0.5] });
+      slides.forEach((s) => obs.observe(s));
+    }
+    window.addEventListener('resize', () => {
+      if (document.body.classList.contains('present')) fitScale();
+    });
+    setCurrent(0);
+  })();
+</script>
+
+</body>
+</html>
