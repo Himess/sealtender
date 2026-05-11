@@ -152,6 +152,7 @@
       <div class="flex items-center flex-wrap" style="gap:16px;">
         <div class="chip"><span class="pulse-dot"></span> Sepolia · live</div>
         <div class="chip">Zama fhEVM</div>
+        <div class="chip">Built on ERC-7984</div>
         <div class="chip">Solidity 0.8.27</div>
         <div class="chip"><span style="color:var(--mint);">✓</span> 329 / 329 tests</div>
         <div class="chip">11 contracts</div>
@@ -430,9 +431,47 @@
       </svg>
     </div>
 
-    <div class="mt-6 italic text-center" style="font-size:28px;color:var(--fg);font-weight:500;letter-spacing:-0.01em;">
+    <div class="mt-6 italic text-center" style="font-size:24px;color:var(--fg);font-weight:500;letter-spacing:-0.01em;">
       Bids never leave their envelopes. <span style="color:var(--accent);">Bonds settle in confidential USDC (ERC-7984).</span>
       The chain compares blind; losing bids stay sealed by default.
+    </div>
+
+    <!-- Bond rail · ERC-7984 envelope -->
+    <div class="mt-6 card" style="padding:20px 24px;position:relative;">
+      <!-- OZ logo top-right -->
+      <div style="position:absolute;top:18px;right:24px;display:flex;align-items:center;gap:10px;">
+        <svg width="20" height="20" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 50 8 L 88 22 L 88 52 Q 88 78 50 92 Q 12 78 12 52 L 12 22 Z" fill="none" stroke="var(--fg)" stroke-width="5" stroke-linejoin="round"/>
+          <circle cx="50" cy="50" r="18" fill="var(--fg)"/>
+        </svg>
+        <div class="mono" style="font-size:11px;color:var(--fg-faint);letter-spacing:0.06em;">OZ CONFIDENTIAL CONTRACTS 0.4.0</div>
+      </div>
+      <div class="kicker" style="color:var(--accent);">THE BOND RAIL · ERC-7984 cUSDC ENVELOPE</div>
+      <div class="flex items-center mt-4" style="gap:14px;">
+        <!-- USDC plain -->
+        <div style="flex:1;border:1px solid var(--border);border-radius:6px;padding:12px 14px;background:var(--bg);">
+          <div class="mono" style="font-size:11px;color:var(--fg-faint);letter-spacing:0.08em;">PLAIN ERC-20</div>
+          <div class="font-bold mono" style="font-size:22px;color:var(--fg);margin-top:2px;">USDC</div>
+          <div class="mono" style="font-size:11px;color:var(--fg-dim);margin-top:2px;">balance public</div>
+        </div>
+        <div class="mono" style="font-size:14px;color:var(--accent);">→ wrap() →</div>
+        <!-- cUSDC envelope -->
+        <div style="flex:1;border:1px solid var(--accent);border-radius:6px;padding:12px 14px;background:var(--accent-soft);">
+          <div class="mono" style="font-size:11px;color:var(--accent);letter-spacing:0.08em;">ERC-7984 · CIPHERTEXT</div>
+          <div class="font-bold mono" style="font-size:22px;color:var(--fg);margin-top:2px;">cUSDC · euint64</div>
+          <div class="mono" style="font-size:11px;color:var(--fg-dim);margin-top:2px;">balance encrypted · ACL-gated</div>
+        </div>
+        <div class="mono" style="font-size:14px;color:var(--accent);">→ setOperator →</div>
+        <!-- Escrow -->
+        <div style="flex:1;border:1px solid var(--border);border-radius:6px;padding:12px 14px;background:var(--bg);">
+          <div class="mono" style="font-size:11px;color:var(--fg-faint);letter-spacing:0.08em;">BIDESCROW</div>
+          <div class="font-bold mono" style="font-size:22px;color:var(--fg);margin-top:2px;">euint64 bond</div>
+          <div class="mono" style="font-size:11px;color:var(--fg-dim);margin-top:2px;">held confidentially</div>
+        </div>
+      </div>
+      <div class="mt-3" style="font-size:15px;color:var(--fg-dim);line-height:1.5;">
+        Bond amount stays encrypted on-chain. Only owner + escrow hold ACL.
+      </div>
     </div>
   </div>
 </section>
@@ -442,13 +481,27 @@
 <!-- ============================================================ -->
 <section class="slide" data-screen-label="05 FHE Primitive">
   <div class="h-full w-full flex flex-col">
-    <div class="kicker">THE FHE PRIMITIVE</div>
-    <h2 class="headline-tight font-bold mt-4" style="font-size:54px;max-width:1700px;">
+    <div class="kicker">THE FHE PRIMITIVE · TWO ENCRYPTED RAILS, ONE TENDER</div>
+    <h2 class="headline-tight font-bold mt-2" style="font-size:44px;max-width:1700px;">
       Compute on ciphertext. Decrypt only the result. With a quorum.
     </h2>
 
+    <!-- Two encrypted rails (bid FHE + bond ERC-7984) -->
+    <div class="flex mt-5" style="gap:18px;">
+      <div class="card flex-1" style="padding:16px 20px;">
+        <div class="kicker" style="color:var(--accent);">BID CIPHERTEXT · FHE euint64</div>
+        <div class="font-semibold mt-1" style="font-size:18px;color:var(--fg);">Price, years, projects encrypted client-side; compared blind on-chain.</div>
+        <div class="mono mt-2" style="font-size:13px;color:var(--fg-dim);background:var(--code-bg);padding:6px 10px;border-radius:4px;">FHE.fromExternal(handle, proof) → euint64</div>
+      </div>
+      <div class="card flex-1" style="padding:16px 20px;border-color:var(--accent);background:var(--accent-soft);">
+        <div class="kicker" style="color:var(--accent);">BOND ENVELOPE · ERC-7984 cUSDC</div>
+        <div class="font-semibold mt-1" style="font-size:18px;color:var(--fg);">operator → confidentialTransferFrom → escrow holds <span class="mono">euint64</span></div>
+        <div class="mono mt-2" style="font-size:13px;color:var(--fg-dim);background:#fff;padding:6px 10px;border-radius:4px;">ACL: FHE.allowThis + FHE.allow(bidder)</div>
+      </div>
+    </div>
+
     <!-- Hero SVG -->
-    <div class="mt-8 card" style="padding:30px;">
+    <div class="mt-4 card" style="padding:24px;">
       <svg viewBox="0 0 1700 320" style="width:100%;height:auto;" xmlns="http://www.w3.org/2000/svg">
         <!-- Bidder -->
         <g transform="translate(40,80)">
@@ -869,44 +922,77 @@
 <section class="slide" data-screen-label="08 How Its Made">
   <div class="h-full w-full flex flex-col">
     <div class="kicker">HOW IT'S MADE · STACK + NUMBERS</div>
-    <h2 class="headline-tight font-bold mt-4" style="font-size:54px;">
+    <h2 class="headline-tight font-bold mt-2" style="font-size:36px;color:var(--fg-dim);">
       Eleven contracts. Three audit passes. Sourcify-verified.
     </h2>
 
-    <div class="flex flex-col mt-8" style="gap:14px;">
-      <div class="flex items-center" style="gap:32px;background:var(--bg-elev);border:1px solid var(--border);border-radius:8px;padding:22px 28px;">
-        <div style="width:300px;">
+    <!-- HERO: ERC-7984 stage -->
+    <div class="card mt-4" style="padding:22px 28px;">
+      <!-- 3 logos row -->
+      <div class="flex items-center justify-center" style="gap:64px;">
+        <!-- Ethereum diamond -->
+        <svg width="54" height="86" viewBox="0 0 90 142" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 45 0 L 0 73 L 45 95 L 90 73 Z" fill="none" stroke="var(--fg)" stroke-width="3.2" stroke-linejoin="round"/>
+          <path d="M 45 0 L 0 73 L 45 50 L 90 73 Z" fill="var(--fg)" opacity="0.15"/>
+          <path d="M 0 84 L 45 142 L 90 84 L 45 106 Z" fill="none" stroke="var(--fg)" stroke-width="3.2" stroke-linejoin="round"/>
+        </svg>
+        <!-- OpenZeppelin shield -->
+        <svg width="72" height="86" viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 50 4 L 94 22 L 94 60 Q 94 92 50 116 Q 6 92 6 60 L 6 22 Z" fill="none" stroke="var(--fg)" stroke-width="5" stroke-linejoin="round"/>
+          <circle cx="50" cy="60" r="20" fill="var(--fg)"/>
+          <circle cx="50" cy="60" r="8" fill="var(--bg-elev)"/>
+        </svg>
+        <!-- Zama Z -->
+        <svg width="82" height="86" viewBox="0 0 110 110" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 14 14 L 96 14 L 14 96 L 96 96" fill="none" stroke="var(--fg)" stroke-width="12" stroke-linecap="square" stroke-linejoin="miter"/>
+        </svg>
+      </div>
+      <!-- Giant ERC-7984 -->
+      <div class="text-center mono" style="font-size:124px;font-weight:800;letter-spacing:-0.03em;color:var(--accent);line-height:1;margin-top:10px;">
+        ERC-7984
+      </div>
+      <div class="text-center mono mt-2" style="font-size:13px;color:var(--fg-faint);letter-spacing:0.1em;">
+        OPENZEPPELIN CONFIDENTIAL CONTRACTS · v0.4.0 · AUDITED PRIMITIVE
+      </div>
+      <div class="text-center italic mt-3" style="font-size:20px;color:var(--fg-dim);line-height:1.45;max-width:1500px;margin-left:auto;margin-right:auto;">
+        Bond amounts are ciphertexts on-chain. Only the depositor and the escrow hold the ACL to decrypt &mdash; even the procurement entity sees only handles.
+      </div>
+    </div>
+
+    <div class="flex flex-col mt-4" style="gap:10px;">
+      <div class="flex items-center" style="gap:24px;background:var(--bg-elev);border:1px solid var(--border);border-radius:8px;padding:14px 22px;">
+        <div style="width:260px;">
           <div class="kicker" style="color:var(--accent);">SMART CONTRACTS</div>
-          <div class="font-bold mt-2" style="font-size:32px;letter-spacing:-0.01em;">Solidity 0.8.27</div>
-          <div class="mono mt-1" style="font-size:13px;color:var(--fg-faint);">cancun · viaIR</div>
+          <div class="font-bold mt-1" style="font-size:24px;letter-spacing:-0.01em;">Solidity 0.8.27</div>
+          <div class="mono" style="font-size:11px;color:var(--fg-faint);">cancun · viaIR</div>
         </div>
-        <div class="flex-1 flex flex-col" style="gap:6px;font-size:19px;">
+        <div class="flex-1 flex flex-col" style="gap:3px;font-size:15px;">
           <div class="flex items-start"><span class="check">✓</span><span><span class="mono">@fhevm/solidity</span> 0.11.1 — FHE bindings, encrypted types, FHE.lt / FHE.select</span></div>
-          <div class="flex items-start"><span class="check">✓</span><span><span class="mono">@openzeppelin/confidential-contracts</span> 0.4.0 — <b>ERC-7984</b> wrapper, ERC7984ERC20Wrapper</span></div>
+          <div class="flex items-start"><span class="check">✓</span><span><span class="mono">@openzeppelin/confidential-contracts</span> 0.4.0 — confidential ERC primitives</span></div>
           <div class="flex items-start"><span class="check">✓</span><span><span class="mono">@zama-fhe/relayer-sdk</span> 0.4.1 — KMS quorum re-encryption, attestations</span></div>
         </div>
       </div>
-      <div class="flex items-center" style="gap:32px;border:1px solid var(--border);border-radius:8px;padding:22px 28px;">
-        <div style="width:300px;">
+      <div class="flex items-center" style="gap:24px;border:1px solid var(--border);border-radius:8px;padding:14px 22px;">
+        <div style="width:260px;">
           <div class="kicker" style="color:var(--accent);">FRONTEND</div>
-          <div class="font-bold mt-2" style="font-size:32px;letter-spacing:-0.01em;">Next.js 16</div>
-          <div class="mono mt-1" style="font-size:13px;color:var(--fg-faint);">government-document theme</div>
+          <div class="font-bold mt-1" style="font-size:24px;letter-spacing:-0.01em;">Next.js 16</div>
+          <div class="mono" style="font-size:11px;color:var(--fg-faint);">gov-document theme</div>
         </div>
-        <div class="flex-1 flex flex-col" style="gap:6px;font-size:19px;">
+        <div class="flex-1 flex flex-col" style="gap:3px;font-size:15px;">
           <div class="flex items-start"><span class="check">✓</span><span>wagmi · ethers v6 — wallet + RPC layer</span></div>
           <div class="flex items-start"><span class="check">✓</span><span><span class="mono">@zama-fhe/relayer-sdk/bundle</span> — browser flavor for client-side encryption</span></div>
           <div class="flex items-start"><span class="check">✓</span><span>Tailwind · EIP-712 user-decryption flow</span></div>
         </div>
       </div>
-      <div class="flex items-center" style="gap:32px;background:var(--bg-elev);border:1px solid var(--border);border-radius:8px;padding:22px 28px;">
-        <div style="width:300px;">
+      <div class="flex items-center" style="gap:24px;background:var(--bg-elev);border:1px solid var(--border);border-radius:8px;padding:14px 22px;">
+        <div style="width:260px;">
           <div class="kicker" style="color:var(--accent);">INFRA</div>
-          <div class="font-bold mt-2" style="font-size:32px;letter-spacing:-0.01em;">Sepolia mainnet</div>
-          <div class="mono mt-1" style="font-size:13px;color:var(--fg-faint);">Sourcify-verified contracts</div>
+          <div class="font-bold mt-1" style="font-size:24px;letter-spacing:-0.01em;">Sepolia mainnet</div>
+          <div class="mono" style="font-size:11px;color:var(--fg-faint);">Sourcify-verified</div>
         </div>
-        <div class="flex-1 flex flex-col" style="gap:6px;font-size:19px;">
+        <div class="flex-1 flex flex-col" style="gap:3px;font-size:15px;">
           <div class="flex items-start"><span class="check">✓</span><span>Chainlink + Pyth oracle fallback for material-price escalation</span></div>
-          <div class="flex items-start"><span class="check">✓</span><span><b>ERC-7984 cUSDC native escrow</b> — every bond deposit is an encrypted euint64</span></div>
+          <div class="flex items-start"><span class="check">✓</span><span>ERC-7984 confidential USDC wrapper for bond escrow rail</span></div>
           <div class="flex items-start"><span class="check">✓</span><span>Zama TKMS — 9-of-13 threshold KMS, mainnet live since Dec 30, 2025</span></div>
         </div>
       </div>
@@ -1087,6 +1173,15 @@
             <b style="color:var(--fg);">Enforced by</b> <span class="mono">BidEscrow.claimRefund</span> permissionless after Cancelled · <b style="color:var(--fg);">Residual trust:</b> none.
           </div>
         </div>
+        <div class="card" style="padding:14px 18px;border-color:var(--accent);background:var(--accent-soft);">
+          <div class="flex items-center" style="gap:10px;">
+            <div class="num-badge" style="width:30px;height:30px;font-size:13px;">+</div>
+            <div class="kicker" style="color:var(--accent);">BOND AMOUNT CONFIDENTIALITY · ERC-7984 ACL CHAIN</div>
+          </div>
+          <div style="font-size:14px;line-height:1.5;color:var(--fg-dim);margin-top:6px;">
+            <b style="color:var(--fg);">Enforced by</b> <span class="mono">FHE.allowThis</span> on deposit, recipient ACL via <span class="mono">OZ ERC7984._update</span> · <b style="color:var(--fg);">Residual trust:</b> none.
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1103,27 +1198,15 @@
     </h2>
 
     <div class="flex flex-col mt-6" style="gap:12px;flex:1;min-height:0;">
-      <div class="flex" style="gap:24px;padding:16px 22px;align-items:flex-start;border:1px solid var(--accent);background:var(--accent-soft);border-radius:8px;">
+      <div class="flex" style="gap:24px;padding:16px 22px;align-items:flex-start;border:1px solid var(--red);background:#fef3f2;border-radius:8px;">
         <div style="width:220px;flex-shrink:0;">
-          <div class="font-bold" style="font-size:24px;color:var(--accent);">v7 SHIPPED</div>
-          <div class="mono" style="font-size:12px;color:var(--fg-faint);letter-spacing:0.08em;">CUSDC ERC-7984 LIVE</div>
+          <div class="font-bold" style="font-size:24px;color:var(--red);">PRIVACY HARDENING</div>
+          <div class="mono" style="font-size:12px;color:var(--fg-faint);letter-spacing:0.08em;">CLOSES KNOWN GAPS</div>
         </div>
         <div class="flex-1 flex flex-wrap" style="gap:6px;">
-          <span class="chip-sm" style="background:#fff;">cUSDC-native BidEscrow (encrypted euint64)</span>
-          <span class="chip-sm" style="background:#fff;"><span class="mono">confidentialTransferFrom</span> deposit path</span>
-          <span class="chip-sm" style="background:#fff;">OpenZeppelin ERC-7984 wrapper</span>
-          <span class="chip-sm" style="background:#fff;">Bond amounts never leak via events</span>
-        </div>
-      </div>
-      <div class="flex" style="gap:24px;padding:16px 22px;align-items:flex-start;border:1px solid var(--mint);background:var(--accent-soft);border-radius:8px;">
-        <div style="width:220px;flex-shrink:0;">
-          <div class="font-bold" style="font-size:24px;color:var(--mint);">v6 SHIPPED</div>
-          <div class="mono" style="font-size:12px;color:var(--fg-faint);letter-spacing:0.08em;">CODE-COMMITTED · DEFERRED DEPLOY</div>
-        </div>
-        <div class="flex-1 flex flex-wrap" style="gap:6px;">
-          <span class="chip-sm" style="background:#fff;">Three-mode disclosure architecture</span>
-          <span class="chip-sm" style="background:#fff;"><span class="mono">publishAllBids</span> opt-in (4734 Madde 36)</span>
-          <span class="chip-sm" style="background:#fff;"><span class="mono">recordLoserBidPlaintext</span> per-bidder KMS roundtrip</span>
+          <span class="chip-sm" style="background:#fff;">Merkle sealed bidder list (ZK proof of inclusion)</span>
+          <span class="chip-sm" style="background:#fff;">Per-tender stealth addresses</span>
+          <span class="chip-sm" style="background:#fff;">Encrypted bidder identity index (defeats winnerIdx + bidders[] derivation)</span>
         </div>
       </div>
       <div class="card flex" style="gap:24px;padding:16px 22px;align-items:flex-start;">
