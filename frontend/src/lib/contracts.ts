@@ -85,6 +85,8 @@ export const EncryptedTenderABI = [
   "function bidders(uint256 idx) external view returns (address)",
   "function getBidders(uint256 offset, uint256 limit) external view returns (address[])",
   "function hasBid(address bidder) external view returns (bool)",
+  "function getMyBid() external view returns (bytes32 encPrice, bytes32 encYears, bytes32 encProjects, bytes32 encBond, uint256 timestamp, uint256 version)",
+  "function getBidVersion(address bidder) external view returns (uint256)",
   "function evaluatedCount() external view returns (uint256)",
   "function evaluationComplete() external view returns (bool)",
   "function winnerAddress() external view returns (address)",
