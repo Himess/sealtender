@@ -33,11 +33,21 @@ export async function getFhevmInstance(): Promise<FhevmInstance> {
   initPromise = (async () => {
     await initSDK();
 
-    const network: string | unknown =
-      typeof window !== "undefined" &&
-      (window as unknown as { ethereum?: unknown }).ethereum
-        ? (window as unknown as { ethereum: unknown }).ethereum
-        : process.env.NEXT_PUBLIC_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com";
+    // ALWAYS use a public RPC URL for SDK init, NOT window.ethereum.
+    //
+    // Why: input-encryption only needs read-only eth_call access to the Zama
+    // protocol contracts (InputVerifier + KmsVerifier eip712Domain reads).
+    // Wallet providers like MetaMask are unreliable for arbitrary eth_call
+    // when (a) the user has multiple wallet extensions competing for
+    // window.ethereum (MetaMask + Backpack + Phantom all try to claim it),
+    // or (b) the wallet's connected chain drifts from Sepolia mid-call.
+    // A direct public RPC bypasses both classes of failure.
+    //
+    // Wallet signing is still done through window.ethereum elsewhere
+    // (writeContract / EIP-712 user-decrypt), where it actually belongs.
+    const network =
+      process.env.NEXT_PUBLIC_RPC_URL ||
+      "https://ethereum-sepolia-rpc.publicnode.com";
 
     const created = await createInstance({
       ...SepoliaConfig,
