@@ -574,7 +574,7 @@ export default function BidPage({
 
               <div>
                 <label htmlFor="bondAmount" className="block font-heading text-[11px] font-semibold text-[#666666] tracking-[1px] uppercase mb-1.5">
-                  Bond Amount (USD, whole number)
+                  Bond Amount (cUSDC, whole number)
                 </label>
                 <input
                   id="bondAmount"
@@ -657,7 +657,7 @@ export default function BidPage({
             <div className="bg-[#0C0D14] rounded-lg p-4 space-y-3 text-xs">
               <div>
                 <span className="text-[#666666]">Protocol</span>
-                <p className="text-[#00E87B] mt-0.5">Zama fhEVM (TFHE)</p>
+                <p className="text-[#00E87B] mt-0.5">Zama fhEVM · ERC-7984 cUSDC bond</p>
               </div>
               <div>
                 <span className="text-[#666666]">Encrypted Fields</span>

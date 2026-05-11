@@ -17,7 +17,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { ADDRESSES, PriceEscalationABI } from "@/lib/contracts";
-import { useTenderCount, formatUsd } from "@/hooks/useContractData";
+import { useTenderCount, formatEth } from "@/hooks/useContractData";
 import { useTxToast } from "@/hooks/useTxToast";
 import { Toast } from "@/components/Toast";
 
@@ -215,7 +215,7 @@ export default function EscalationPage() {
             <div className="h-10 w-24 bg-[#1E2230] rounded animate-pulse" />
           ) : (
             <p className="font-heading text-[36px] font-bold text-[#FFB800] font-mono">
-              {formatUsd(totalPaid as bigint | undefined)}
+              {formatEth(totalPaid as bigint | undefined)}
             </p>
           )}
         </div>
@@ -230,7 +230,7 @@ export default function EscalationPage() {
             <div className="h-10 w-24 bg-[#1E2230] rounded animate-pulse" />
           ) : (
             <p className="font-heading text-[36px] font-bold text-[#F0F0F0] font-mono">
-              {formatUsd(tenderPrice as bigint | undefined)}
+              {formatEth(tenderPrice as bigint | undefined)}
             </p>
           )}
         </div>

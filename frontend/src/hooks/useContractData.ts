@@ -466,10 +466,23 @@ export function truncateAddr(addr: string | undefined): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
-export function formatUsd(wei: bigint | undefined): string {
-  if (!wei) return "$0.00";
-  const eth = Number(wei) / 1e18;
-  return `${eth.toFixed(4)} ETH`;
+// v7: escrowAmount is uint64 cUSDC fixed-point (6 decimals). Format accordingly.
+// The function name stays as `formatUsd` for call-site compatibility but the
+// output now reads in cUSDC, not ETH. Call sites that handle ETH wei values
+// (e.g. PriceEscalation budgets in msg.value) should use `formatEth` instead.
+export function formatUsd(amount: bigint | undefined): string {
+  if (!amount) return "0.00 cUSDC";
+  const v = Number(amount) / 1_000_000;
+  return `${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} cUSDC`;
+}
+
+/// Format an 18-decimal wei value as ETH. Used by ETH-denominated paths
+/// that survived the v7 cUSDC migration (PriceEscalation budgets pay out
+/// via `payable(winner).call{value: ...}`).
+export function formatEth(wei: bigint | undefined): string {
+  if (!wei) return "0.0000 ETH";
+  const v = Number(wei) / 1e18;
+  return `${v.toFixed(4)} ETH`;
 }
 
 // USD values from the spec are stored as 6-decimal fixed-point (USDC style).

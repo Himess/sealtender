@@ -279,15 +279,15 @@ export const ConfidentialUSDCABI = [
   "function owner() external view returns (address)",
   "function unwrapRequester(bytes32 unwrapRequestId) external view returns (address)",
   "function isOperator(address holder, address spender) external view returns (bool)",
-  "function balanceOf(address account) external view returns (bytes32)", // returns euint64 handle
+  "function confidentialBalanceOf(address account) external view returns (bytes32)", // returns euint64 handle
   // --- User write ---
   "function wrap(address to, uint256 amount) external returns (bytes32)",
   "function unwrap(address from, address to, bytes32 amount) external returns (bytes32)",
   "function unwrap(address from, address to, bytes32 encryptedAmount, bytes inputProof) external returns (bytes32)",
   "function finalizeUnwrap(bytes32 unwrapRequestId, uint64 unwrapAmountCleartext, bytes decryptionProof) external",
   "function setOperator(address spender, uint48 until) external",
-  "function transfer(address to, bytes32 amount) external returns (bytes32)",
-  "function transferFrom(address from, address to, bytes32 amount) external returns (bytes32)",
+  "function confidentialTransfer(address to, bytes32 amount) external returns (bytes32)",
+  "function confidentialTransferFrom(address from, address to, bytes32 amount) external returns (bytes32)",
   // --- Owner write ---
   "function pause() external",
   "function unpause() external",

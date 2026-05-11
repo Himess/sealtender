@@ -12,7 +12,6 @@ import {
   stateColor,
   formatDeadline,
   formatUsd,
-  truncateAddr,
 } from "@/hooks/useContractData";
 import { EncryptedTenderABI, TenderState } from "@/lib/contracts";
 
@@ -41,29 +40,14 @@ export default function BidsPage() {
     query: { enabled: hasBidContracts.length > 0 },
   });
 
-  // Get deposit info for tenders where user has bid
-  const depositContracts = useMemo(() => {
-    if (!addrList || !userAddress || !hasBidResults) return [];
-    return addrList
-      .filter((_, i) => hasBidResults[i]?.status === "success" && hasBidResults[i]?.result === true)
-      .map((addr) => ({
-        address: addr,
-        abi: tenderAbi,
-        functionName: "getBidDeposit" as const,
-        args: [userAddress] as const,
-      }));
-  }, [addrList, userAddress, hasBidResults]);
-
-  const { data: depositResults } = useReadContracts({
-    contracts: depositContracts,
-    query: { enabled: depositContracts.length > 0 },
-  });
-
   const { tenders, isLoading: loadingTenders } = useAllTendersData(addrList);
 
   const isLoading = loadingAddresses || loadingHasBid || loadingTenders;
 
-  // Filter tenders where user has bid
+  // Filter tenders where user has bid.
+  // v7: deposit amount is encrypted euint64 in BidEscrow — un-readable on-chain.
+  // Use the tender's plaintext config.escrowAmount (the required bond posted
+  // at deposit time) as the displayable bond.
   const myBids = useMemo(() => {
     if (!hasBidResults || !addrList) return [];
     const bidTenders: Array<{
@@ -71,7 +55,6 @@ export default function BidsPage() {
       deposit: bigint;
     }> = [];
 
-    let depositIdx = 0;
     for (let i = 0; i < addrList.length; i++) {
       if (
         hasBidResults[i]?.status === "success" &&
@@ -79,17 +62,13 @@ export default function BidsPage() {
       ) {
         const tender = tenders.find((t) => t.address === addrList[i]);
         if (tender) {
-          const dep =
-            depositResults?.[depositIdx]?.status === "success"
-              ? (depositResults[depositIdx].result as bigint)
-              : BigInt(0);
+          const dep = tender.config?.escrowAmount ?? BigInt(0);
           bidTenders.push({ tender, deposit: dep });
         }
-        depositIdx++;
       }
     }
     return bidTenders;
-  }, [hasBidResults, addrList, tenders, depositResults]);
+  }, [hasBidResults, addrList, tenders]);
 
   // Stats
   const activeBids = myBids.filter(
