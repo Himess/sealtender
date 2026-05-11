@@ -969,7 +969,7 @@
         <div class="flex-1 flex flex-col" style="gap:3px;font-size:15px;">
           <div class="flex items-start"><span class="check">✓</span><span><span class="mono">@fhevm/solidity</span> 0.11.1 — FHE bindings, encrypted types, FHE.lt / FHE.select</span></div>
           <div class="flex items-start"><span class="check">✓</span><span><span class="mono">@openzeppelin/confidential-contracts</span> 0.4.0 — confidential ERC primitives</span></div>
-          <div class="flex items-start"><span class="check">✓</span><span><span class="mono">@zama-fhe/relayer-sdk</span> 0.4.1 — KMS quorum re-encryption, attestations</span></div>
+          <div class="flex items-start"><span class="check">✓</span><span><span class="mono">@zama-fhe/relayer-sdk</span> 0.4.2 — KMS quorum re-encryption, attestations</span></div>
         </div>
       </div>
       <div class="flex items-center" style="gap:24px;border:1px solid var(--border);border-radius:8px;padding:14px 22px;">
@@ -987,7 +987,7 @@
       <div class="flex items-center" style="gap:24px;background:var(--bg-elev);border:1px solid var(--border);border-radius:8px;padding:14px 22px;">
         <div style="width:260px;">
           <div class="kicker" style="color:var(--accent);">INFRA</div>
-          <div class="font-bold mt-1" style="font-size:24px;letter-spacing:-0.01em;">Sepolia mainnet</div>
+          <div class="font-bold mt-1" style="font-size:24px;letter-spacing:-0.01em;">Sepolia testnet</div>
           <div class="mono" style="font-size:11px;color:var(--fg-faint);">Sourcify-verified</div>
         </div>
         <div class="flex-1 flex flex-col" style="gap:3px;font-size:15px;">
@@ -1194,55 +1194,30 @@
   <div class="h-full w-full flex flex-col">
     <div class="kicker">FUTURE WORK · ROADMAP</div>
     <h2 class="headline-tight font-bold mt-2" style="font-size:48px;">
-      Tiered by cost, not priority.
+      The path from Sepolia to production.
     </h2>
 
-    <div class="flex flex-col mt-6" style="gap:12px;flex:1;min-height:0;">
-      <div class="card flex" style="gap:24px;padding:16px 22px;align-items:flex-start;">
-        <div style="width:220px;flex-shrink:0;">
-          <div class="font-bold" style="font-size:24px;color:var(--accent);">QUICK</div>
-          <div class="mono" style="font-size:12px;color:var(--fg-faint);letter-spacing:0.08em;">1–2 WEEKS EACH</div>
+    <div class="flex flex-col mt-8" style="gap:14px;">
+      <div class="flex" style="gap:24px;padding:22px 28px;align-items:flex-start;border:1px solid var(--accent);background:var(--accent-soft);border-radius:8px;">
+        <div style="width:240px;flex-shrink:0;">
+          <div class="font-bold" style="font-size:26px;color:var(--fg);">ETHEREUM MAINNET</div>
+          <div class="mono" style="font-size:12px;color:var(--accent);letter-spacing:0.08em;">v8 · DEPLOY TARGET</div>
         </div>
-        <div class="flex-1 flex flex-wrap" style="gap:6px;">
-          <span class="chip-sm">Multi-stage tendering</span>
-          <span class="chip-sm">Lot bundling + partial awards</span>
-          <span class="chip-sm">Performance bond escrow</span>
-          <span class="chip-sm">ConfUSDC bid bonds</span>
-        </div>
-      </div>
-      <div class="card flex" style="gap:24px;padding:16px 22px;align-items:flex-start;">
-        <div style="width:220px;flex-shrink:0;">
-          <div class="font-bold" style="font-size:24px;color:var(--accent);">MEDIUM</div>
-          <div class="mono" style="font-size:12px;color:var(--fg-faint);letter-spacing:0.08em;">2–4 WEEKS</div>
-        </div>
-        <div class="flex-1 flex flex-wrap" style="gap:6px;">
-          <span class="chip-sm">Encrypted reputation w/ <span class="mono">delegateUserDecryption</span></span>
-          <span class="chip-sm">Sub-contractor confidential disclosure</span>
-          <span class="chip-sm">Tournament-tree comparison (n → log n)</span>
-        </div>
-      </div>
-      <div class="card flex" style="gap:24px;padding:16px 22px;align-items:flex-start;">
-        <div style="width:220px;flex-shrink:0;">
-          <div class="font-bold" style="font-size:24px;color:var(--accent);">RESEARCH</div>
-          <div class="mono" style="font-size:12px;color:var(--fg-faint);letter-spacing:0.08em;">4 WEEKS+</div>
-        </div>
-        <div class="flex-1 flex flex-wrap" style="gap:6px;">
-          <span class="chip-sm"><span class="mono">FHE.randEuint</span> stochastic tie-breaking</span>
-          <span class="chip-sm">CCIP cross-chain announcements</span>
-        </div>
-      </div>
-      <div class="flex" style="gap:24px;padding:16px 22px;align-items:flex-start;border:1px solid var(--accent);background:var(--accent-soft);border-radius:8px;">
-        <div style="width:220px;flex-shrink:0;">
-          <div class="font-bold" style="font-size:24px;color:var(--fg);">PRODUCTION HARDENING</div>
-          <div class="mono" style="font-size:12px;color:var(--accent);letter-spacing:0.08em;">OPERATOR + EXTERNAL</div>
-        </div>
-        <div class="flex-1 flex flex-wrap" style="gap:6px;">
+        <div class="flex-1 flex flex-wrap" style="gap:8px;">
+          <span class="chip-sm" style="background:#fff;">Sepolia → Ethereum mainnet (Zama TKMS live since Dec 30, 2025)</span>
           <span class="chip-sm" style="background:#fff;">Multi-sig tender owner (Ownable2Step)</span>
           <span class="chip-sm" style="background:#fff;">ANNOUNCE_TIMELOCK 48h · REVEAL_TIMELOCK 7d</span>
-          <span class="chip-sm" style="background:#fff;">Disown DisputeManager → ArbitrationSafe</span>
-          <span class="chip-sm" style="background:#fff;">Trail of Bits / Halborn formal audit</span>
-          <span class="chip-sm" style="background:#fff;">Mainnet deployment cost analysis</span>
-          <span class="chip-sm" style="background:#fff;">EKAP / Vergi / SGK bridge (Türkiye adoption)</span>
+          <span class="chip-sm" style="background:#fff;">FHE.ge gate on encrypted bond ≥ requiredDeposit</span>
+        </div>
+      </div>
+      <div class="card flex" style="gap:24px;padding:20px 28px;align-items:flex-start;">
+        <div style="width:240px;flex-shrink:0;">
+          <div class="font-bold" style="font-size:26px;color:var(--accent);">AUDIT + ADOPTION</div>
+          <div class="mono" style="font-size:12px;color:var(--fg-faint);letter-spacing:0.08em;">EXTERNAL DEPENDENCIES</div>
+        </div>
+        <div class="flex-1 flex flex-wrap" style="gap:8px;">
+          <span class="chip-sm">Trail of Bits / Halborn formal audit</span>
+          <span class="chip-sm">EKAP / Vergi / SGK bridge (Türkiye adoption)</span>
         </div>
       </div>
     </div>
